@@ -2,15 +2,13 @@ name = "yinnlimnascloud"
 main = "src/worker.js"
 compatibility_date = "2025-03-03"
 
-# 指定靜態資源目錄 (直接從 ./yinn 提供，不用 KV)
+# 直接從 ./yinn 提供靜態檔（不經 KV）
 assets = { directory = "./yinn", binding = "ASSETS" }
 
-# 關閉預設 workers.dev 子域名
 workers_dev = false
 
-# 啟用觀察日誌
 [observability.logs]
 enabled = true
 
-# 綁定你的域名路由
-routes = ["yinnlimnas.store"]
+# 綁域名的路由（也可以只填一個）
+routes = ["yinnlimnas.store/*", "www.yinnlimnas.store/*"]
