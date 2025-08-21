@@ -1,4 +1,5 @@
-name = "yinnlim-cloud"
+# wrangler.toml
+name = 'yinnlimnascloud'
 main = "src/worker.js"
 compatibility_date = "2025-03-03"
 
