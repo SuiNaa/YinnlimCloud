@@ -1,0 +1,787 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>曦花林YinnTown</title>
+ <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC&display=swap" rel="stylesheet">
+ <link href="https://fonts.googleapis.com/css2?family=Caveat&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+     /* 🌸 漢堡按鈕容器，固定在右上角 */
+.menu-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 30px;
+  height: 24px;
+  cursor: pointer;
+  z-index: 3000;
+  background: transparent;
+  border: none;
+}
+
+/* 🌸 漢堡三條線條樣式 */
+.menu-toggle span {
+  display: block;
+  height: 3px;
+  margin: 5px 0;
+  background-color: #ff66a5; /* 粉色 */
+  transition: all 0.3s ease;
+}
+
+/* 🌸 點擊後的動畫變 X */
+.menu-toggle.active span:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+.menu-toggle.active span:nth-child(2) {
+  opacity: 0;
+}
+.menu-toggle.active span:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+/* 🌸 側邊選單樣式，預設隱藏在右邊 */
+.side-menu {
+  position: fixed;
+  top: 0;
+  right: -250px; /* 隱藏在畫面外 */
+  width: 250px;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.2); /* ✅磨砂 */
+  backdrop-filter: blur(10px);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  transition: right 0.4s ease;
+  z-index: 2000;
+}
+/*釀*/
+.side-menu a:hover {
+  display: inline-block;
+  background: linear-gradient(to right, #ce63ee, #ff68eb);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  transform: scale(1.05);
+text-shadow: 0 0 8px rgba(255, 200, 255, 0.3);
+}
+/* 🌸 點擊後滑出 */
+.side-menu.open {
+  right: 0;
+}
+
+/* 🌸 選單文字樣式 */
+.side-menu ul {
+  list-style: none;
+  padding: 60px 20px;
+  margin: 0;
+}
+
+.side-menu li {
+  margin: 20px 0;
+}
+
+.side-menu a {
+  text-decoration: none;
+  font-weight: bold;
+  color: #ff66a5;
+  font-size: 18px;
+}
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #fcd3e1, #d8b0ff);
+      color: #333;
+    }
+    .container {
+      padding: 30px;
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #fff;
+      font-size: 2em;
+      margin-bottom: 30px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      font-family:  'Noto Serif TC', serif;
+    }
+    h2 {
+      text-align: center;
+      color: #fff;
+      font-size: 2em;
+      margin-bottom: 30px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      font-family: 'Caveat', cursive;
+  font-size: 30px;
+  letter-spacing: 1px;
+    }
+    h1, h2 {
+  text-align: center;
+}
+h2 {
+  margin-top: -40px;
+}
+    
+    #messages {
+      margin-bottom: 30px;
+    }
+    .post {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .post h3 {
+      margin: 0 0 5px 0;
+      font-size: 18px;
+      color: #ff69b4;
+    }
+    .post small {
+      color: #999;
+    }
+    .post p {
+      margin-top: 8px;
+      white-space: pre-wrap;
+    }
+    #postForm {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  background: linear-gradient(135deg, rgba(252, 211, 225, 0.8), rgba(216, 176, 255, 0.8));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px); /* Safari */
+
+  border-radius: 20px;
+  padding: 24px;
+  width: 90%;
+  max-width: 420px;
+
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  z-index: 5000; /* 浮在前面 */
+  
+  opacity: 0;
+  display: none;
+  transition: opacity 0.5s ease;
+}
+
+#postForm.show {
+  display: block;
+  opacity: 1;
+}
+    input, textarea {
+      width: 100%;
+      margin: 10px 0;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    #submitBtn {
+      display: inline-block;
+      background: linear-gradient(145deg, #ffa6c1, #ffc6e0);
+      border: none;
+      padding: 12px 25px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #cc7998;
+      transition: all 0.2s;
+    }
+    #submitBtn:active {
+      box-shadow: none;
+      transform: translateY(2px);
+    }
+    .plus-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #ff85b3;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+      font-size: 36px;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.4s ease;
+    }
+    .plus-btn.spin {
+  animation: spin360 0.6s ease-out;
+}
+
+@keyframes spin360 {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+#postForm {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  display: none;
+}
+#postForm.show {
+  display: block;
+  opacity: 1;
+}
+  .form-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .form-half {
+    flex: 1;
+    min-width: 45%;
+  }
+  .form-full {
+    width: 100%;
+  }
+  input, textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+    background: #fff;
+  }
+  .image-upload {
+    margin-top: 10px;
+  }
+  .grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.post-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.post-card:hover {
+  transform: scale(1.02);
+}
+/*狀態列*/
+/* 📦 外層容器 */
+.info-container {
+  position: fixed;
+  top: 10px;
+  right: 70px; /* 根據妳要的相對位置可微調 */
+  z-index: 4030;
+}
+
+/* 🔘 旋轉按鈕 */
+.info-toggle {
+  font-size: 20px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+/* 🔁 旋轉狀態 */
+.info-toggle.active {
+  transform: rotate(180deg);
+}
+
+/* 📦 磨砂框內容（放在 info-toggle 下方） */
+.info-box {
+  position: absolute;
+  top: 36px; /* 間距可以自己調整 */
+  right: 0;
+  width: 240px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  color: #663399;
+  font-weight: bold;
+  font-size: 14px;
+  border-radius: 12px;
+  line-height: 1.6;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+/* 🌸 被漢堡推開的動畫狀態 */
+.info-toggle.shifted {
+  /* ✅ 加上 translate 不影響 rotate（transform 合併寫） */
+  transform: translateX(-190px) rotate(0deg);
+}
+.info-toggle.active.shifted {
+  transform: translateX(-190px) rotate(180deg);
+}
+.info-toggle {
+  transition: transform 0.3s cubic-bezier(0.68, -0.6, 0.32, 1.6);
+}
+
+.post-card p {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
+}
+/*暱稱*/
+button.edit-btn {
+  border: none;
+  background: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  color: #663399;
+  transition: transform 0.2s ease;
+}
+button.edit-btn:hover {
+  transform: scale(1.2);
+}
+/*轉*/
+/*登出*/
+.logout-btn {
+  background: none;
+  border: none;
+  color: #663399;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: transform 0.2s ease;
+}
+.logout-btn:hover {
+  transform: scale(1.2);
+}
+/*彩色圈圈*/
+#connectionStatus {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: #fff0f5;
+  color: #aa3399;
+  padding: 12px 20px;
+  border-radius: 16px;
+  font-weight: bold;
+  font-size: 14px;
+  display: none;
+  z-index: 9999;
+  box-shadow: 0 0 10px rgba(255, 105, 180, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mac-spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #fbaae0 0deg 45deg,     /* 粉 */
+    #ffffff 45deg 90deg,    /* 白 */
+    #80d3f7 90deg 135deg,   /* 藍 */
+    #b388eb 135deg 180deg,  /* 紫 */
+    #ff605c 180deg 225deg,  /* 紅 */
+    #fedb9b 225deg 270deg,  /* 橙 */
+    #00ca56 270deg 315deg,  /* 黃 */
+    #ffe44c 315deg 360deg   /* 綠 */
+  );
+  animation: macspin 1.2s linear infinite;
+}
+
+@keyframes macspin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/*===================*/
+.logout-btn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #663399;
+  transition: transform 0.2s ease;
+  padding: 0;
+}
+
+.logout-btn:hover {
+  transform: scale(1.2);
+  background: transparent; /* 確保懸停時不變色 */
+}
+
+.lim-town-label {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1;
+  margin-right: 4px;
+  align-items: center;
+  font-weight: bold;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.lim-town-label .lim {
+  font-size: 14px;
+}
+
+.lim-town-label .town {
+  font-size: 10px;
+  color: #888; /* 或你想用的顏色 */
+}
+
+/*===========*/
+#userArea {
+  margin: 10px;
+  font-weight: bold;
+  color: #663399;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+  </style>
+</head>
+<body>
+<div id="connectionStatus">
+  <span>🍡 糖糖加載中...</span>
+  <span class="mac-spinner"></span>
+</div>
+
+<div id="userArea">
+  <span id="userNickname">帳戶：暱稱加載中...</span>
+  <button class="edit-btn" onclick="goToNicknameSettings()" title="修改暱稱">⌘</button>
+  <button class="logout-btn" onclick="logout()">🍃登出</button>
+  <button class="logout-btn" onclick="goToLogin()">🍓登入</button>
+</div>
+
+<script>
+function goToNicknameSettings() {
+  // 記錄目前頁面路徑，供設定暱稱完成後返回用
+  localStorage.setItem("previousPage", window.location.pathname);
+  window.location.href = "settings.html"; // ⬅️ 注意：如果這頁是在子資料夾，要調整成 "../settings.html"
+}
+</script>
+ <!-- 🔘 漂浮區塊容器 -->
+<div class="info-container">
+  <div class="info-toggle" onclick="toggleInfoBox(this)">∞•</div>
+
+  <div class="info-box" id="infoBox">
+    曦花林YinnTown<br>
+    匯聚自由聲音 友善性別多樣<br>
+    傳遞溫柔力量 支持每種存在<br>
+    張貼招募訊息 發表公開話語<br>
+    打造安心社群 願你自在閃耀<br>
+    共建幸福世界
+  </div>
+</div>
+<div class="container">
+  <h1>曦花林</h1>
+  <h2>Yinn Town</h2>
+
+  <div id="messages"></div>
+
+ 
+<div id="postForm" class="form-box">
+  <div class="form-row">
+    <input type="text" id="title" placeholder="標題" class="form-half">
+</div>
+  <textarea id="content" placeholder="請輸入您要發佈的內容..." class="form-full"></textarea>
+  <input type="file" id="imageUpload" class="form-full image-upload" accept="image/*">
+  <br>
+  <button id="submitBtn">發佈</button>
+</div>
+<div id="postsContainer" class="grid-container"></div>
+
+<button class="plus-btn" id="plusBtn">🍭</button>
+ <!-- 🌸 漢堡按鈕 -->
+<div class="menu-toggle" onclick="toggleMenu()">
+  <span></span>
+  <span></span>
+  <span></span>
+</div>
+
+<!-- 🌸 側邊透明選單 -->
+<nav class="side-menu" id="sideMenu">
+  <ul>
+    <li><a href="/index.html">首頁Home page</a></li>
+    <li>
+      <a href="javascript:void(0);" onclick="showTownLoginModal()"><span class="lim-town-label">
+        <span class="lim">Yinn</span>
+        <span class="town">Lim</span>
+      </span>🍓 登入／註冊<sup>Town</sup></a></li>
+    <a href="/Diverse/misseng.html"><span class="lim-town-label">
+      <span class="lim">Yinn</span>
+      <span class="town">Town</span>
+    </span>
+    曦花林<sup>NEW</sup>
+  </a>
+</li>
+    <li>
+  <a href="/Lim/LimCn.html"><span class="lim-town-label">
+      <span class="lim">Lim</span>
+      <span class="town">Town</span>
+    </span>
+    曦花林<sup>NEW</sup>
+  </a>
+</li>
+<li><a href="/Help.yinnlim/help.html">Grove Hub<sup>💖</sup></a></li>
+    <li><a href="/Store.html">商店Store</a></li>
+    <li><a href="/About thisn site.html">責任申明</a></li>
+     <li><a href="yinnlim store/AfterSS.html">售後服務</a></li>
+     <li><a href="/Emoticon pack.html">可愛表情</a></li>
+  </ul>
+</nav>
+  <!-- 放在 <body> 裡 -->
+<div id="loader" style="
+  display:none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  animation: spin 1s linear infinite;
+">🍡</div>
+
+<style>
+@keyframes spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+</style>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBkLJKrOdTgk4uf58jpciJIHm9hEYQUFCw",
+    authDomain: "yinnlim-mgsg-wall.firebaseapp.com",
+    projectId: "yinnlim-mgsg-wall",
+    storageBucket: "yinnlim-mgsg-wall.firebasestorage.app",
+    messagingSenderId: "811614776183",
+    appId: "1:811614776183:web:d0b11607a54b5a4d8a0f72"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const plusBtn = document.getElementById("plusBtn");
+  const postForm = document.getElementById("postForm");
+  const messagesDiv = document.getElementById("messages");
+
+  plusBtn.addEventListener("click", () => {
+    plusBtn.classList.add("spin");
+    setTimeout(() => {
+  plusBtn.classList.remove("spin");
+
+  if (postForm.classList.contains("show")) {
+    postForm.classList.remove("show");
+    setTimeout(() => postForm.style.display = "none", 300);
+  } else {
+    postForm.style.display = "block";
+    setTimeout(() => postForm.classList.add("show"), 10);
+  }
+}, 300);
+  });
+/*發文邏輯*/
+document.getElementById("submitBtn").addEventListener("click", async () => {
+  const user = firebase.auth().currentUser;
+  if (!user) {
+    alert("請先登入後才能發文！");
+    return;
+  }
+
+  const nickname = user.displayName || "匿名用戶";
+  const title = document.getElementById("title").value.trim();
+  const content = document.getElementById("content").value.trim();
+  const file = document.getElementById("imageUpload").files[0];
+
+  if (!title || !content) {
+    alert("請填寫標題與內容！");
+    return;
+  }
+
+  let imageURL = "";
+  if (file) {
+    const storageRef = firebase.storage().ref("images/" + file.name);
+    await storageRef.put(file);
+    imageURL = await storageRef.getDownloadURL();
+  }
+
+  db.ref("posts").push({
+    uid: user.uid, // ➕ 作者 ID
+    name: nickname,
+    title: title,
+    content: content,
+    imageURL: imageURL,
+    time: Date.now()
+  });
+
+  alert("發佈成功！");
+  document.getElementById("title").value = "";
+  document.getElementById("content").value = "";
+  document.getElementById("imageUpload").value = "";
+  postForm.style.display = "none";
+});
+ // 顯示所有文章縮圖
+// 顯示貼文刪除
+firebase.auth().onAuthStateChanged(currentUser => {
+  db.ref("posts").on("child_added", snapshot => {
+    const data = snapshot.val();
+    const key = snapshot.key;
+
+    const card = document.createElement("div");
+    card.className = "post-card";
+
+    let deleteBtn = "";
+if (currentUser && currentUser.uid === data.uid) {
+  deleteBtn = `<button onclick="event.stopPropagation(); deletePost('${key}')">🗑️🌵 刪除</button>`;
+}
+
+    card.innerHTML = `
+      <h3>${data.title}</h3>
+      <p><strong>${data.name}</strong> | ${new Date(data.time).toLocaleString()}</p>
+      <p>${data.content.slice(0, 60)}...</p>
+      ${deleteBtn}
+    `;
+
+    card.onclick = () => {
+  localStorage.setItem("selectedPostId", key);
+  localStorage.setItem("scrollY", window.scrollY);  // 🪄 儲存目前滾動位置
+  window.location.href = "post.html";
+};
+
+    document.getElementById("postsContainer").prepend(card);
+  });
+});
+
+function deletePost(postId) {
+  const loader = document.getElementById("loader");
+  if (loader) loader.style.display = "block";
+
+  firebase.database().ref("posts/" + postId).remove()
+    .then(() => {
+      alert("刪除成功！");
+      location.reload(); // ✅ 自動重新整理頁面
+    })
+    .catch(error => {
+      alert("刪除失敗：" + error.message);
+    })
+    .finally(() => {
+      if (loader) loader.style.display = "none";
+    });
+}
+  /*text*/
+  
+</script>
+<script>
+function toggleMenu() {
+  document.querySelector('.menu-toggle').classList.toggle('active');
+  document.getElementById('sideMenu').classList.toggle('open');
+}
+</script>
+<script>
+
+  firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    const nickname = user.displayName;
+    document.getElementById("userNickname").textContent = nickname || "未設定暱稱";
+  } else {
+    document.getElementById("userNickname").textContent = "未登入";
+  }
+});
+</script>
+<!--網路掃描-->
+<script>
+  const statusDiv = document.getElementById("connectionStatus");
+
+  firebase.database().ref(".info/connected").on("value", (snap) => {
+    if (snap.val() === true) {
+      // ✅ 已連線，隱藏提示
+      statusDiv.style.display = "none";
+    } else {
+      // ❌ 離線，顯示提示
+     statusDiv.style.display = "flex";
+    }
+  });
+</script>
+<script>
+function logout() {
+  firebase.auth().signOut().then(() => {
+    alert("已登出！");
+    window.location.href = "login.html"; // ⬅️ 登出後導向登入頁，根據你實際檔案位置調整
+  }).catch((error) => {
+    alert("登出失敗：" + error.message);
+  });
+}
+//狀態列---------------
+function toggleInfoBox(btn) {
+  const box = document.getElementById("infoBox");
+  const showing = box.style.display === "block";
+
+  // 切換面板顯示
+  box.style.display = showing ? "none" : "block";
+
+  // 切換符號與動畫
+  btn.classList.toggle("active");
+  btn.innerHTML = showing ? "∞•" : "∞•";
+}
+function toggleMenu() {
+  const menu = document.getElementById('sideMenu');
+  const toggle = document.querySelector('.menu-toggle');
+  const infoBtn = document.querySelector('.info-toggle');
+
+  toggle.classList.toggle('active');
+  menu.classList.toggle('open');
+
+  // 👉 加上/移除 .shifted
+  if (menu.classList.contains('open')) {
+    infoBtn.classList.add('shifted');
+  } else {
+    infoBtn.classList.remove('shifted');
+  }
+}
+//====================
+document.addEventListener("DOMContentLoaded", () => {
+  const savedScroll = localStorage.getItem("restoreScrollY");
+  if (savedScroll !== null) {
+    window.scrollTo(0, parseInt(savedScroll));
+    localStorage.removeItem("restoreScrollY");
+  }
+});
+
+function goToLogin() {
+  // 儲存目前頁面位置，登入後可以導回來
+  localStorage.setItem("previousPage", window.location.pathname);
+  window.location.href = "/Diverse/login.html"; // ← 根據你的實際登入頁修改路徑
+}
+
+function showTownLoginModal() {
+  document.getElementById("townLoginModal").style.display = "flex";
+}
+
+function hideTownLoginModal() {
+  document.getElementById("townLoginModal").style.display = "none";
+}
+</script>
+
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+<!-- 🌈 登入選單彈窗 -->
+
+<div id="townLoginModal"
+  style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+  <div style="background: linear-gradient(135deg, #5BCEFA, #F5A9B8, #FFFFFF, #F5A9B8, #5BCEFA); padding: 20px; border-radius: 12px; text-align: center; max-width: 300px; width: 90%;">
+    <h2 style="margin-bottom: 16px; color: #663399;">請選擇登入的 Town</h2>
+    <button onclick="location.href='/Diverse/login.html'" style="margin: 10px; padding: 10px 20px; border-radius: 10px; border: none; background: white; color: #5BCEFA; font-weight: bold;">Yinn Town</button>
+    <button onclick="location.href='/Lim/limlongin/login.html'" style="margin: 10px; padding: 10px 20px; border-radius: 10px; border: none; background: white; color: #F5A9B8; font-weight: bold;">Lim Town</button>
+    <br><br>
+    <button onclick="hideTownLoginModal()" style="margin-top: 10px; font-size: 14px; background: none; border: none; color: #fff; text-decoration: underline;">取消</button>
+  </div>
+</div>
+</body>
+</html>

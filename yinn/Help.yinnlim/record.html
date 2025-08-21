@@ -1,0 +1,1337 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>生活紀錄｜真太陽時計</title>
+<style>
+:root{
+  --bg:#0f0d14; --card:#17151f; --ink:#eceaf2; --muted:#a9a6b3; --border:#2b2637;
+  --accent:#b78ad3; --maxw:980px;
+}
+*{box-sizing:border-box}
+body{margin:0; font-family:ui-sans-serif,system-ui,"Noto Sans TC","Microsoft JhengHei"; color:var(--ink); background:linear-gradient(160deg,#13111a,#191627)}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:18px 14px}
+.badge{display:inline-flex; align-items:center; gap:6px; font-size:.82rem; padding:4px 10px; border:1px solid var(--border); border-radius:999px; background:#1f1a2b}
+.badge.dim{opacity:.7}
+.btn{display:inline-flex; align-items:center; gap:8px; background:var(--accent); color:#120d18; border:none; border-radius:12px; padding:12px 14px; cursor:pointer; font-weight:700}
+.btn.ghost{background:transparent; color:#fff; border:1px solid var(--border)}
+.card{background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.35); padding:14px}
+.hint{color:var(--muted)}
+.input,textarea{width:100%; background:#1e1a28; color:#fff; border:1px solid var(--border); border-radius:12px; padding:10px 12px; font-size:1rem}
+textarea{min-height:160px; line-height:1.6; resize:vertical}
+.k{color:var(--muted); font-weight:600; margin:8px 0 4px}
+
+/* ====== 列表 View ====== */
+#view-list .top{display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:space-between}
+.clock{flex:1 1 500px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.time{font-size:clamp(36px,9vw,64px); font-weight:800; letter-spacing:.02em}
+.sub{margin-top:6px; color:var(--muted); font-size:.98rem; display:flex; gap:10px; flex-wrap:wrap}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px}
+.title {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 標題還是置中 */
+  text-align: center;
+}
+
+.title-text {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 4px; /* 標題和時間的距離 */
+}
+
+.time-row {
+  align-self: flex-start; /* 時間靠左 */
+  font-size: 0.9rem;
+  color: #aaa; /* 灰一點，視覺層級低 */
+  margin-bottom: 8px; /* 和干支徽章拉開距離 */
+}
+/* 標題區改成直向排版、寬度撐滿卡片 */
+.title.stack{
+  display:flex;
+  flex-direction:column;
+  align-items:center;   /* 標題仍置中 */
+  gap:4px;
+  width:100%;           /* 讓時間的靠左能貼齊卡片左緣 */
+  margin-bottom:12px;   /* 與下方干支拉開距離 */
+}
+
+.title.stack .title-text{
+  text-align:center;
+}
+
+/* 時間這顆藥丸：在容器內靠左 */
+.time-badge{
+  align-self:flex-start; /* 關鍵：靠左 */
+  margin-top:2px;
+  margin-bottom:6px;     /* 與干支再拉一點距離 */
+}
+.meta{color:var(--muted); font-size:.86rem; display:flex; gap:8px; flex-wrap:wrap}
+.tools{display:flex; gap:8px; margin-top:8px}
+.tool{background:transparent; border:1px solid var(--border); color:#fff; border-radius:10px; padding:6px 10px; cursor:pointer}
+pre{white-space:pre-wrap; word-break:break-word; margin:8px 0 0}
+.empty{text-align:center; color:var(--muted); padding:26px 10px}
+.thumb{width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:10px; border:1px solid var(--border); margin-top:6px}
+
+/* 新增 modal */
+.modal{position:fixed; inset:0; display:none; place-items:center; z-index:1000; background:rgba(0,0,0,.45); backdrop-filter:blur(2px)}
+.modal.show{display:grid}
+.modal-box{width:min(92vw,800px); background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px}
+.bar{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px}
+.row{display:flex; gap:10px; flex-wrap:wrap}
+.preview-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:8px}
+.preview-grid img{width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:10px; border:1px solid var(--border)}
+
+/* ====== 詳情 View（單頁） ====== */
+.detail-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px}
+.detail-title{font-size:1.2rem; font-weight:800; margin:0 0 6px}
+.detail-meta{color:var(--muted); display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px}
+/* === 詳情頁圖片格：三個一排、超過自動換行、固定尺寸 === */
+#view-detail #dGallery{
+  display: grid;
+  grid-template-columns: repeat(3, 0fr); /* 永遠三欄 */
+  gap: 8px;                               /* 圖片間距 */
+  align-items: start;
+}
+
+/* 圖片：方形、等高等寬、填滿裁切（要完整塞進去就把 cover 改成 contain） */
+#view-detail #dGallery img{
+  width: auto;
+  height: 64px;          /* 固定高度，你想放大就調整這數值 */
+  object-fit: contain;      /* 填滿裁切，想完整顯示改成 contain */
+  border-radius: 10px;
+  display: block;
+  background: transparent;
+  border: none;
+}
+/* 重新定義圖片區：不框、不底色、照原圖大小顯示（但不超過版面寬度） */
+.gallery{display:block; margin-top:8px}
+/* 列表卡片內圖片（縮略圖） */
+/* 縮圖區：一排排排、可換行 ─ 為了讓點在圖「外面」不擠到按鈕，墊一點底部 */
+.card .gallery{
+  position:relative;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-start;
+  padding-bottom:18px;         /* 給下方點與虛線留空間 */
+}
+
+/* 單一縮圖外層：當定位容器，也留出下面的空間 */
+.thumb-wrap{
+  position:relative;
+  display:inline-block;
+  line-height:0;
+  margin-bottom:18px;          /* 讓下面的點不壓到後面的內容 */
+}
+
+/* 縮圖本身（保持你的尺寸限制） */
+.card .gallery img{
+  display:block;
+  width:auto; height:auto;
+  max-width:120px;
+  max-height:90px;
+  object-fit:contain;
+  border:none; background:transparent; border-radius:6px;
+  margin:0;
+}
+
+/* —— 點：在縮圖「外面」的下方正中央 —— */
+.thumb-wrap::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:calc(100% + 6px);        /* 100% = 縮圖底部，再往下 6px */
+  transform:translateX(-50%);
+  width:8px; height:8px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 10px var(--accent);
+  pointer-events:none;
+  z-index:2;
+}
+
+/* —— 到下一個點的虛線（最後一張不畫） —— */
+.thumb-wrap:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:calc(100% + 10px);       /* 與上面那顆點同一條水平線 */
+  transform:translateX(0);
+  width:var(--linkw, 0px);     /* JS 會塞入實際距離；預設 0 避免亂線 */
+  border-top:2px dashed var(--accent);
+  opacity:.95;
+  pointer-events:none;
+  z-index:1;
+}
+</style>
+<style>
+   /* 固定尺寸列表卡片 */
+/* --- 固定列表卡片底部工具列 --- */
+.card.list-card{
+  position: relative;
+  height: 290px;               /* 你的既有高度，可自行調整 */
+  padding-bottom: 56px;        /* ↓ 預留工具列高度 + 間距（可依實際調整） */
+  overflow: hidden;            /* 超出的內容直接裁掉，不會壓到按鈕 */
+}
+
+/* 工具列固定在卡片底部，永遠可見 */
+.tools.stick{
+  position: absolute;
+  left: 14px;                  /* 與卡片內距一致 */
+  right: 14px;
+  bottom: 12px;                /* 與卡片內距一致 */
+  margin-top: 0;               /* 取消之前用來推底的 margin */
+  padding-top: 0;
+  display: flex;
+  gap: 8px;
+}
+
+/* 中段內容不要撐高卡片 */
+.content-block{
+  overflow: hidden;            /* 超出卡片可視範圍的內容裁掉 */
+}
+
+/* 標題列沿用你原本的 .title 樣式即可 */
+
+/* 中段：兩行摘要 + 右側小圖 */
+.content-row{
+  display:flex; gap:10px; align-items:flex-start;
+  flex:1 1 auto;               /* 把中段撐開，讓工具列能貼底 */
+  margin-top:6px;
+}
+.excerpt {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap; /* 保留換行 */
+  line-height: 1.5;
+  color: var(--ink);
+
+  /* 針對 WebKit（Chrome、Safari、Edge） */
+    display: -webkit-box; /* 用 WebKit 的盒子模型 */
+  display: box; /* 標準化的占位屬性，讓編輯器不報錯 */
+  -webkit-box-orient: vertical; /* 私有屬性 */
+  box-orient: vertical; /* 標準化的占位屬性 */
+  
+  overflow: hidden;
+  /* VS Code 對這個會警告，加個標準屬性並列就好了 */
+  line-clamp: 2; /* 標準占位，部分瀏覽器忽略 */
+  -webkit-line-clamp: 2; /* 真正起作用的 */
+
+  /* 針對 Firefox / 其他不支援 line-clamp 的瀏覽器 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: calc(1.5em * 2); /* 行高 × 兩行 */
+}
+.thumb-small{
+  width:72px; height:72px;      /* 小縮圖尺寸 */
+  object-fit:cover;
+  border-radius:8px; border:1px solid var(--border);
+  flex:0 0 auto;
+}
+/* 列表卡片縮略圖：固定尺寸 */
+/* 縮圖列外層，固定高度 */
+.thumb-bar{
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  height: 80px;          /* ← 你想要的縮圖區高度，保持不變 */
+  align-items: center;   /* 讓縮圖在這個高度裡垂直置中 */
+  overflow: hidden;      /* 超過就隱藏，不會撐高 */
+}
+
+.twrap{                 /* 你已經有 twrap，這裡保險再放一次沒關係 */
+  position:relative;
+  display:inline-block;
+  line-height:0;
+}
+
+/* 真的控制縮略圖大小的是這個 */
+.thumb-mini{
+  width: 70px;           /* 想要多大改這裡（例如 72、96、120） */
+  height:70px;
+  object-fit: cover;    /* 保持比例完整顯示，可能留白 */
+  background: transparent;/* 可省略，僅保持視覺乾淨 */   /* 填滿裁切；想完整塞進去改成 contain */
+  border-radius:8px;
+  flex:0 0 auto;
+}
+/* 角標：還有幾張未顯示 */
+.thumb-more{
+  position:absolute;
+  right:4px;
+  bottom:4px;
+  padding:2px 6px;
+  font-size:.78rem;
+  line-height:1;
+  color:#fff;
+  background:rgba(0,0,0,.55);
+  border:1px solid var(--border);
+  border-radius:999px;
+  pointer-events:none;
+}
+/* 底部三個按鈕固定在卡片底部 */
+.tools.stick{
+  margin-top:auto;              /* 把工具列推到最底 */
+  padding-top:8px;
+}
+</style>
+<!--============================-->
+<style>
+    /* 標題橫排 */
+.heading{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:16px 0 8px;
+}
+.heading-title{ margin:0; }
+
+/* 記錄指示器：點—線—點… */
+.record-timeline{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;                 /* 點與線之間的間距 */
+}
+
+/* 點 */
+.record-timeline .dot{
+  width:8px; height:8px; border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 8px var(--accent);
+  flex:0 0 auto;
+}
+
+/* 虛線段：使用重複線性漸層做出「虛線」 */
+.record-timeline .seg{
+  height:2px; width:34px;               /* 想更長/更短改這裡 */
+  background:
+    repeating-linear-gradient(
+      to right,
+      var(--accent) 0 6px,
+      transparent 6px 12px
+    );
+  opacity:.65;
+  filter:drop-shadow(0 0 0 var(--accent));
+  animation: timelinePulse 1.6s ease-in-out infinite;
+  flex:0 0 auto;
+}
+
+/* 一下暗一下亮 */
+@keyframes timelinePulse{
+  0%,100% { opacity:.45; filter:drop-shadow(0 0 0 var(--accent)); }
+  50%     { opacity:1;   filter:drop-shadow(0 0 6px var(--accent)); }
+}
+/* 雲端分享指示點（橙色會閃） */
+
+/* 讓所有卡片可放右上角徽標 */
+.card{ position: relative; }
+
+/* 橙色會閃的小點（顯示於卡片右上角） */
+.flag-dot{
+  position:absolute;
+  top:8px; right:8px;           /* 可依喜好微調 */
+  width:10px; height:10px;
+  border-radius:50%;
+  background:#ff9b2f;
+  box-shadow:0 0 10px rgba(255,155,47,.9);
+  animation: flagBlink 1.3s ease-in-out infinite;
+  z-index: 10;
+}
+/* 橙點旁的分享次數 */
+.flag-count{
+  position:absolute;
+  top:6px; right:22px;          /* 就在橙點右邊 */
+  min-width:16px;
+  height:16px;
+  border-radius:999px;
+  padding:0 5px;
+  font-size:11px;
+  line-height:16px;
+  color:#120d18;
+  background:#ffd28a;           /* 橙點的親戚色 */
+  border:1px solid rgba(0,0,0,.25);
+  text-align:center;
+  z-index:10;
+  font-weight:700;
+}
+@keyframes flagBlink{
+  0%,100%{ opacity:.45; filter:drop-shadow(0 0 0 #ff9b2f); }
+  50%    { opacity:1;   filter:drop-shadow(0 0 6px #ff9b2f); }
+}
+
+/* 讓容器能放定位元素（縮圖與詳情圖的外層） */
+.twrap, .picwrap{ position:relative; display:inline-block; }
+
+/* === 全域：字級、外距在各裝置之間自適應 === */
+:root{
+  --page-pad: clamp(12px, 3vw, 24px);
+}
+.wrap{
+  padding-left: var(--page-pad);
+  padding-right: var(--page-pad);
+}
+.time{
+  font-size: clamp(28px, 6vw, 52px); /* 保留原本的縮放感 */
+}
+
+/* 讓圖片、影片、表格不爆版 */
+img, video{
+  max-width:100%;
+  height:auto;
+}
+
+/* 行動優先：時間線小卡寬度、縮圖、按鈕觸控大小 */
+.titem{
+  width: clamp(220px, 70vw, 300px);
+}
+.tcard{
+  min-height: 240px; /* 原本的值，行動裝置也 ok */
+}
+.tcard .gallery img{
+  width:72px;
+  height:72px;
+  object-fit:cover;
+  border-radius:6px;
+}
+.btn{
+  padding: 10px 14px;
+}
+.badge{
+  padding: 6px 10px;
+}
+
+/* 橫向滑動慣性 + 對齊 */
+.trow{
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+.titem{
+  scroll-snap-align: start;
+}
+
+/* === 中型以上螢幕（平板橫向/小筆電）≥ 768px === */
+@media (min-width: 768px){
+  .top{
+    align-items: center;
+  }
+
+  .titem{
+    width: 320px;
+  }
+  .tcard{
+    min-height: 260px;
+  }
+  .tcard .gallery img{
+    width:84px;
+    height:84px;
+  }
+
+  .search-input{
+    flex: 2 1 420px;
+  }
+}
+
+/* === 桌面大螢幕 ≥ 1024px === */
+@media (min-width: 1024px){
+  :root{
+    --page-pad: 24px;
+  }
+
+  .titem{
+    width: 360px;
+  }
+  .tcard{
+    min-height: 280px;
+  }
+  .tcard .gallery img{
+    width:96px;
+    height:96px;
+  }
+
+  .group{
+    padding: 18px;
+  }
+}
+.A{
+  text-decoration: none;
+  color: #eceaf2;
+}
+</style>
+</head>
+<body>
+
+<!-- ============ View：列表 ============ -->
+<main id="view-list">
+  <div class="wrap">
+    <div class="top">
+      <div class="clock">
+        <div id="time" class="time">--:--:--</div>
+        <div class="sub">
+          <span id="dateBadge" class="badge">—</span>
+          <span id="ganzhiBadge" class="badge">日：—　時：—</span>
+          <span id="locBadge" class="badge dim">定位中…</span>
+          <span id="precBadge" class="badge dim">—</span>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start">
+        <button id="openRec" class="btn">🏠 紀錄</button>
+        <button id="goCloud" class="btn ghost">☁️ 去 LimCloud</button>
+        <button id="goCloud" class="btn ghost"><a href="help.html" class="A">🐾返回</a></button>
+      </div>
+    </div>
+
+    <!-- 標題 + 記錄指示器 -->
+  <div class="heading">
+  <h3 class="heading-title">我的紀錄</h3>
+  <div id="recTimeline" class="record-timeline" aria-label="記錄數指示"></div>
+</div>
+    <div id="list" class="grid"></div>
+    <div id="empty" class="card empty" style="display:none">還沒有任何紀錄，按右上的「🏠 紀錄」開始吧！</div>
+    <div class="hint">說明：記錄會雙重備份</div>
+  </div>
+</main>
+
+<!-- ============ View：詳情（單頁） ============ -->
+<main id="view-detail">
+  <div class="wrap">
+    <div class="detail-head">
+      <button id="backBtn" class="btn ghost">← 返回</button>
+      <div style="display:flex; gap:8px">
+        <button id="btnShare" class="btn">分享至 LimCloud</button>
+        <button id="btnDelete" class="btn ghost">刪除此紀錄</button>
+      </div>
+    </div>
+
+    <article class="card">
+      <h1 id="dTitle" class="detail-title">—</h1>
+      <div id="dMeta" class="detail-meta"></div>
+      <pre id="dContent"></pre>
+      <div id="dGallery" class="gallery"></div>
+      <div class="hint" style="margin-top:12px">提示：點圖片可在新分頁開啟原圖。</div>
+    </article>
+  </div>
+</main>
+
+<!-- ============ 新增紀錄 Modal ============ -->
+<div id="modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="bar">
+      <h3 style="margin:0">新增紀錄</h3>
+      <button id="close" class="btn ghost">關閉</button>
+    </div>
+    <div class="k">標題（可留空）</div>
+    <input id="title" class="input" placeholder="今天想記下什麼？" autocomplete="off">
+    <div class="k">內容（必填）</div>
+    <textarea id="content" placeholder="寫點文字才可以儲存喔～" autocomplete="off"></textarea>
+    <div class="k">圖片（可多選，最多 6 張，每張 ≤ 2MB）</div>
+    <input id="photos" type="file" accept="image/*" multiple>
+    <div id="photosPreview" class="preview-grid"></div>
+    <div class="k">將會儲存的時間標記</div>
+    <div id="stamp" class="badge dim">—</div>
+    <div style="display:flex; gap:8px; margin-top:12px">
+      <button id="save" class="btn">儲存</button>
+      <button id="clearForm" class="btn ghost">清空</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 登入 / 註冊（與你先前一致） ============ -->
+<div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="bar"><h3 style="margin:0">登入</h3><button id="loginClose" class="btn ghost">關閉</button></div>
+    <div class="row">
+      <input id="loginEmail" class="input" type="email" inputmode="email" placeholder="電子郵箱（必填）" autocomplete="email">
+      <input id="loginPass" class="input" type="password" placeholder="密碼（必填）" autocomplete="current-password">
+    </div>
+    <div style="display:flex; justify-content:flex-end; margin-top:8px">  <button id="gotoSignup" class="btn ghost">註冊</button>
+        <button id="loginDo" class="btn">登入</button></div>
+    <div id="loginMsg" class="hint"></div>
+  </div>
+</div>
+<div id="signupModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="bar"><h3 style="margin:0">建立帳號</h3><button id="signupClose" class="btn ghost">關閉</button></div>
+    <div class="row">
+      <input id="signupEmail" class="input" type="email" placeholder="電子郵箱（必填）" autocomplete="email">
+      <input id="signupPass" class="input" type="password" placeholder="密碼（至少 6 位英數）" autocomplete="new-password">
+      <input id="signupNick" class="input" placeholder="暱稱（必填，1–30字）" maxlength="30">
+      <div class="k">頭貼（可選）</div>
+      <label for="signupAvatarInput" style="display:inline-block; cursor:pointer; border:1px solid var(--border); border-radius:12px; padding:8px; background:#1f1a2b">
+        <img id="signupAvatarPreview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='%23b78ad3'%3E%3Ccircle cx='60' cy='46' r='22'/%3E%3Cpath d='M16 108a44 44 0 0 1 88 0z'/%3E%3C/g%3E%3C/svg%3E" alt="頭貼預覽" style="width:96px;height:96px;border-radius:50%;object-fit:cover;display:block">
+      </label>
+      <input id="signupAvatarInput" type="file" accept="image/*" style="display:none">
+      <div class="hint">支援 jpg / png / gif，建議 &lt; 2MB。</div>
+    </div>
+    <div style="display:flex; justify-content:flex-end; margin-top:8px"><button id="signupDo" class="btn">註冊</button></div>
+    <div id="signupMsg" class="hint"></div>
+  </div>
+</div>
+<script>
+  function linkDots(){
+    document.querySelectorAll('.trow').forEach(row=>{
+      const items = Array.from(row.children);
+      for (let i=0; i<items.length; i++){
+        const curTail  = items[i]?.querySelector('.ts .ts-dot.tail');
+        if (!curTail) continue;
+
+        if (i === items.length - 1){
+          curTail.style.removeProperty('--linkw'); // 最後一張不要線
+          continue;
+        }
+        const nextHead = items[i+1]?.querySelector('.ts .ts-dot.head');
+        if (!nextHead) continue;
+
+        const a = curTail.getBoundingClientRect();
+        const b = nextHead.getBoundingClientRect();
+        const w = Math.max(0, b.left - a.right);   // 尾點右緣 → 下一張頭點左緣
+        curTail.style.setProperty('--linkw', w + 'px');
+      }
+    });
+  }
+
+  // 提供相容舊名
+  window.linkThumbs = window.linkThumbs || linkDots;
+
+  // 初次與縮放時重算
+  document.addEventListener('DOMContentLoaded', linkDots);
+  window.addEventListener('resize', linkDots);
+</script>
+<script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4/dist/av-min.js"></script>
+<script>
+/* ========= LeanCloud ========= */
+const LC = { APP_ID:'0juO0jzBkrv1Oi04bHljaWDW-gzGzoHsz', APP_KEY:'kFMz8niEbd8BlPbFKDyTZC2Q', SERVER:'https://0juo0jzb.lc-cn-n1-shared.com' };
+AV.init({ appId:LC.APP_ID, appKey:LC.APP_KEY, serverURL:LC.SERVER });
+// 依 Cloud.html 存的 Session Token 自動登入
+(async function tryAutoLoginFromToken(){
+  try{
+    if (AV.User.current()) return;
+    const token = localStorage.getItem('LC_SESSION_TOKEN');
+    if (!token) return;
+    await AV.User.become(token);            // ★ 用 token 變成登入狀態
+    console.info('[Auth] become by token ok');
+    await fetchShareCounts();
+  }catch(err){
+    console.warn('[Auth] auto login failed:', err);
+    localStorage.removeItem('LC_SESSION_TOKEN'); // 過期就清掉，避免卡住
+  }
+})();
+/* ========= 太陽時計 / 干支 ========= */
+function dayOfYear(d){const s=new Date(d.getFullYear(),0,1);return Math.floor((d-s)/86400000)+1}
+function equationOfTime(date){const n=dayOfYear(date),B=2*Math.PI*(n-81)/364;return 9.87*Math.sin(2*B)-7.53*Math.cos(B)-1.5*Math.sin(B)}
+function tzCenterMeridian(){const offMin=-new Date().getTimezoneOffset();return 15*(offMin/60)}
+function calcTrueSolar(now,lon,has){const LSTM=tzCenterMeridian(),eot=equationOfTime(now);const off=eot+4*(lon-LSTM);const s=new Date(now.getTime()+off*60*1000);const hh=String(s.getHours()).padStart(2,'0'),mm=String(s.getMinutes()).padStart(2,'0'),ss=String(s.getSeconds()).padStart(2,'0');return{solar:s,text:`${hh}:${mm}:${ss}`,approx:!has}}
+const stems=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"], branch=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+function toJDN(y,m,d){if(m<=2){y--;m+=12}const A=Math.floor(y/100),B=2-A+Math.floor(A/4);return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524}
+function ganzhiIndexFromJDN(jdn){return(jdn+49)%60}
+function hourBranchIndex(h){let H=Math.floor(h);if(H===23)H=-1;return Math.floor((H+1)/2)}
+function hourStemIndex(d,h){const start=[0,2,4,6,8][d%5];return(start+h)%10}
+function getGanzhiForTrueSolar(solar, hours){const y=solar.getFullYear(),m=solar.getMonth()+1,d=solar.getDate();const add=(hours>=23)?1:0;const jdn=toJDN(y,m,d)+add;const dayIdx=ganzhiIndexFromJDN(jdn);const dayGan=stems[dayIdx%10],dayZhi=branch[dayIdx%12];const hb=hourBranchIndex(hours);const hourGan=stems[hourStemIndex(dayIdx%10,hb)],hourZhi=branch[hb];return{day:dayGan+dayZhi,hour:hourGan+hourZhi}}
+
+/* ========= 狀態 & DOM ========= */
+let state={hasGeo:false,lon:0,lat:0};
+const viewList=document.getElementById('view-list');
+const viewDetail=document.getElementById('view-detail');
+const backBtn=document.getElementById('backBtn');
+const dTitle=document.getElementById('dTitle');
+const dMeta=document.getElementById('dMeta');
+const dContent=document.getElementById('dContent');
+const dGallery=document.getElementById('dGallery');
+const btnShare=document.getElementById('btnShare');
+const btnDelete=document.getElementById('btnDelete');
+
+const timeEl=document.getElementById('time'), dateBadge=document.getElementById('dateBadge'), gzBadge=document.getElementById('ganzhiBadge'), locBadge=document.getElementById('locBadge'), precBadge=document.getElementById('precBadge'), stampEl=document.getElementById('stamp');
+const openBtn=document.getElementById('openRec'), modal=document.getElementById('modal'), closeBtn=document.getElementById('close'), saveBtn=document.getElementById('save'), clearFormBtn=document.getElementById('clearForm'), titleEl=document.getElementById('title'), contentEl=document.getElementById('content'), photosInput=document.getElementById('photos'), photosPreview=document.getElementById('photosPreview');
+const listEl=document.getElementById('list'), emptyEl=document.getElementById('empty');
+
+/* ========= 定位 & 時鐘 ========= */
+function initGeo(){ if(!navigator.geolocation){locBadge.textContent='無法使用定位（以時區估算）'; return;}
+ navigator.geolocation.getCurrentPosition(
+  p=>{state.hasGeo=true; state.lat=p.coords.latitude; state.lon=p.coords.longitude; locBadge.textContent=`📍 ${state.lat.toFixed(4)}, ${state.lon.toFixed(4)}`},
+  _=>{locBadge.textContent='未授權定位（以時區估算）'},
+  {enableHighAccuracy:false, maximumAge:3600_000, timeout:8000}
+ )}
+function tick(){const now=new Date(); const lon=state.hasGeo?state.lon:tzCenterMeridian(); const ts=calcTrueSolar(now,lon,state.hasGeo);
+ timeEl && (timeEl.textContent=ts.text+(ts.approx?" ≈":"")); precBadge && (precBadge.textContent=ts.approx?"精度：估算（無定位）":"精度：依定位計算");
+ const dstr=now.toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'}); dateBadge && (dateBadge.textContent=dstr+'｜真太陽時');
+ const h=ts.solar.getHours()+ts.solar.getMinutes()/60+ts.solar.getSeconds()/3600; const {day, hour}=getGanzhiForTrueSolar(ts.solar,h); gzBadge && (gzBadge.textContent=`日：${day}　時：${hour}`);
+ stampEl && (stampEl.textContent=`${dstr}｜${ts.text}${ts.approx?' ≈':''}｜日${day} 時${hour}`) }
+setInterval(tick,1000);
+
+/* ========= 新增紀錄 modal ========= */
+function openModal(){ modal.classList.add('show'); modal.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; titleEl.value=''; contentEl.value=''; photosInput.value=''; photosPreview.innerHTML=''; contentEl.focus(); }
+function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); document.body.style.overflow=''; }
+openBtn.addEventListener('click', openModal); closeBtn.addEventListener('click', closeModal);
+modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
+clearFormBtn.addEventListener('click', ()=>{ titleEl.value=''; contentEl.value=''; photosInput.value=''; photosPreview.innerHTML=''; contentEl.focus(); });
+
+/* 圖片預覽 */
+const MAX_FILES=6, MAX_SIZE=2*1024*1024;
+photosInput.addEventListener('change', ()=>{
+  photosPreview.innerHTML='';
+  const files=Array.from(photosInput.files||[]).slice(0,MAX_FILES);
+  files.forEach(f=>{
+    if(f.size>MAX_SIZE){ alert(`「${f.name}」超過 2MB`); return; }
+    const r=new FileReader(); r.onload=e=>{ const img=document.createElement('img'); img.src=e.target.result; photosPreview.appendChild(img); }; r.readAsDataURL(f);
+  });
+});
+function persistSession(user){
+  try{
+    if (user) localStorage.setItem('LC_SESSION_TOKEN', user.getSessionToken());
+  }catch(e){ console.warn('persistSession failed', e); }
+}
+/* ========= 登入 / 註冊 ========= */
+const loginModal=document.getElementById('loginModal'), loginClose=document.getElementById('loginClose'), loginEmail=document.getElementById('loginEmail'), loginPass=document.getElementById('loginPass'), loginDo=document.getElementById('loginDo'), loginMsg=document.getElementById('loginMsg');
+const signupModal=document.getElementById('signupModal'), signupClose=document.getElementById('signupClose'), signupEmail=document.getElementById('signupEmail'), signupPass=document.getElementById('signupPass'), signupNick=document.getElementById('signupNick'), signupDo=document.getElementById('signupDo'), signupMsg=document.getElementById('signupMsg'), signupAvatarInput=document.getElementById('signupAvatarInput'), signupAvatarPreview=document.getElementById('signupAvatarPreview'); let pickedSignupAvatarFile=null;
+function openLogin(pref=''){loginEmail.value=pref||''; loginPass.value=''; loginMsg.textContent=''; loginModal.classList.add('show'); loginModal.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; loginEmail.focus();}
+function closeLogin(){loginModal.classList.remove('show'); loginModal.setAttribute('aria-hidden','true'); document.body.style.overflow='';}
+function openSignup(pref=''){signupEmail.value=pref||''; signupPass.value=''; signupNick.value=''; signupMsg.textContent=''; pickedSignupAvatarFile=null; signupAvatarInput.value=''; signupAvatarPreview.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='%23b78ad3'%3E%3Ccircle cx='60' cy='46' r='22'/%3E%3Cpath d='M16 108a44 44 0 0 1 88 0z'/%3E%3C/g%3E%3C/svg%3E"; signupModal.classList.add('show'); signupModal.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; signupEmail.focus();}
+function closeSignup(){signupModal.classList.remove('show'); signupModal.setAttribute('aria-hidden','true'); document.body.style.overflow='';}
+loginClose.addEventListener('click', closeLogin); signupClose.addEventListener('click', closeSignup);
+loginModal.addEventListener('click', e=>{ if(e.target===loginModal) closeLogin(); }); signupModal.addEventListener('click', e=>{ if(e.target===signupModal) closeSignup(); });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape'){ if(loginModal.classList.contains('show')) closeLogin(); if(signupModal.classList.contains('show')) closeSignup(); }});
+function isEmail(s){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)} function isAlnum6Plus(s){return/^[A-Za-z0-9]{6,}$/.test(s)}
+let afterLogin=null; function requireLogin(thenDo){ if(AV.User.current()){ thenDo(); return; } afterLogin=thenDo; openLogin(); }
+loginDo.addEventListener('click', async ()=>{
+  const email = (loginEmail.value || '').trim();
+  const pass  = (loginPass.value  || '').trim();
+
+  if(!isEmail(email)){ loginMsg.textContent='請填寫正確的電子郵箱'; return; }
+  if(!isAlnum6Plus(pass)){ loginMsg.textContent='密碼至少 6 位英數'; return; }
+
+  loginDo.disabled = true;
+  loginMsg.textContent = '登入中…';
+  try{
+    const u = await AV.User.logIn(email, pass);
+
+    // 和 Cloud.html 一樣：若沒存 email 就補上
+    if (isEmail(email) && !u.getEmail()){ u.setEmail(email); await u.save(); }
+
+    // ★ 存 Session Token，讓 record.html / Cloud.html 可彼此自動登入
+    persistSession(u);
+
+    closeLogin();
+    await fetchShareCounts();
+    afterLogin?.();   // 執行原先想做的動作（例如跳 Cloud.html）
+    afterLogin = null;
+  }catch(err){
+    if(err.code === 211){  // 使用者不存在 → 引導註冊
+      closeLogin();
+      openSignup(email);
+      signupMsg.textContent = '此帳號尚未註冊，請先建立帳號';
+    }else if(err.code === 210){
+      loginMsg.textContent = '帳號或密碼錯誤';
+    }else{
+      loginMsg.textContent = `登入失敗：${err.message || err.code || '未知錯誤'}`;
+    }
+  }finally{
+    loginDo.disabled = false;
+  }
+});
+signupAvatarInput.addEventListener('change', ()=>{ const f=signupAvatarInput.files?.[0]; if(!f) return; if(f.size>2*1024*1024){ alert('圖片太大，請小於 2MB'); signupAvatarInput.value=''; return;} pickedSignupAvatarFile=f; const r=new FileReader(); r.onload=e=>signupAvatarPreview.src=e.target.result; r.readAsDataURL(f); });
+async function uploadSignupAvatarIfAny(){ if(!pickedSignupAvatarFile) return null; const file=new AV.File(pickedSignupAvatarFile.name,pickedSignupAvatarFile); await file.save(); return file.url(); }
+signupDo.addEventListener('click', async ()=>{
+  const email = (signupEmail.value || '').trim();
+  const pass  = (signupPass.value  || '').trim();
+  const nick  = (signupNick.value  || '').trim();
+
+  if(!isEmail(email)){ signupMsg.textContent='請填寫正確的電子郵箱'; return; }
+  if(!isAlnum6Plus(pass)){ signupMsg.textContent='密碼至少 6 位英數'; return; }
+  if(!nick){ signupMsg.textContent='請填寫暱稱'; return; }
+
+  signupDo.disabled = true;
+  signupMsg.textContent = '建立中…';
+  try{
+    // 有挑頭貼就先上傳
+    const avatarUrl = await uploadSignupAvatarIfAny();
+
+    // 建立帳號（欄位與 Cloud.html 對齊）
+    const user = new AV.User();
+    user.setUsername(email);
+    user.setPassword(pass);
+    user.setEmail(email);
+    user.set('nickname', nick);
+    if (avatarUrl) user.set('avatar', avatarUrl);
+
+    await user.signUp();
+
+    // ★ 立刻存 Token，之後兩頁可自動帶登入狀態
+    persistSession(user);
+
+    closeSignup();
+    afterLogin?.();
+    afterLogin = null;
+  }catch(err){
+    if(err.code === 202){   // 已存在 → 回登入
+      closeSignup();
+      openLogin(email);
+      loginMsg.textContent = '此帳號已註冊，請直接登入';
+    }else{
+      signupMsg.textContent = `註冊失敗：${err.message || err.code || '未知錯誤'}`;
+    }
+  }finally{
+    signupDo.disabled = false;
+  }
+});
+//================================
+/* ========= 分享計數（Cloud 同步） ========= */
+let shareCounts = new Map();   // key: originId(=本地 rec.id), val: 數量
+
+function setFlagCount(cardEl, count){
+  // 在一張 .card 上更新橙點＋數字；count=0 就移除
+  const dot   = cardEl.querySelector('.flag-dot');
+  const badge = cardEl.querySelector('.flag-count');
+
+  if (count > 0){
+    if (!dot){
+      const d = document.createElement('i');
+      d.className = 'flag-dot';
+      d.setAttribute('aria-hidden','true');
+      cardEl.appendChild(d);
+    }
+    let b = badge;
+    if (!b){
+      b = document.createElement('span');
+      b.className = 'flag-count';
+      cardEl.appendChild(b);
+    }
+    badge ? (badge.textContent = String(count)) : (b.textContent = String(count));
+  }else{
+    dot?.remove();
+    badge?.remove();
+  }
+}
+
+// 重新套用所有卡片與詳情頁的徽章
+function renderShareIndicators(){
+  // 列表卡片
+  document.querySelectorAll('#list .card.list-card').forEach(card=>{
+    const id = card.dataset.id;
+    setFlagCount(card, shareCounts.get(id) || 0);
+  });
+  // 詳情卡片（如果目前在詳情頁）
+  const id = parseHash();  // 你原本的解析函式
+  if (id){
+    const detailCard = document.querySelector('#view-detail .card');
+    if (detailCard) setFlagCount(detailCard, shareCounts.get(id) || 0);
+  }
+}
+
+// 從 Cloud 抓回我發過的貼文，依 originId 聚合成計數表
+async function fetchShareCounts(){
+  const u = AV.User.current();
+  shareCounts = new Map();
+  if (!u){ renderShareIndicators(); return; }
+
+  const q = new AV.Query('Cloud');
+  q.equalTo('authorId', u.id);
+  q.select(['originGroup', 'originId']);  // 兩個都取，為了相容舊資料
+  q.limit(1000);
+
+  const rows = await q.find();
+  rows.forEach(o=>{
+    // 新資料：有 originGroup；舊資料：只有 originId → 拆 '#'
+    const group =
+      o.get('originGroup') ||
+      (String(o.get('originId')||'').split('#')[0]);
+
+    if (!group) return;
+    shareCounts.set(group, (shareCounts.get(group) || 0) + 1);
+  });
+
+  renderShareIndicators();
+}
+/* ========= 本地存取 ========= */
+const KEY='records_v2_images';
+function loadRecords(){ try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch{return[]} }
+function saveRecords(arr){ localStorage.setItem(KEY, JSON.stringify(arr)) }
+// ====== 匿名雲同步（第二個 LeanCloud 應用，走 REST，不動你現有 AV.init）======
+
+// 這組是「匿名儲存」那個應用（不是 LimCloud 那組）
+const ANON_LC = {
+  APP_ID:  'WFWfFV7tyEZwqestvU0Dc1wN-gzGzoHsz',
+  APP_KEY: '4d1bNdqyNS0QL8RXart4BnJx',
+  REST:    'https://wfwffv7t.lc-cn-n1-shared.com'
+};
+const CLOUD_KEY = 'records_v2_images'; // 就用本地同一把 key
+
+function getDeviceId(){
+  const k = 'SG_DEVICE_ID';
+  let id = localStorage.getItem(k);
+  if (!id){
+    id = (crypto.randomUUID?.() || ('sg_' + Math.random().toString(36).slice(2) + Date.now()));
+    localStorage.setItem(k, id);
+  }
+  return id;
+}
+
+// 通用：呼叫雲函數（REST）
+async function anonRpc(fnName, payload){
+  const res = await fetch(`${ANON_LC.REST}/1.1/functions/${fnName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-LC-Id': ANON_LC.APP_ID,
+      'X-LC-Key': ANON_LC.APP_KEY
+    },
+    body: JSON.stringify(payload || {})
+  });
+  if (!res.ok){
+    const t = await res.text().catch(()=> '');
+    throw new Error(`Anon RPC ${fnName} failed: ${res.status} ${t}`);
+  }
+  return res.json(); // { result: ... }
+}
+
+// 讀雲端最新
+async function cloudFetch(){
+  try{
+    const { result } = await anonRpc('getAnon', { key: CLOUD_KEY /* 要每台裝置各存各的就加 clientId:getDeviceId() */ });
+    return Array.isArray(result?.data) ? result.data : [];
+  }catch(e){
+    console.warn('[cloudFetch] fail', e);
+    return null;
+  }
+}
+
+// 存雲端（防抖 0.6s）
+const saveDebounced = (() => {
+  let t = 0;
+  return (payload) => {
+    clearTimeout(t);
+    t = setTimeout(async () => {
+      try{
+        await anonRpc('saveAnon', {
+          key: CLOUD_KEY,
+          clientId: getDeviceId(),
+          data: payload
+        });
+      }catch(e){
+        console.warn('[cloudSave] fail', e);
+      }
+    }, 600);
+  };
+})();
+
+// ☆☆ 不取代你的原函式：只是包一層，在本地存檔後同步到匿名雲端 ☆☆
+const __origSaveRecords = window.saveRecords;
+window.saveRecords = function(arr){
+  // 先照舊存本地（你的原功能，包含 LimCloud 分享徽章等完全不變）
+  __origSaveRecords(arr);
+
+  // 再把縮減後的資料同步雲端（也可直接傳 arr）
+  try{
+    const slim = Array.isArray(arr) ? arr.map(x => ({
+      id:x.id, created:x.created, title:x.title, content:x.content,
+      images:x.images, dateStr:x.dateStr, solarStr:x.solarStr,
+      approx:x.approx, gzDay:x.gzDay, gzHour:x.gzHour
+    })) : [];
+    saveDebounced(slim);
+  }catch(e){}
+};
+
+// 首次開頁：雲端 → 本地 → 重畫列表（若雲端無資料會跳過）
+(async function bootstrapCloudSync(){
+  const remote = await cloudFetch();
+  if (remote && Array.isArray(remote)){
+    try{ localStorage.setItem('records_v2_images', JSON.stringify(remote)); }catch(e){}
+  }
+  try{ renderList(); }catch(e){}
+})();
+async function filesToDataURLs(files){
+  const xs=Array.from(files||[]).slice(0,MAX_FILES);
+  const tasks=xs.map(f=>new Promise((res,rej)=>{ if(f.size>MAX_SIZE) return rej(new Error(`${f.name} 超過 2MB`)); const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=rej; r.readAsDataURL(f); }));
+  const rs=await Promise.allSettled(tasks); return rs.filter(r=>r.status==='fulfilled').map(r=>r.value);
+}
+function esc(s=''){
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+/* ========= 列表渲染 & 事件 ========= */
+function renderList(){
+  const arr = loadRecords();
+  renderTimeline(arr.length);
+  listEl.innerHTML = '';
+  if (!arr.length){ emptyEl.style.display='block'; return; }
+  emptyEl.style.display='none';
+
+  arr.sort((a,b)=> b.created - a.created);
+
+  arr.forEach(it=>{
+    const card = document.createElement('div');
+    card.className = 'card list-card';
+    card.dataset.id = it.id;
+
+    const title   = it.title || '（無標題）';
+    const content = (it.content || '').trim();
+    const thumbs  = Array.isArray(it.images) ? it.images : [];
+    const firstImg = thumbs.length ? thumbs[0] : '';
+
+    // —— 標題列（保留原本的日期/真太陽時徽章）——
+    const titleRow =
+  '<div class="title stack">' +                                  // 多加 stack
+    '<div class="title-text">' + esc(title) + '</div>' +         // 標題置中
+    '<span class="badge dim time-badge">' +                      // ← 還是藥丸
+      esc(it.dateStr||'') + '｜' + esc(it.solarStr||'') +
+      (it.approx ? ' ≈' : '') +
+    '</span>' +
+  '</div>';
+
+    // —— 干支（保留）——
+    const meta =
+      '<div class="meta">' +
+        '<span class="badge">日：' + esc(it.gzDay||'') + '</span>' +
+        '<span class="badge">時：' + esc(it.gzHour||'') + '</span>' +
+      '</div>';
+
+// —— 內容區：兩行摘要（上）+ 縮圖列（下） —— 
+// 只取第一張當封面
+const cover = thumbs[0];
+const extra = Math.max(0, thumbs.length - 1);
+
+const thumbsBar = cover
+  ? '<div class="thumb-bar">' +
+      '<span class="twrap">' +
+        '<img class="thumb-mini" src="' + esc(cover) + '" alt="" loading="lazy">' +
+        (extra ? '<span class="thumb-more">+' + extra + '</span>' : '') +
+      '</span>' +
+    '</div>'
+  : '';
+
+const mid =
+  '<div class="content-block">' +
+    '<div class="excerpt">' + esc(content) + '</div>' +
+    thumbsBar +
+  '</div>';
+
+    // —— 工具列固定在底 —— 
+    const tools =
+      '<div class="tools stick">' +
+        '<button class="tool" data-act="del"   data-id="' + it.id + '">刪除</button>' +
+        '<button class="tool" data-act="copy"  data-id="' + it.id + '">複製文字</button>' +
+        '<button class="tool" data-act="share" data-id="' + it.id + '">分享至 LimCloud</button>' +
+      '</div>';
+
+    card.innerHTML = titleRow + meta + mid + tools;
+
+    // 點整張卡片 -> 進入詳情（點工具鈕除外）
+    card.addEventListener('click', (e)=>{
+      if (e.target.closest('.tool')) return;
+      location.hash = `#/detail/${encodeURIComponent(it.id)}`;
+    });
+
+    listEl.appendChild(card);
+    setFlagCount(card, shareCounts.get(it.id) || 0);
+
+// 讓縮圖間的虛線長度正確（同一排才連）
+const bar = card.querySelector('.thumb-bar');
+if (bar){
+  // 等圖片載入後再量
+  bar.querySelectorAll('img').forEach(img=>{
+    img.addEventListener('load', ()=>linkDots(bar), {once:true});
+  });
+  // 初始先量一次（避免 cache）
+  requestAnimationFrame(()=>linkDots(bar));
+}
+  });
+
+  // 工具列事件（沿用你原本的邏輯）
+  listEl.querySelectorAll('button.tool').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id  = btn.dataset.id;
+      const act = btn.dataset.act;
+      const arr = loadRecords();
+      const idx = arr.findIndex(x=>x.id===id);
+      if (idx<0) return;
+
+      if (act==='del'){
+        if (confirm('要刪除這則紀錄嗎？')){
+          arr.splice(idx,1); saveRecords(arr); renderList();
+        }
+      }else if (act==='copy'){
+        navigator.clipboard?.writeText(arr[idx].content || '').then(()=>{
+          btn.textContent='已複製'; setTimeout(()=>btn.textContent='複製文字',800);
+        });
+      }else if (act==='share'){
+  requireLogin(async ()=>{
+    const original = btn.textContent;
+    btn.textContent = '上傳中…';
+    btn.disabled = true;
+    try{
+      await uploadToCloud(arr[idx]);
+      // ★ 標記這筆已分享 & 保存
+      arr[idx].shared = true;
+      saveRecords(arr);
+      renderList();
+
+      btn.textContent = '已分享';
+      setTimeout(()=>{ btn.textContent = original; btn.disabled=false; }, 1200);
+    }catch(e){
+      alert(e.message || '上傳失敗');
+      btn.textContent = original;
+      btn.disabled = false;
+    }
+  });
+}
+    });
+  });
+}
+/* ========= 計算縮圖之間連線長度 ========= */
+/* 依紀錄數量，在標題旁畫出 點—線—點 指示器 */
+function renderTimeline(count){
+  const box = document.getElementById('recTimeline');
+  if(!box) return;
+  box.innerHTML = '';
+  if (count <= 0) return;
+
+  for (let i = 0; i < count; i++){
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    box.appendChild(dot);
+
+    if (i < count - 1){
+      const seg = document.createElement('span');
+      seg.className = 'seg';
+      box.appendChild(seg);
+    }
+  }
+}
+
+// 視窗大小變化時重新計算
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.thumb-bar').forEach(bar => linkThumbs(bar));
+});
+// 登入視窗中的「註冊」按鈕：關閉登入 → 開啟註冊（帶入已輸入的 email）
+document.getElementById('gotoSignup').addEventListener('click', ()=>{
+  const pre = (loginEmail.value || '').trim();
+  closeLogin();
+  openSignup(pre);
+});
+/* ========= 儲存 ========= */
+saveBtn.addEventListener('click', async ()=>{
+  const content=contentEl.value.trim(); if(!content){ contentEl.focus(); contentEl.placeholder='請先輸入一些文字再儲存喔～'; return; }
+  const title=titleEl.value.trim();
+  const now=new Date(); const lon=state.hasGeo?state.lon:tzCenterMeridian(); const ts=calcTrueSolar(now,lon,state.hasGeo);
+  const dstr=now.toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'});
+  const solarHours=ts.solar.getHours()+ts.solar.getMinutes()/60+ts.solar.getSeconds()/3600;
+  const {day:gzDay,hour:gzHour}=getGanzhiForTrueSolar(ts.solar,solarHours);
+  const id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2));
+  const images=await filesToDataURLs(photosInput.files);
+  const rec={ id, created:Date.now(), title, content, images, dateStr:dstr, solarStr:ts.text, approx:ts.approx, gzDay, gzHour };
+  const arr=loadRecords(); arr.push(rec); saveRecords(arr); closeModal(); renderList();
+});
+
+/* ========= 分享到雲端（含圖片 & 發佈時間/作者/ACL） ========= */
+function dataURLtoBlob(dataURL){
+  const [meta,b64]=dataURL.split(',');
+  const mime=(meta.match(/data:(.*);base64/)||[])[1]||'application/octet-stream';
+  const bin=atob(b64); const u8=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+  return new Blob([u8],{type:mime});
+}
+
+async function uploadToCloud(rec){
+  // 必須登入
+  const u = AV.User.current();
+  if(!u) throw new Error('請先登入');
+
+  // ===== 發佈當下的真太陽時＋干支（跟你原本一樣）=====
+  const now = new Date();
+  const lon = state.hasGeo ? state.lon : tzCenterMeridian();
+  const ts  = calcTrueSolar(now, lon, state.hasGeo);
+  const pubDateStr  = now.toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'});
+  const h = ts.solar.getHours() + ts.solar.getMinutes()/60 + ts.solar.getSeconds()/3600;
+  const { day: pubGZDay, hour: pubGZHour } = getGanzhiForTrueSolar(ts.solar, h);
+
+  // ===== 上傳圖片（跟你原本一樣）=====
+  const imageUrls = [];
+  if (rec.images?.length){
+    for(const d of rec.images){
+      const f = new AV.File(`rec_${Date.now()}_${Math.random().toString(16).slice(2)}.jpg`, dataURLtoBlob(d));
+      await f.save();
+      imageUrls.push(f.url());
+    }
+  }
+
+  // ===== 在建立 post 之前，先算目前已分享幾次（關鍵）=====
+  const countQ = new AV.Query('Cloud');
+  countQ.equalTo('authorId', u.id);
+  countQ.equalTo('originGroup', rec.id);    // 用分組鍵算數量
+  const existed = await countQ.count();
+  const shareNo = existed + 1;
+
+  // ===== 建立 Cloud 物件 =====
+  const post = new (AV.Object.extend('Cloud'))();
+
+  // —— 創作資訊（保留原本）
+  post.set('title',    rec.title || '');
+  post.set('content',  rec.content || '');
+  post.set('dateStr',  rec.dateStr || '');
+  post.set('solarStr', rec.solarStr || '');
+  post.set('gzDay',    rec.gzDay || '');
+  post.set('gzHour',   rec.gzHour || '');
+  post.set('approx',   !!rec.approx);
+
+  // —— 發佈資訊（現在）
+  post.set('pubDateStr',  pubDateStr);
+  post.set('pubSolarStr', ts.text);
+  post.set('pubGZDay',    pubGZDay);
+  post.set('pubGZHour',   pubGZHour);
+  post.set('pubApprox',   !!ts.approx);
+
+  // —— 圖片與作者 —— 
+  post.set('images',       imageUrls);
+  post.set('authorId',     u.id);
+  post.set('authorName',   u.get('nickname') || u.getUsername() || '');
+  post.set('authorAvatar', u.get('avatar') || '');
+
+  // —— ★ 重點：避免唯一索引衝突、又能計數 —— 
+  post.set('originGroup', rec.id);                 // 分組鍵：用來計數
+  post.set('originId', `${rec.id}#${shareNo}`);    // 唯一鍵：分組鍵 + 流水號
+  post.set('shareNo', shareNo);                    // （可選）紀錄第幾次
+
+  // ACL
+  const acl = new AV.ACL();
+  acl.setPublicReadAccess(true);
+  acl.setWriteAccess(u, true);
+  post.setACL(acl);
+
+  try{
+    await post.save();
+  }catch(e){
+    if(e.code === 111){ // 後台型別不合時的退回策略（沿用你的）
+      post.set('approx',    String(!!rec.approx));
+      post.set('pubApprox', String(!!ts.approx));
+      await post.save();
+    }else{
+      throw e;
+    }
+  }
+
+  // 上傳成功 → 立刻刷新計數徽章
+  try{ await fetchShareCounts(); }catch(_){}
+  return { ok:true };
+}
+/* ========= 去 LimCloud ========= */
+document.getElementById('goCloud').addEventListener('click', ()=>{ requireLogin(()=>{ location.href='cloud.html'; }); });
+
+/* ========= 單頁路由 ========= */
+function parseHash(){ const m=location.hash.match(/^#\/detail\/(.+)$/); return m?decodeURIComponent(m[1]):null; }
+let currentDetailId=null;
+
+function showList(){ viewDetail.style.display='none'; viewList.style.display='block'; currentDetailId=null; }
+function showDetail(id){
+  const arr = loadRecords();
+  const rec = arr.find(x => x.id === id);
+  if(!rec){ alert('找不到這則紀錄'); showList(); return; }
+
+  viewList.style.display='none';
+  viewDetail.style.display='block';
+
+  dTitle.textContent = rec.title || '（無標題）';
+  dMeta.innerHTML = `<span>${rec.dateStr}｜${rec.solarStr}${rec.approx?' ≈':''}</span>　<span>日：${rec.gzDay}</span>　<span>時：${rec.gzHour}</span>`;
+  dContent.textContent = rec.content;
+
+  // 重新畫圖
+// 重新畫圖（支援 data:URL 在新分頁顯示）
+dGallery.innerHTML = '';
+(rec.images || []).forEach((src, i) => {
+  const wrap = document.createElement('span');
+  wrap.className = 'picwrap';
+
+  const a = document.createElement('a');
+  a.target = '_blank';
+  a.rel = 'noopener';
+
+  // dataURL → Blob URL（避免 iOS/Safari 直接開 data: 空白）
+  let href = src;
+  let revokeLater = null;
+
+  if (typeof src === 'string' && src.startsWith('data:image/')) {
+    try{
+      const blob = dataURLtoBlob(src);                 // 你檔案裡已經有這個函式
+      href = URL.createObjectURL(blob);
+      revokeLater = href;                               // 點完再 revoke
+    }catch(e){
+      // 轉換失敗就回退用原始 data:，至少不會壞
+      href = src;
+    }
+  }
+
+  a.href = href;
+
+  // 點了之後過一會兒回收 URL，避免記憶體占用
+  if (revokeLater) {
+    a.addEventListener('click', () => {
+      setTimeout(() => URL.revokeObjectURL(revokeLater), 3000);
+    }, { once: true });
+  }
+
+  const img = document.createElement('img');
+  img.loading = 'lazy';
+  img.src = src;   // 圖片本身照舊用原始 src 顯示縮圖
+  img.alt = '';
+
+  a.appendChild(img);
+  wrap.appendChild(a);
+  dGallery.appendChild(wrap);
+});
+
+  // 用雲端的分享計數來畫橙點＋數字（不用舊的 rec.shared 判斷了）
+  const detailCard = document.querySelector('#view-detail .card');
+  if (detailCard) setFlagCount(detailCard, shareCounts.get(id) || 0);
+
+  // 分享按鈕
+  btnShare.onclick = ()=>requireLogin(async ()=>{
+    btnShare.disabled = true; btnShare.textContent = '上傳中…';
+    try{
+      await uploadToCloud(rec);
+
+      // 同步把 localStorage 這筆標記已分享（保留）
+      const arrAll = loadRecords();
+      const i = arrAll.findIndex(x=>x.id===id);
+      if (i >= 0){
+        arrAll[i].shared = true;
+        saveRecords(arrAll);
+        Object.assign(rec, arrAll[i]);
+      }
+
+      // 重畫詳情（讓徽章/相片都正確）
+      showDetail(id);
+
+      btnShare.textContent='已分享';
+      setTimeout(()=>{ btnShare.textContent='分享至 LimCloud'; btnShare.disabled=false; },1000);
+    }catch(e){
+      alert(e.message||'上傳失敗');
+      btnShare.disabled=false; btnShare.textContent='分享至 LimCloud';
+    }
+  });
+
+  // 刪除按鈕（保留）
+  btnDelete.onclick = ()=>{
+    if(confirm('確定刪除這則紀錄？')){
+      const idx=arr.findIndex(x=>x.id===id);
+      if(idx>=0){ arr.splice(idx,1); saveRecords(arr); location.hash=''; }
+    }
+  };
+}
+
+//===---------===
+function route(){ const id=parseHash(); if(id) showDetail(id); else showList(); }
+window.addEventListener('hashchange', route);
+backBtn.addEventListener('click', ()=>{ location.hash=''; });
+/* ========= 啟動 ========= */
+function start(){ initGeo(); tick(); renderList(); route(); fetchShareCounts(); } // ★ 多這個
+start();
+
+</script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

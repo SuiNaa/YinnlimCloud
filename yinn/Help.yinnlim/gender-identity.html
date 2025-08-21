@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sunlit Grove 聊天室</title>
+<meta name="color-scheme" content="dark">
+<style>
+:root{
+  --bg:#0f0d14; --card:#17151f; --ink:#eceaf2; --muted:#a9a6b3; --border:#2b2637; --accent:#b78ad3;
+  --mine:#3b2b57; --other:#1f1a2b; --maxw:1040px;
+  --online:#b78ad3;  /* 紫色（在線） */
+  --offline:#a35555; /* 黯紅（離線） */
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:ui-sans-serif,system-ui,"Noto Sans TC","Microsoft JhengHei";background:linear-gradient(160deg,#13111a,#191627);color:var(--ink)}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:18px 14px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.badge{display:inline-flex;
+  align-items:center;
+  gap:6px;font-size:.82rem;
+  padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:#1f1a2b}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#120d18;border:none;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:700}
+.btn.ghost{background:transparent;color:#fff;border:1px solid var(--border)}
+.btn.small{padding:8px 10px;font-weight:600}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+/* 版面：左側名單 + 右側聊天 */
+.layout{display:grid;grid-template-columns:260px 1fr;gap:12px}
+@media (max-width:900px){ .layout{grid-template-columns:1fr} .sidebar{order:2} }
+/* 側欄：成員清單 */
+.sidebar{padding:10px 0;max-height:calc(100vh - 160px);min-height:420px;overflow:auto}
+.side-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border)}
+.people{list-style:none;margin:0;padding:6px}
+.person{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px}
+.person:hover{background:#1a1624}
+.p-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
+.p-name{flex:1 1 auto;font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.94rem}
+.dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 transparent;border:1px solid rgba(0,0,0,.25)}
+.dot.online{background:var(--online); box-shadow:0 0 10px var(--online), 0 0 4px var(--online)}
+.dot.offline{background:var(--offline); opacity:.65}
+/* 聊天區 */
+.chat{display:flex;flex-direction:column;height:calc(100vh - 160px);min-height:420px}
+.chat-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border)}
+.chat-body{flex:1 1 auto;overflow:auto;padding:10px 12px;scroll-behavior:smooth}
+/* 外層一列：頭貼 + 內容 */
+/* 一則訊息：兩欄佈局：頭貼 + 內容 */
+/* 一則訊息：固定兩欄：頭貼 + 內容（氣泡+時間） */
+.msg{
+  display:grid;
+  grid-template-columns: 36px auto;          /* 頭貼固定 36px，內容自適應 */
+  grid-template-areas: "avatar content";
+  align-items:start;
+  column-gap:6px;                             /* 想更貼就改 4 或 2 */
+  margin:8px 0;
+  max-width:80%;
+}
+
+/* 自己的訊息：把兩欄對調，內容在左、頭貼在右；整組靠右 */
+.msg.you{
+  grid-template-columns: auto 36px;
+  grid-template-areas: "content avatar";
+  margin-left:auto;
+}
+
+/* 頭貼 */
+.msg .avatar{
+  grid-area: avatar;
+  width:36px;height:36px;border-radius:50%;
+  object-fit:cover;border:1px solid var(--border);
+}
+
+/* 內容容器（包氣泡＋時間） */
+.msg .content{
+  grid-area: content;
+  display:flex;
+  flex-direction:column;
+  max-width:min(72vw,560px);                  /* 上限，避免超寬 */
+  align-items:flex-start;                     /* 別人的氣泡靠左 */
+}
+.msg.you .content{ align-items:flex-end; }    /* 自己的氣泡靠右 */
+
+/* 氣泡：寬度由內容決定，貼著頭貼 */
+.msg .bubble{
+  display:inline-block;
+  width:fit-content;                          /* 內容決定寬度 */
+  max-width:100%;
+  margin:0;                                   /* 不要再有左右額外間距 */
+  padding:10px 12px;border-radius:12px;line-height:1.5;
+  white-space:pre-wrap;word-break:break-word;border:1px solid var(--border);
+}
+.msg.you   .bubble{ background:var(--mine); }
+.msg.other .bubble{ background:var(--other); }
+
+/* 時間/暱稱放在氣泡下方，不撐寬 */
+.meta{ display:block; font-size:.8rem; color:var(--muted); margin-top:4px }
+/**/
+.bubble{
+  display:inline-block;         /* 讓寬度由內容決定 */
+  width:fit-content;            /* 內容多寡決定寬度 */
+  max-width:min(72vw, 560px);   /* 設個上限，手機與桌機都好看 */
+  padding:10px 12px;
+  border-radius:12px;
+  line-height:1.5;
+  white-space:pre-wrap;
+  word-break:break-word;
+  border:1px solid var(--border);
+}
+.msg.you .bubble{background:var(--mine)}
+.msg.other .bubble{background:var(--other)}
+.meta{font-size:.8rem;color:var(--muted);margin-top:4px}
+.author{font-weight:700}
+.time{opacity:.9}
+.chat-foot{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border)}
+.input{
+  flex:1 1 auto;
+  background:#1e1a28; color:#fff;
+  border:1px solid var(--border); border-radius:12px;
+  padding:10px 12px; font-size:1rem;
+  line-height:1.5;
+  resize:none;            /* 禁止拖拉改大小 */
+  overflow-y:auto;        /* 超過高度才出現捲軸 */
+  min-height:40px;
+  max-height:160px;       /* 你想要的最高行數上限 */
+}
+.hint{color:var(--muted);margin-top:8px}
+.empty{color:var(--muted);text-align:center;padding:12px 6px}
+/* 右上角登入展示 */
+.userbox{display:flex;align-items:center;gap:10px}
+.userbox .uavatar{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
+.uname{font-weight:700}
+/* Modal */
+.modal{position:fixed;inset:0;display:none;place-items:center;z-index:1000;background:rgba(0,0,0,.45);backdrop-filter:blur(2px)}
+.modal.show{display:grid}
+.modal-box{width:min(92vw,520px);background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px}
+.bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.H{text-decoration: none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <h1 style="margin:0;font-size:clamp(20px,4.6vw,28px)">Sunlit Grove 聊天室</h1>
+    <button id="btnHome" class="btn small ghost">🐾返回Grove Hub</button>
+    <button id="z" class="btn small ghost">去LinCloud</button>
+  </div>
+  <div id="authArea">
+    <span id="loginState" class="badge">未登入</span>
+    <button id="btnLogin" class="btn small">登入</button>
+    <button id="btnLogout" class="btn small ghost" style="display:none">登出</button>
+  </div>
+</div>
+<!---->
+<script>
+    document.getElementById('btnHome').addEventListener('click', () => {
+  window.location.href = 'help.html';  // 或改成你主頁的實際路徑
+});
+document.getElementById('z').addEventListener('click', () => {
+    window.location.href='cloud.html';
+});
+    </script>
+<!---->
+  <div class="layout">
+    <!-- 側欄：線上/離線清單 -->
+    <aside class="card sidebar">
+      <div class="side-head">
+        <div class="C">
+        <div class="badge">成員</div>
+        <div class="badge"><a href="" class="H">刷新列表</a></div>
+        <span id="onlineCount" class="hint"></span>
+      </div>
+      </div>
+      <ul id="people" class="people"></ul>
+    </aside>
+
+    <!-- 聊天主體 -->
+    <section class="card chat">
+      <div class="chat-head">
+        <div class="badge">Grove聊天</div>
+        <button id="loadMore" class="btn small ghost">載入更早</button>
+      </div>
+      <div id="list" class="chat-body"><div class="empty">還沒有訊息，打個招呼吧～</div></div>
+      <div class="chat-foot">
+       <textarea id="msgInput" class="input" rows="1" placeholder="輸入訊息，Enter 送出，Shift+Enter 換行"></textarea>
+        <button id="send" class="btn">送出</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="hint">規則：請友善、勿發個資／違法內容。管理員可刪除不當訊息。</div>
+</div>
+
+<!-- 登入 / 註冊 Modal（與 Cloud.html 同體驗） -->
+<div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="bar"><h3 style="margin:0">登入</h3><button id="loginClose" class="btn ghost">關閉</button></div>
+    <div class="row">
+      <input id="loginEmail" class="input" type="email" inputmode="email" placeholder="電子郵箱（必填）" autocomplete="email">
+      <input id="loginPass" class="input" type="password" placeholder="密碼（必填）" autocomplete="current-password">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px">
+      <button id="gotoSignup" class="btn ghost">註冊</button>
+      <button id="loginDo" class="btn">登入</button>
+    </div>
+    <div id="loginMsg" class="hint"></div>
+  </div>
+</div>
+
+<div id="signupModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="bar"><h3 style="margin:0">建立帳號</h3><button id="signupClose" class="btn ghost">關閉</button></div>
+    <div class="row">
+      <input id="signupEmail" class="input" type="email" placeholder="電子郵箱（必填）" autocomplete="email">
+      <input id="signupPass" class="input" type="password" placeholder="密碼（至少 6 位英數）" autocomplete="new-password">
+      <input id="signupNick" class="input" placeholder="暱稱（必填，1–30字）" maxlength="30">
+      <!-- 頭貼（新增） -->
+      <div class="k" style="width:100%;color:var(--muted);font-weight:600">頭貼（可選）</div>
+      <label for="signupAvatarInput" style="display:inline-block; cursor:pointer; border:1px solid var(--border); border-radius:12px; padding:8px; background:#1f1a2b">
+        <img id="signupAvatarPreview"
+             src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%232b2637'/%3E%3C/svg%3E"
+             alt="頭貼預覽"
+             style="width:96px;height:96px;border-radius:50%;object-fit:cover;display:block">
+      </label>
+      <input id="signupAvatarInput" type="file" accept="image/*" style="display:none">
+      <div class="hint" style="width:100%">支援 jpg / png / gif，建議 &lt; 2MB。</div>
+    </div>
+    <div style="display:flex; justify-content:flex-end; margin-top:8px">
+      <button id="signupDo" class="btn">註冊</button>
+    </div>
+    <div id="signupMsg" class="hint"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4/dist/av-min.js"></script>
+<script>
+/** ====== LeanCloud ====== */
+const LC = {
+  APP_ID:'0juO0jzBkrv1Oi04bHljaWDW-gzGzoHsz',
+  APP_KEY:'kFMz8niEbd8BlPbFKDyTZC2Q',
+  SERVER:'https://0juo0jzb.lc-cn-n1-shared.com'
+};
+AV.init({ appId: LC.APP_ID, appKey: LC.APP_KEY, serverURL: LC.SERVER });
+
+/** ====== DOM/State ====== */
+const UI = {
+  people: document.getElementById('people'),
+  onlineCount: document.getElementById('onlineCount'),
+  list: document.getElementById('list'),
+  input: document.getElementById('msgInput'),
+  send: document.getElementById('send'),
+  loadMore: document.getElementById('loadMore'),
+  authArea: document.getElementById('authArea'),
+};
+
+let state = {
+  roomId: 'main',
+  liveSub: null,
+  oldest: null,
+  fetching: false,
+  people: new Map(), // key: userId, value: {userId,name,avatar}
+};
+
+/** ====== 小工具（登入狀態） ====== */
+function isEmail(s){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)}
+function isAlnum6Plus(s){return/^[A-Za-z0-9]{6,}$/.test(s)}
+function persistSession(user){ try{ if(user) localStorage.setItem('LC_SESSION_TOKEN', user.getSessionToken()); }catch{} }
+
+async function autoLoginFromToken(){
+  try{
+    if (AV.User.current()) return;
+    const token = localStorage.getItem('LC_SESSION_TOKEN');
+    if (!token) return;
+    await AV.User.become(token);
+  }catch{ localStorage.removeItem('LC_SESSION_TOKEN'); }
+}
+
+/** ====== Auth（右上角） ====== */
+const loginModal=document.getElementById('loginModal'), loginClose=document.getElementById('loginClose'),
+      loginEmail=document.getElementById('loginEmail'), loginPass=document.getElementById('loginPass'),
+      loginDo=document.getElementById('loginDo'), loginMsg=document.getElementById('loginMsg');
+const signupModal=document.getElementById('signupModal'), signupClose=document.getElementById('signupClose'),
+      signupEmail=document.getElementById('signupEmail'), signupPass=document.getElementById('signupPass'),
+      signupNick=document.getElementById('signupNick'), signupDo=document.getElementById('signupDo'),
+      signupMsg=document.getElementById('signupMsg');
+
+function openLogin(){ loginEmail.value='';loginPass.value='';loginMsg.textContent=''; loginModal.classList.add('show'); document.body.style.overflow='hidden';}
+function closeLogin(){ loginModal.classList.remove('show'); document.body.style.overflow='';}
+function openSignup(pref=''){ signupEmail.value=pref||''; signupPass.value=''; signupNick.value=''; signupMsg.textContent='';
+  signupModal.classList.add('show'); document.body.style.overflow='hidden';}
+function closeSignup(){ signupModal.classList.remove('show'); document.body.style.overflow='';}
+loginClose.addEventListener('click', closeLogin); signupClose?.addEventListener('click', closeSignup);
+document.getElementById('gotoSignup').addEventListener('click', ()=>{ closeLogin(); openSignup(loginEmail.value||''); });
+
+function renderAuthArea(){
+  const u = AV.User.current();
+  if (!u){
+    UI.authArea.innerHTML = `<button id="btnLogin" class="btn small">登入</button>`;
+    document.getElementById('btnLogin').addEventListener('click', openLogin);
+  }else{
+    const nick = u.get('nickname') || u.getUsername() || '使用者';
+    const avatar = u.get('avatar') || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2228%22 height=%2228%22><rect width=%2228%22 height=%2228%22 fill=%22%232b2637%22/></svg>';
+    UI.authArea.innerHTML = `
+      <div class="userbox">
+        <img class="uavatar" src="${avatar}" alt="">
+        <span class="uname">${nick}</span>
+        <button id="btnLogout" class="btn small ghost">登出</button>
+      </div>`;
+    document.getElementById('btnLogout').addEventListener('click', async ()=>{
+      await AV.User.logOut();
+      localStorage.removeItem('LC_SESSION_TOKEN');
+      location.reload(); // 登出後整頁刷新
+    });
+  }
+}
+
+/** ====== 成員清單（只從 _User 取，不顯示在線狀態） ====== */
+function renderPeopleList(){
+  const arr = Array.from(state.people.values())
+    .sort((a,b)=> (a.name||'').localeCompare(b.name||'','zh-Hant'));
+  UI.people.innerHTML = '';
+  arr.forEach(p=>{
+    const li = document.createElement('li');
+    li.className = 'person';
+    li.innerHTML = `
+      <img class="p-avatar" src="${p.avatar || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2228%22 height=%2228%22><rect width=%2228%22 height=%2228%22 fill=%22%232b2637%22/></svg>'}" alt="">
+      <span class="p-name">${p.name || '—'}</span>
+    `;
+    UI.people.appendChild(li);
+  });
+  UI.onlineCount.textContent = ''; // 不顯示在線數
+}
+
+async function fetchAllMembers(){
+  try{
+    const q = new AV.Query(AV.User);     // ← 這行是關鍵：查 _User 用 AV.User
+    q.select(['nickname','avatar']);     // 只拿公開需要的欄位
+    q.limit(1000);                       // 夠你現在用；多人再做分頁
+    const rows = await q.find();
+
+    if (!rows.length) {
+      UI.people.innerHTML = '<li class="empty">目前沒有可顯示的成員（_User 未開放查詢或尚無註冊）</li>';
+      return;
+    }
+
+    const map = new Map();
+    rows.forEach(u=>{
+      map.set(u.id, {
+        userId: u.id,
+        name:   u.get('nickname') || '(未設定暱稱)',
+        avatar: u.get('avatar') || ''
+      });
+    });
+    state.people = map;
+    renderPeopleList();
+  }catch(e){
+    // 把錯誤原因直接顯示在側欄，方便你排查（例如 119 權限錯誤）
+    console.warn('[Members] fetchAllMembers failed:', e);
+    UI.people.innerHTML =
+      `<li class="empty">載入成員失敗：${e && (e.message || e.code) || '未知錯誤'}<br>
+      請到 LeanCloud 後台把 _User 的 Find/Get 開給 Public，並開放 nickname、avatar 可讀。</li>`;
+  }
+}
+
+/** ====== 聊天（沿用原本） ====== */
+const ChatMessage = AV.Object.extend('ChatMessage');
+
+async function sendMessage(text){
+  const u = AV.User.current();
+  if(!u){ openLogin(); return; }
+  text = String(text || '').trim();
+  if(!text) return;
+
+  try{
+    const msg = new ChatMessage();     // ← 用已定義的 Class
+    msg.set('roomId', state.roomId);
+    msg.set('text', text);
+    msg.set('authorId', u.id);
+    msg.set('authorName', u.get('nickname') || u.getUsername() || '匿名');
+    msg.set('authorAvatar', u.get('avatar') || '');
+
+    const acl = new AV.ACL();
+    acl.setPublicReadAccess(true);
+    acl.setWriteAccess(u, true);
+    msg.setACL(acl);
+
+    const saved = await msg.save();
+    renderMsg(saved, 'append');
+    scrollToBottom();
+  }catch(e){
+    console.error('[sendMessage] failed', e);
+    throw e; // 往外丟給上面 alert
+  }
+}
+
+function renderMsg(o, where='append'){
+  const me = AV.User.current()?.id;
+  const you = o.get('authorId') === me;
+
+  const div = document.createElement('div');
+  div.className = 'msg ' + (you ? 'you' : 'other');
+  div.dataset.id = o.id;
+
+  const avatar = document.createElement('img');
+  avatar.className='avatar';
+  avatar.src = o.get('authorAvatar') || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2236%22 height=%2236%22><rect width=%2236%22 height=%2236%22 fill=%22%232b2637%22/></svg>';
+  avatar.alt = '';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = o.get('text') || '';
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const name = document.createElement('span'); name.className='author'; name.textContent = o.get('authorName') || '—';
+  const time = document.createElement('span'); time.className='time';
+  const t = o.createdAt ? new Date(o.createdAt) : new Date();
+  time.textContent = '　' + t.toLocaleString('zh-TW', {hour12:false});
+  meta.appendChild(name); meta.appendChild(time);
+
+  // 只有自己的訊息才顯示刪除
+  if (you){
+    const del = document.createElement('button');
+    del.textContent = '刪除';
+    del.className = 'btn small ghost';
+    del.style.marginLeft = '8px';
+    del.addEventListener('click', async ()=>{
+      if(!confirm('確定刪除此訊息？')) return;
+      try{
+        await AV.Object.createWithoutData('ChatMessage', o.id).destroy();
+        div.remove();
+      }catch(e){
+        console.error('[delete] failed', e);
+        alert('刪除失敗：' + (e.code || '') + ' ' + (e.message || e));
+      }
+    });
+    meta.appendChild(del);
+  }
+
+  const box = document.createElement('div');
+  box.className = 'content';
+  box.appendChild(bubble); box.appendChild(meta);
+
+  div.appendChild(avatar); div.appendChild(box);
+
+  UI.list.querySelector('.empty')?.remove();
+  if (where === 'prepend') UI.list.prepend(div); else UI.list.appendChild(div);
+}
+function scrollToBottom(){ UI.list.scrollTop = UI.list.scrollHeight + 100; }
+
+async function fetchLatest(limit=50){
+  if(state.fetching) return; state.fetching=true;
+  const q = new AV.Query('ChatMessage');
+  q.equalTo('roomId', state.roomId);
+  q.descending('createdAt'); q.limit(limit);
+  const rows = await q.find();
+  UI.list.innerHTML = rows.length ? '' : '<div class="empty">還沒有訊息，打個招呼吧～</div>';
+  rows.reverse().forEach(o=>renderMsg(o,'append'));
+  state.oldest = rows[0]?.createdAt || null;
+  state.fetching=false;
+  scrollToBottom();
+}
+async function loadOlder(limit=30){
+  if(!state.oldest || state.fetching) return;
+  state.fetching=true;
+  const q = new AV.Query('ChatMessage');
+  q.equalTo('roomId', state.roomId);
+  q.lessThan('createdAt', state.oldest);
+  q.descending('createdAt'); q.limit(limit);
+  const rows = await q.find();
+  rows.forEach(o=>renderMsg(o,'prepend'));
+  if(rows.length) state.oldest = rows[rows.length-1].createdAt;
+  state.fetching=false;
+}
+async function subscribeLive(){
+  try{ await state.liveSub?.unsubscribe(); }catch{}
+  state.liveSub = null;
+
+  try{
+    const q = new AV.Query('ChatMessage').equalTo('roomId', state.roomId);
+    const sub = await q.subscribe();
+    state.liveSub = sub;
+
+    // 新訊息
+    sub.on('create', (o)=>{ renderMsg(o,'append'); scrollToBottom(); });
+
+    // ✅ 刪除事件：把畫面上的那一則移除
+    sub.on('delete', (o)=>{
+      const el = UI.list.querySelector(`[data-id="${o.id}"]`);
+      if (el) el.remove();
+    });
+
+    // （可選）更新事件：有人編輯訊息時同步
+    sub.on('update', (o)=>{
+      const el = UI.list.querySelector(`[data-id="${o.id}"] .bubble`);
+      if (el) el.textContent = o.get('text') || '';
+    });
+
+  }catch(e){
+    console.warn('[LiveQuery] 不可用，改用輪詢', e);
+
+    // ===== 2) 輪詢 fallback：同步刪除 =====
+    setInterval(async ()=>{
+      // 取「足夠多」的最新訊息，至少覆蓋你畫面上看得到的數量
+      const want = Math.max(200, UI.list.querySelectorAll('.msg').length + 20);
+
+      const q = new AV.Query('ChatMessage')
+        .equalTo('roomId', state.roomId)
+        .descending('createdAt')
+        .limit(want);
+
+      const rows = await q.find();
+
+      // 先補上新訊息
+      const aliveSet = new Set();
+      rows.reverse().forEach(o=>{
+        aliveSet.add(o.id);
+        if(!UI.list.querySelector(`[data-id="${o.id}"]`)){
+          renderMsg(o,'append');
+        }
+      });
+
+      // ✅ 再把「雲端已不存在」的訊息移除（只針對最新 want 範圍）
+      Array.from(UI.list.querySelectorAll('.msg')).forEach(el=>{
+        const id = el.dataset.id;
+        // 只移除最近範圍中「不在 aliveSet」的；較舊（不在最近 want）則保留
+        if (!aliveSet.has(id)) {
+          // 判斷一下這則訊息是不是落在「最近 want」範圍（以 DOM 順序估）
+          // 如果你的聊天窗通常只放最近幾百則，這段就足夠了
+          el.remove();
+        }
+      });
+
+    }, 4000);
+  }
+}
+
+/** ====== 事件 ====== */
+document.getElementById('loginDo').addEventListener('click', async ()=>{
+  const email=(loginEmail.value||'').trim(), pass=(loginPass.value||'').trim();
+  if(!isEmail(email)) return loginMsg.textContent='請填寫正確的電子郵箱';
+  if(!isAlnum6Plus(pass)) return loginMsg.textContent='密碼至少 6 位英數';
+  loginDo.disabled=true; loginMsg.textContent='登入中…';
+  try{
+    const u = await AV.User.logIn(email, pass);
+    if (isEmail(email) && !u.getEmail()){ u.setEmail(email); await u.save(); }
+    persistSession(u);
+    location.reload(); // 登入後刷新
+  }catch(e){
+    loginMsg.textContent = (e.code===210)?'帳號或密碼錯誤':(e.message||'登入失敗');
+  }finally{ loginDo.disabled=false; }
+});
+
+signupDo.addEventListener('click', async ()=>{
+  const email=(signupEmail.value||'').trim(),
+        pass=(signupPass.value||'').trim(),
+        nick=(signupNick.value||'').trim();
+  if(!isEmail(email)) return signupMsg.textContent='請填寫正確的電子郵箱';
+  if(!isAlnum6Plus(pass)) return signupMsg.textContent='密碼至少 6 位英數';
+  if(!nick) return signupMsg.textContent='請填寫暱稱';
+
+  async function uploadSignupAvatarIfAny(){
+    const input = document.getElementById('signupAvatarInput');
+    const f = input?.files?.[0];
+    if(!f) return null;
+    const file = new AV.File(f.name, f);
+    await file.save();
+    return file.url();
+  }
+
+  signupDo.disabled=true; signupMsg.textContent='建立中…';
+  try{
+    const avatarUrl = await uploadSignupAvatarIfAny();
+    const user = new AV.User();
+    user.setUsername(email);
+    user.setPassword(pass);
+    user.setEmail(email);
+    user.set('nickname', nick);
+    if (avatarUrl) user.set('avatar', avatarUrl);
+    await user.signUp();
+
+    try{ localStorage.setItem('LC_SESSION_TOKEN', user.getSessionToken()); }catch{}
+    location.reload(); // 註冊後刷新
+  }catch(e){
+    signupMsg.textContent = e.message || '註冊失敗';
+  }finally{
+    signupDo.disabled=false;
+  }
+});
+// 送出按鈕（點擊）
+document.getElementById('send').addEventListener('click', async ()=>{
+  const input = document.getElementById('msgInput');
+  const btn = document.getElementById('send');
+  const v = (input.value || '').trim();
+  if (!v) return;
+
+  btn.disabled = true;
+  try {
+    await sendMessage(v);
+    input.value = '';
+  } catch (e) {
+    console.error('[UI] send failed:', e);
+    alert('送出失敗：' + (e.code || '') + ' ' + (e.message || e));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// 在輸入框按 Enter 送出
+document.getElementById('msgInput').addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById('send').click();
+  }
+});
+// 自動長高
+const autoGrow = (el)=>{
+  el.style.height = 'auto';
+  const newH = Math.min(el.scrollHeight, 160); // 與 CSS 的 max-height 一致
+  el.style.height = newH + 'px';
+};
+const msgInputEl = document.getElementById('msgInput');
+msgInputEl.addEventListener('input', ()=>autoGrow(msgInputEl));
+setTimeout(()=>autoGrow(msgInputEl)); // 初始呼叫一次
+
+// Enter 送出，Shift+Enter 換行
+msgInputEl.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    document.getElementById('send').click();
+  }
+});
+/** ====== 啟動 ====== */
+(async function start(){
+  let peopleSub = null;   // 成員 LiveQuery 訂閱
+let peoplePoll = null;  // 輪詢計時器
+
+async function subscribePeopleLive(){
+  try { await peopleSub?.unsubscribe(); } catch {}
+  peopleSub = null;
+
+  try{
+    // 直接訂閱 _User（LeanCloud 允許，前提是 LiveQuery 開啟＋權限允許）
+    const q = new AV.Query(AV.User);
+    q.select(['nickname','avatar']);
+    const sub = await q.subscribe();
+    peopleSub = sub;
+
+    // 新增使用者
+    sub.on('create', (u)=>{
+      state.people.set(u.id, {
+        userId: u.id,
+        name: u.get('nickname') || '(未設定暱稱)',
+        avatar: u.get('avatar') || ''
+      });
+      renderPeopleList();
+    });
+
+    // 資料變更（暱稱／頭貼）
+    sub.on('update', (u)=>{
+      const old = state.people.get(u.id) || {userId:u.id};
+      state.people.set(u.id, {
+        ...old,
+        name: u.get('nickname') || '(未設定暱稱)',
+        avatar: u.get('avatar') || ''
+      });
+      renderPeopleList();
+    });
+
+    // 刪除（註銷）
+    sub.on('delete', (u)=>{
+      state.people.delete(u.id);
+      renderPeopleList();
+    });
+
+  }catch(e){
+    console.warn('[People] LiveQuery 不可用，改用輪詢', e);
+    // ===== 輪詢備援：每 30 秒整撈一次，做集合差異 =====
+    clearInterval(peoplePoll);
+    peoplePoll = setInterval(syncPeopleOnce, 5_000);
+    // 先跑一次，馬上同步
+    syncPeopleOnce();
+  }
+}
+
+// 輪詢時用：把遠端整批與本地 map 做「增／改／刪」差異同步
+async function syncPeopleOnce(){
+  try{
+    const q = new AV.Query(AV.User);
+    q.select(['nickname','avatar']);
+    q.limit(1000);
+    const rows = await q.find();
+
+    const newMap = new Map();
+    rows.forEach(u=>{
+      newMap.set(u.id, {
+        userId: u.id,
+        name: u.get('nickname') || '(未設定暱稱)',
+        avatar: u.get('avatar') || ''
+      });
+    });
+
+    // 比對差異（新增/更新/刪除）
+    let changed = false;
+
+    // 新增或更新
+    newMap.forEach((v, id)=>{
+      const old = state.people.get(id);
+      if (!old || old.name !== v.name || old.avatar !== v.avatar){
+        state.people.set(id, v);
+        changed = true;
+      }
+    });
+
+    // 刪除（本地有但遠端沒）
+    Array.from(state.people.keys()).forEach(id=>{
+      if(!newMap.has(id)){
+        state.people.delete(id);
+        changed = true;
+      }
+    });
+
+    if (changed) renderPeopleList();
+  }catch(err){
+    console.warn('[People] sync failed:', err);
+  }
+}
+  await autoLoginFromToken();
+  renderAuthArea();
+
+  // 只撈成員，不顯示在線
+  await fetchAllMembers();
+  await fetchAllMembers();     // 第一次填滿
+  subscribePeopleLive();       // 之後持續同步（Live 或輪詢）
+
+  // 聊天
+  await fetchLatest();
+  await subscribeLive();
+})();
+// 使用者註冊 / 登出 / 刪帳後，重抓一次成員
+document.getElementById('signupDo')?.addEventListener('click', ()=> setTimeout(syncPeopleOnce, 1500));
+document.getElementById('btnLogout')?.addEventListener('click', ()=> setTimeout(syncPeopleOnce, 1500));
+
+// 重新聚焦頁籤時也同步（跨分頁變更時很好用）
+document.addEventListener('visibilitychange', ()=>{ 
+  if(!document.hidden) syncPeopleOnce(); 
+});
+</script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

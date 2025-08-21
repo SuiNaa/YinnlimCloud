@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收款表單</title>
+      <style>
+    body {
+      background-color: #fff0f5;
+      font-family: "Noto Sans TC", sans-serif;
+      padding: 30px;
+      color: #444;
+    }
+
+    .form-box {
+      max-width: 500px;
+      margin: auto;
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #ff66aa;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: bold;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .submit-btn {
+      background-color: #ff88aa;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 20px;
+      width: 100%;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .submit-btn:hover {
+      background-color: #ff5c8a;
+    }
+
+    .error-msg {
+      color: red;
+      font-size: 14px;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="form-box">
+    <h2>🧾 填寫收款資訊</h2>
+    <!-- 💌 表單區塊 -->
+<form id="paymentForm" method="POST">
+  <!-- 🧪 這是 Web3Forms 的 Access Key（請填入你自己的） -->
+  <input type="hidden" name="access_key" value="829714a3-2f6c-42ad-b7af-eb56db42e372" />
+      <label>姓名 / 暱稱</label>
+      <input type="text" name="name" required>
+
+      <label>行動門號 / 電話號碼</label>
+      <input type="tel" name="phone" required>
+
+      <label>電子郵件</label>
+      <input type="email" name="email" required>
+
+      <label>國家</label>
+      <input type="text" name="country" required>
+
+      <label>省 / 州</label>
+      <input type="text" name="province" required>
+
+      <label>市</label>
+      <input type="text" name="city" required>
+
+      <label>縣 / 區</label>
+      <input type="text" name="district" required>
+
+      <label>詳細地址</label>
+      <input type="text" name="address" required>
+
+ <form id="paymentForm" method="POST">
+  <!-- 其他欄位例如姓名、地址... -->
+
+  <label>商品名稱</label>
+  <input type="text" id="productInput" name="product" readonly>
+
+  <label>商品價格</label>
+  <input type="text" id="priceInput" name="price" readonly>
+
+  <label>商品規格</label>
+  <input type="text" id="specInput" name="specification" readonly>
+
+  <button type="submit" class="submit-btn">送出訂單 💖</button>
+</form>
+      <div class="error-msg" id="errorMsg">⚠️ 請完整填寫表單以進行購買。</div>
+    </form>
+  </div>
+</form>
+<!--抓取規格-->
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const spec = urlParams.get("spec");
+  if (spec) {
+    document.getElementById("specInput").value = decodeURIComponent(spec);
+  }
+</script>
+<!--收款碼裝區-->
+<div id="qrcode" style="display:none; text-align:center;">
+  <p>請掃描下方收款碼進行付款</p>
+  <img src="圖片/收款.JPG" alt="收款碼" style="width:200px;">
+  <p>商品發貨後我們會透過郵件或簡訊通知您📦</p>
+</div>
+<!--結束-->
+
+<p>請掃碼付款完成後，點擊下方按鈕：</p>
+<button onclick="goHome()">✅ 我已完成付款</button>
+
+<script>
+  function goHome() {
+    // 你可以這裡先顯示提示，或檢查必填資料是否完成
+    alert("感謝您的購買，我們會盡快聯繫您 🧸");
+    window.location.href = ".././Store.html"; // 跳轉到主頁
+  }
+</script>
+    <!--表單控制-->
+  <script>
+    document.getElementById('paymentForm').addEventListener('submit', function(event) {
+      if (!this.checkValidity()) {
+        event.preventDefault();
+        document.getElementById('errorMsg').style.display = 'block';
+      }
+    });
+    <!--名稱與價格綁定-->
+  function updatePrice() {
+    const select = document.getElementById("product-select");
+    const selectedOption = select.options[select.selectedIndex];
+    const price = selectedOption.getAttribute("data-price");
+    
+    document.getElementById("price-field").value = price ? `CNY${price}` : "";
+  }
+  </script>
+     <!--連接送信軟體-->
+    <script>
+document.getElementById("paymentForm").addEventListener("submit", function (e) {
+  e.preventDefault(); // 阻止表單自動提交與刷新
+
+  const form = e.target;
+  const formData = new FormData(form);
+
+  // ✅ 基本欄位驗證（視情況加）
+  if (!form.name.value || !form.phone.value || !form.email.value) {
+    alert("請填寫完整資訊再提交！");
+    return;
+  }
+
+  // ✅ 使用 Web3Forms API 提交
+  fetch("https://api.web3forms.com/submit", {
+    method: "POST",
+    body: formData
+  })
+  .then(response => {
+    if (response.ok) {
+      document.getElementById("qrcode").style.display = "block";  // 顯示收款碼區
+      form.style.display = "none";  // 隱藏表單
+    } else {
+      alert("提交失敗，請稍後再試！");
+    }
+  })
+  .catch(() => {
+    alert("網路錯誤，請重試一次！");
+  });
+});
+<!--價格與名稱抓取-->
+  window.onload = function () {
+    let urlParams = new URLSearchParams(window.location.search);
+    let product = urlParams.get("product");
+    let price = urlParams.get("price");
+    let spec = urlParams.get("spec");
+
+    if (product) {
+      document.getElementById("productInput").value = decodeURIComponent(product);
+    }
+
+    if (price) {
+      document.getElementById("priceInput").value = `CN¥${decodeURIComponent(price)}`;
+    }
+
+    if (spec) {
+      document.getElementById("specInput").value = decodeURIComponent(spec);
+    }
+  };
+</script>
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>
