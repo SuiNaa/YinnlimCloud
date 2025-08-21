@@ -1,3 +1,5 @@
 name = "yinnlim-cloud"
-compatibility_date = "2025-08-21"
-assets = { directory = "yinn" }
+compatibility_date = "2024-08-21"
+
+# 把 /yinn 當靜態資產資料夾，並綁成 ASSETS（名稱要和程式一致）
+assets = { directory = "yinn", binding = "ASSETS" }
