@@ -1,6 +1,0 @@
-name = "yinnlim-cloud"
-main = "src/worker.js"
-compatibility_date = "2024-05-01"
-
-# 把 ./yinn 掛成靜態資產（自動綁定 env.ASSETS）
-assets = { directory = "./yinn" }
