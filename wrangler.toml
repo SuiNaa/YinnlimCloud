@@ -1,9 +1,16 @@
-name = 'yinnlimnascloud'
+name = "yinnlimnascloud"
 main = "src/worker.js"
 compatibility_date = "2025-03-03"
 
+# 指定靜態資源目錄 (直接從 ./yinn 提供，不用 KV)
 assets = { directory = "./yinn", binding = "ASSETS" }
-# wrangler.toml (wrangler v3.88.0^)
+
+# 關閉預設 workers.dev 子域名
+workers_dev = false
+
+# 啟用觀察日誌
 [observability.logs]
 enabled = true
-workers_dev = false
+
+# 綁定你的域名路由
+routes = ["yinnlimnas.store/*"]
