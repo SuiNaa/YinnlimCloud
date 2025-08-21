@@ -1,6 +1,0 @@
-name = "yinnlim-cloud"
-main = "src/worker.js"
-compatibility_date = "2025-08-21"
-
-[site]
-bucket = "/yinn"
