@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>跨性別手術資料查詢</title>
+<meta name="color-scheme" content="dark">
+<style>
+:root{
+  --bg:#0f0d14; --card:#17151f; --ink:#eceaf2; --muted:#a9a6b3; --border:#2b2637; --accent:#b78ad3;
+  --chip:#1f1a2b; --good:#76d39b; --bad:#e38f8f; --maxw:1160px;
+}
+*{box-sizing:border-box} body{margin:0;background:linear-gradient(160deg,#13111a,#191627);color:var(--ink);
+  font-family:ui-sans-serif,system-ui,"Noto Sans TC","Microsoft JhengHei";}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:18px 14px}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.h-left{display:flex;align-items:center;gap:10px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;padding:4px 10px;border:1px solid var(--border);
+  border-radius:999px;background:#1f1a2b}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#120d18;border:none;border-radius:12px;
+  padding:10px 12px;cursor:pointer;font-weight:700}
+.btn.small{padding:8px 10px} .btn.ghost{background:transparent;color:#fff;border:1px solid var(--border)}
+
+/* Search bar */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:10px 12px;margin-bottom:12px}
+.input,.select{background:#1e1a28;color:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:1rem}
+.input{flex:1 1 360px} .chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:var(--chip);border:1px solid var(--border);padding:6px 10px;border-radius:999px;font-size:.85rem;cursor:pointer}
+.chip.active{outline:2px solid var(--accent)} .count{color:#d7d4e5;font-size:.9rem;margin-left:auto}
+
+/* Grid cards */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:1000px){ .grid{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:640px){ .grid{grid-template-columns:1fr} }
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.thumb{position:relative;aspect-ratio:16/9;background:#181525}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .tagbar{position:absolute;left:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap}
+.thumb .tag{background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(2px);
+  color:#eceaf2;font-size:.78rem;padding:4px 8px;border-radius:999px}
+.body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.name{font-weight:800}
+.meta{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:.9rem}
+.actions{display:flex;gap:8px;margin-top:auto}
+.actions .btn{flex:1}
+
+/* Modal */
+.modal{position:fixed;inset:0;display:none;place-items:center;z-index:1000;background:rgba(0,0,0,.45);backdrop-filter:blur(2px)}
+.modal.show{display:grid}
+.box{width:min(92vw,920px);max-height:92vh;overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:16px}
+.mhead{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid var(--border)}
+.mtitle{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mbody{padding:12px}
+.hero{width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#181525;margin-bottom:12px}
+.hero img{width:100%;height:100%;object-fit:cover}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:10px;padding:10px 0;border-bottom:1px dashed var(--border)}
+.k{color:var(--muted)}
+.v ul{margin:0;padding-left:18px}
+.v li{margin:.25rem 0}
+.pro{color:var(--good)} .con{color:var(--bad)}
+.note{background:#14111d;
+border:1px dashed var(--border);padding:8px 10px;border-radius:10px;color:#d1cfe0;margin-top:6px}
+.hero { display: none !important; }
+.E{
+  text-decoration: none;  
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="h-left">
+      <h1 style="margin:0;font-size:clamp(20px,4.6vw,28px)">跨性別手術資料查詢</h1>
+      <div><button id="compareBtn" class="btn small ghost">術式對比</button>←點擊查看</div>
+    </div>
+    <button class="btn small ghost"><a href="help.html" class="E" >返回</a></button>
+  </div>
+
+  <!-- 搜尋/篩選列 -->
+  <div class="toolbar">
+    <input id="q" class="input" placeholder="搜尋：術式／關鍵字…" autocomplete="off">
+    <select id="cat" class="select">
+      <option value="all">全部類別</option>
+      <option value="MTF">MTF</option>
+      <option value="FTM">FTM</option>
+      <option value="NB">非二元/其他</option>
+    </select>
+    <div class="chips" id="chips">
+      <div class="chip" data-tag="陰道成形">陰道成形</div>
+      <div class="chip" data-tag="陰莖成形">陰莖成形</div>
+      <div class="chip" data-tag="上胸">上胸</div>
+      <div class="chip" data-tag="尿道延長">尿道延長</div>
+    </div>
+    <span id="count" class="count">0 個結果</span>
+  </div>
+
+  <!-- 縮略卡片 -->
+  <section id="grid" class="grid"></section>
+</div>
+
+<!-- 詳細 Modal -->
+<div id="modal" class="modal" aria-hidden="true">
+  <article class="box" role="dialog" aria-modal="true">
+    <div class="mhead">
+      <div class="mtitle">
+        <strong id="m-name"></strong>
+        <span class="badge" id="m-cat"></span>
+      </div>
+      <button id="m-close" class="btn small ghost">關閉</button>
+    </div>
+    <div class="mbody">
+      <div class="hero"><img id="m-img" alt=""></div>
+      <div class="kv"><div class="k">摘要</div><div class="v" id="m-summary"></div></div>
+      <div class="kv"><div class="k">優點</div><div class="v"><ul id="m-pros"></ul></div></div>
+      <div class="kv"><div class="k">缺點</div><div class="v"><ul id="m-cons"></ul></div></div>
+      <div class="kv"><div class="k">適應症</div><div class="v"><ul id="m-inds"></ul></div></div>
+      <div class="kv"><div class="k">常見風險</div><div class="v"><ul id="m-risks"></ul></div></div>
+      <div class="kv"><div class="k">術後照護</div><div class="v"><ul id="m-after"></ul></div></div>
+      <div class="kv"><div class="k">等待/費用</div><div class="v" id="m-meta"></div></div>
+      <div class="note" id="m-note" style="display:none"></div>
+    </div>
+  </article>
+</div>
+<div id="compareModal" class="modal">
+  <div class="modal-box">
+    <div class="bar">
+      <h3 style="margin:0">術式對比表</h3>
+      <button id="closeCompare" class="btn ghost">關閉</button>
+    </div>
+    <div style="overflow-x:auto; max-height:80vh; overflow-y:auto">
+      <!-- 對比表格 -->
+      <table border="1" style="width:100%; border-collapse:collapse; text-align:center">
+        <thead>
+          <tr>
+            <th>併發症</th>
+            <th>陰莖反轉皮瓣</th>
+            <th>腸道手術</th>
+            <th>達文西腹膜皮瓣</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>輸血</td><td>4.1%</td><td></td><td>5-6%</td></tr>
+          <tr><td>腸阻塞</td><td></td><td>1.8%</td><td>2-4%</td></tr>
+          <tr><td>直腸損傷</td><td>1.7–10%</td><td>2.38% (0.5%造口)</td><td>1%</td></tr>
+          <tr><td>腸道接口滲漏</td><td></td><td>0.4%</td><td></td></tr>
+          <tr><td>皮瓣(陰道)壞死</td><td>2.7–4%</td><td>1.1–2.38%</td><td></td></tr>
+          <tr><td>陰道直腸瘻管</td><td>1.7–3.3%</td><td>0.7%</td><td>0.2%</td></tr>
+          <tr><td>尿道陰道瘻管</td><td>0.6–2.46%</td><td>0.6%</td><td></td></tr>
+          <tr><td>腹內積液/膿瘍</td><td>2.7%</td><td>4.76%</td><td>2%</td></tr>
+          <tr><td>尿道損傷</td><td>0–3.6%</td><td></td><td></td></tr>
+          <tr><td>尿道狹窄</td><td>16%</td><td>2%</td><td></td></tr>
+          <tr><td>尿道壞死</td><td>1.3%</td><td></td><td></td></tr>
+          <tr><td>尿液滯留(暫時)</td><td>8–10%</td><td></td><td>2–7%</td></tr>
+          <tr><td>狹窄</td><td>4–7.2%</td><td>11–18%</td><td>7% (小於11公分)</td></tr>
+          <tr><td>脫垂</td><td>2.84%</td><td>2.3–28%</td><td></td></tr>
+          <tr><td>陰道炎</td><td></td><td>13%</td><td></td></tr>
+          <tr><td>過量陰道分泌物</td><td></td><td>7–38%</td><td></td></tr>
+          <tr><td>傷口癒合不良</td><td>15.1%</td><td></td><td>10–15%</td></tr>
+          <tr><td>血腫</td><td></td><td>2%</td><td></td></tr>
+          <tr><td>延遲復原</td><td></td><td>39.7%</td><td></td></tr>
+          <tr><td>及時併發症需手術</td><td></td><td>2%</td><td></td></tr>
+          <tr><td>任何原因需二次手術</td><td>22–27%</td><td>17.8%</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script src="pro.js?v=1.0.1"></script>
+<script>
+/* ====== 縮略卡渲染 ====== */
+const $ = (s,el=document)=>el.querySelector(s);
+const $$ = (s,el=document)=>[...el.querySelectorAll(s)];
+const grid = $('#grid'), qEl = $('#q'), catEl = $('#cat'), chips = $('#chips'), countEl = $('#count');
+
+function cardTpl(it){
+  const el = document.createElement('article');
+  el.className = 'card';
+  el.innerHTML = `
+    <div class="thumb">
+      <img src="${it.img}" alt="">
+      <div class="tagbar">${(it.tags||[]).slice(0,3).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    </div>
+    <div class="body">
+      <div class="name">${it.name}</div>
+      <div class="meta">
+        <span>類別：${it.category}</span>
+        <span>等待：${it.wait||'—'}</span>
+        <span>費用：${it.cost||'—'}</span>
+      </div>
+      <div class="meta" style="color:#dcd9ea">${it.summary}</div>
+      <div class="actions">
+        <button class="btn small" data-open="${it.id}">查看詳情</button>
+        <button class="btn small ghost" data-copy="${it.id}">複製連結</button>
+      </div>
+    </div>`;
+  return el;
+}
+
+function render(items){
+  grid.innerHTML = '';
+  items.forEach(it=>grid.appendChild(cardTpl(it)));
+  countEl.textContent = `${items.length} 個結果`;
+
+  // 綁定按鈕
+  $$('[data-open]').forEach(btn=>{
+    btn.onclick = ()=>openModal(items.find(x=>x.id===btn.dataset.open));
+  });
+  $$('[data-copy]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const url = location.origin + location.pathname + '#' + btn.dataset.copy;
+      try{ await navigator.clipboard.writeText(url); btn.textContent='已複製'; setTimeout(()=>btn.textContent='複製連結',900);}catch{alert(url);}
+      history.replaceState(null,'','#'+btn.dataset.copy);
+    };
+  });
+}
+
+function applyFilters() {
+  const q = qEl.value.trim();  // 用戶輸入的搜尋字詞
+  const convertedQuery = convertText(q); // 將搜尋字詞轉換成正體字
+
+  const cat = catEl.value;
+  const activeTags = $$('.chip.active', chips).map(c => c.dataset.tag);
+  
+  // 根據轉換後的搜尋條件來篩選資料
+  const items = DATA.filter(it => {
+    const hay = [it.name, it.summary, (it.tags || []).join(' ')].join(' ').toLowerCase();
+    const hitQ = !convertedQuery || hay.includes(convertedQuery.toLowerCase()); // 使用轉換後的搜尋條件
+    const hitCat = (cat === 'all') || it.category === cat;
+    const hitTags = !activeTags.length || activeTags.every(t => (it.tags || []).includes(t));
+    
+    return hitCat && hitQ && hitTags;
+  });
+  
+  render(items);  // 渲染篩選結果
+}
+
+/* Tag chips toggle */
+chips.addEventListener('click', e=>{
+  const t = e.target.closest('.chip'); if(!t) return;
+  t.classList.toggle('active'); applyFilters();
+});
+qEl.addEventListener('input', applyFilters);
+catEl.addEventListener('change', applyFilters);
+
+/* ====== Modal 詳情 ====== */
+const modal = $('#modal'), mClose = $('#m-close');
+function ulFill(ul, arr){ ul.innerHTML = (arr||[]).map(x=>`<li>${x}</li>`).join(''); }
+function openModal(it){
+  if(!it) return;
+  $('#m-name').textContent = it.name;
+  $('#m-cat').textContent = it.category;
+  $('#m-img').src = it.img;
+  $('#m-summary').textContent = it.summary || '-';
+  $('#m-meta').textContent = `等待：${it.wait||'—'}　費用：${it.cost||'—'}`;
+  ulFill($('#m-pros'), (it.pros||[]).map(x=>`<span class="pro">＋ ${x}</span>`));
+  ulFill($('#m-cons'), (it.cons||[]).map(x=>`<span class="con">－ ${x}</span>`));
+  ulFill($('#m-inds'), it.indications||[]);
+  ulFill($('#m-risks'), it.risks||[]);
+  ulFill($('#m-after'), it.after||[]);
+  const note = $('#m-note');
+  if(it.note){ note.style.display='block'; note.textContent = it.note; } else { note.style.display='none'; }
+  modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
+}
+mClose.onclick = ()=>{ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); };
+modal.addEventListener('click', e=>{ if(e.target===modal) mClose.click(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') mClose.click(); });
+
+/* 初次載入 & 錨點打開 */
+render(DATA); applyFilters();
+if(location.hash){
+  const target = DATA.find(x=> '#'+x.id === location.hash);
+  if(target) openModal(target);
+}
+document.getElementById('compareBtn').addEventListener('click', ()=>{
+  document.getElementById('compareModal').classList.add('show');
+});
+document.getElementById('closeCompare').addEventListener('click', ()=>{
+  document.getElementById('compareModal').classList.remove('show');
+});
+//正體簡體
+
+</script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

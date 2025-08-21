@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>登入｜曦花林LimTown</title>
+  <link href="long.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://unpkg.com/leancloud-storage@4.15.0/dist/av-min.js"></script>
+</head>
+<body>
+  <div class="login-box">
+ <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+  <div style="display: flex; flex-direction: column; align-items: center; line-height: 1;">
+    <span style="font-size: 12px; color: #663399;">Lim</span>
+    <span style="font-size: 10px; color: #999;">Town</span>
+  </div>
+  <h2 style="margin: 0;">登入帳號</h2>
+</div>
+  <input type="email" id="loginEmail" placeholder="請輸入電子郵件📩" />
+  <input type="password" id="loginPassword" placeholder="密碼-點按⭐️會先去主頁喔～" />
+
+  <div class="button-row">
+    <button onclick="login()">登入</button>
+    <button onclick="goBack()">面頁才剛到回→</button>
+  </div>
+
+  <!-- ⭐ 星星按鈕 -->
+  <span class="star-btn" onclick="goToHomepage()" title="先去逛逛"></span>
+
+  <!-- ✅ 註冊連結放這裡 -->
+  <div style="text-align: center; margin-top: 10px;">
+    <a href="register.html">還沒有帳號？去註冊</a>
+  </div>
+</div>
+  <script src="L.js"></script>
+</body>
+</html>

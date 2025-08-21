@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>加入Grove Group</title>
+<meta name="color-scheme" content="dark">
+<style>
+:root{
+  --bg:#0f0d14; --card:#17151f; --ink:#eceaf2; --muted:#a9a6b3; --border:#2b2637;
+  --accent:#b78ad3; --accent-2:#8fd3ff;
+  --maxw:980px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family:ui-sans-serif,system-ui,"Noto Sans TC","Microsoft JhengHei";
+  color:var(--ink); background:linear-gradient(160deg,#13111a,#191627);
+}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:22px 16px}
+.hint{color:var(--muted)}
+h1{margin:.2rem 0 1rem; font-size:clamp(20px,4.8vw,28px)}
+h2{margin:.2rem 0 .6rem; font-size:1.05rem; color:var(--muted); font-weight:600}
+
+/* 卡片 */
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px}
+.card{
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:16px; box-shadow:0 12px 30px rgba(0,0,0,.35); position:relative; overflow:hidden;
+}
+.badge{display:inline-flex; align-items:center; gap:6px; font-size:.82rem; padding:4px 10px; border:1px solid var(--border); border-radius:999px; background:#1f1a2b}
+.title{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+.title .logo{
+  width:34px;height:34px; border-radius:10px; display:grid; place-items:center;
+  background:#201a2c; border:1px solid var(--border);
+}
+.title strong{font-size:1.05rem}
+.desc{color:var(--muted); line-height:1.6}
+
+/* 按鈕群 */
+.actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+.btn{
+  display:inline-flex; align-items:center; gap:8px; padding:12px 14px; font-weight:700;
+  border:none; border-radius:12px; cursor:pointer; background:var(--accent); color:#120d18;
+}
+.btn.ghost{background:transparent; color:#fff; border:1px solid var(--border)}
+.btn.small{padding:8px 10px; font-weight:600}
+
+/* QR */
+.qr{
+  display:none; margin-top:12px; border:1px dashed var(--border); border-radius:12px; padding:10px;
+  background:#1a1624;
+}
+.qr.show{display:block}
+.qr img{width:100%; max-width:220px; display:block; margin:auto; border-radius:10px}
+
+/* 頁首 */
+.header{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;
+}
+.header .right{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+
+a.clean{color:inherit; text-decoration:none}
+.clean:hover{opacity:.9}
+.footer{margin-top:20px; color:var(--muted); font-size:.9rem}
+
+/* 浮窗背景 */
+/* 浮窗背景透明，QR 固定大小 */
+#qrOverlay{
+  position:fixed;
+  inset:0;
+  background:transparent; /* 背景透明 */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+#qrOverlay img{
+  width:220px;   /* 固定寬度 */
+  height:auto;   /* 等比例縮放 */
+  border-radius:10px;
+}
+.B{
+  background: transparent;        /* 透明背景 */
+  border: 1px solid var(--border);/* 細邊框，顏色用你已經定義的 --border 變數 */
+  color: var(--ink);              /* 文字顏色 */
+  padding: 12px 14px;
+  border-radius: 12px;            /* 圓角 */
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s;
+}
+.B:hover{
+    background: rgba(255,255,255,0.05); /* 滑過時加一點淡背景 */
+    color: var(--accent);     
+}
+.S{
+    color: #8fd3ff;
+    text-decoration: none;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>GroveGroup</h1>
+       <span>✨ 隨時更新</span>
+      <div class="hint">挑你習慣的平台，按「開啟」或掃 QR 即可加入。</div>
+    </div>
+    <button class="B"><a href="help.html" class="S">🏠🐾返回</a></button>
+    </div>
+    
+  <div class="grid">
+    <!-- Discord -->
+    <section class="card" id="card-discord">
+      <div class="title">
+        <span class="logo" aria-hidden="true">
+          <!-- Discord 圖標（SVG） -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="color:#8ea1e1">
+            <path d="M20.317 4.369A19.791 19.791 0 0 0 16.558 3c-.2.36-.433.848-.593 1.232a18.27 18.27 0 0 0-7.93 0C7.875 3.848 7.642 3.36 7.442 3a19.736 19.736 0 0 0-3.76 1.369C1.18 8.012.37 12.54.76 17.016a19.93 19.93 0 0 0 5.996 2.997c.482-.66.912-1.363 1.285-2.101a12.86 12.86 0 0 1-2.03-.984c.17-.124.335-.253.495-.388a13.87 13.87 0 0 0 11.988 0c.16.135.325.264.495.388-.65.39-1.335.72-2.03.985.373.737.803 1.44 1.285 2.1a19.93 19.93 0 0 0 5.996-2.996c.46-5.156-.79-9.65-3.93-12.648ZM8.725 14.89c-1.162 0-2.11-1.08-2.11-2.414 0-1.333.94-2.414 2.11-2.414 1.18 0 2.12 1.09 2.11 2.414 0 1.334-.94 2.414-2.11 2.414Zm6.55 0c-1.162 0-2.11-1.08-2.11-2.414 0-1.333.94-2.414 2.11-2.414 1.18 0 2.12 1.09 2.11 2.414 0 1.334-.94 2.414-2.11 2.414Z"/>
+          </svg>
+        </span>
+        <strong>Discord</strong>
+        <span class="badge">社群</span>
+      </div>
+      <p class="desc">適合長聊、語音、貼圖機器人。跨平台表現最好。</p>
+      <div class="actions">
+      <button class="btn" data-open="discord">開啟</button>
+      <button class="btn ghost" data-copy="discord">📋 複製連結</button>
+      <button class="btn ghost" data-qr="discord">🧾 顯示 QR</button>
+      </div>
+      <div class="qr" id="qr-discord"><img alt="Discord QR"></div>
+    </section>
+
+    <!-- QQ -->
+    <section class="card" id="card-qq">
+      <div class="title">
+        <span class="logo" aria-hidden="true" style="background:#1b2431">
+          <!-- QQ 企鵝（簡化 SVG 圖樣） -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="color:#ffffff">
+            <path d="M12 2c3.6 0 6 2.9 6 7.1 0 1.1-.2 2.1-.6 3 1.2 1.1 2 2.7 2.3 4.7.1.8-.6 1.2-1.2.9-.8-.4-1.7-.8-2.7-1.1-.9 2-2.7 3.4-3.8 3.4h-1c-1.1 0-2.9-1.4-3.8-3.4-1 .3-1.9.7-2.7 1.1-.7.3-1.3-.1-1.2-.9.3-2 1.1-3.6 2.3-4.7-.4-.9-.6-1.9-.6-3C6 4.9 8.4 2 12 2Z"/>
+          </svg>
+        </span>
+        <strong>QQ</strong>
+        <span class="badge">群聊</span>
+      </div>
+      <p class="desc">適合用戶快速加入。手機掃碼更方便。</p>
+      <div class="actions">
+        <button class="btn ghost" data-copy="qq">📋 複製ID</button>
+        <button class="btn ghost" data-qr="qq">🧾 顯示 QR</button>
+      </div>
+      <div class="qr" id="qr-qq"><img alt="QQ 群 QR"></div>
+    </section>
+    <!-- Element -->
+<section class="card" id="card-element">
+  <div class="title">
+    <span class="logo" aria-hidden="true" style="background:#0dbd8b">
+      <!-- Element 圖標（簡化 SVG） -->
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="color:#ffffff">
+        <path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm4.89 12.46a5.68 5.68 0 0 1-4.01 4.01 1.5 1.5 0 0 1-1.78-1.78 3.2 3.2 0 0 0 2.26-2.26 1.5 1.5 0 0 1 1.78-1.78 5.62 5.62 0 0 1 1.75 1.81Zm-9.78-4.92a5.68 5.68 0 0 1 4.01-4.01 1.5 1.5 0 0 1 1.78 1.78 3.2 3.2 0 0 0-2.26 2.26 1.5 1.5 0 0 1-1.78 1.78 5.62 5.62 0 0 1-1.75-1.81Z"/>
+      </svg>
+    </span>
+    <strong>Element</strong>
+    <span class="badge">聊天室🔐</span>
+  </div>
+  <p class="desc">基於 Matrix 協議的開源聊天室，用網頁或 App 都能加入。</p>
+  <div class="actions">
+    <button class="btn" data-open="element">開啟</button>
+    <button class="btn ghost" data-copy="element">📋 複製連結</button>
+    <button class="btn ghost" data-qr="element">🧾 顯示 QR</button>
+  </div>
+  <div class="qr" id="qr-element"><img alt="Element QR"></div>
+</section>
+  </div>
+
+  <div class="footer">如果連結失效，跟我說我會更新～</div>
+</div>
+
+<!-- QR 浮窗 -->
+<div id="qrOverlay" style="display:none">
+  <div class="qr-box">
+    <img src="" alt="QR Code">
+  </div>
+</div>
+<script>
+/* 這裡填你的連結與 QR 圖（可留空） */
+const LINKS = {
+  discord: 'https://discord.gg/wzwsVYXy',   // ← 改這行
+  qq:      '1019021116',
+  element: 'https://matrix.to/#/%23SunlitGrove%3Amatrix.org'  // ← 改這行（或 mqqapi:// 形式）
+};
+const QRS = {
+  discord: 'img/Dc-QRCode.png',   // 可放你的 Discord 邀請 QR 圖片 URL（PNG/JPG/SVG），沒有就留空
+  qq:      'img/QQ-QRCode.png',
+  element: 'img/eQRCode.png'    // QQ 群 QR 圖片 URL
+};
+
+/* UI 綁定 */
+function openLink(key){
+  const url = LINKS[key];
+  if(!url){ alert('連結還沒填喔～'); return; }
+  window.open(url, '_blank', 'noopener');
+}
+async function copyLink(key){
+  const url = LINKS[key];
+  if(!url){ alert('連結還沒填喔～'); return; }
+  try{
+    await navigator.clipboard.writeText(url);
+    toast('已複製：' + url);
+  }catch{ prompt('複製失敗，手動複製：', url); }
+}
+function toggleQR(key){
+  if(!QRS[key]){ alert('還沒放 QR 圖片喔～'); return; }
+
+  const overlay = document.getElementById('qrOverlay');
+  const img     = overlay.querySelector('img');
+  img.src       = QRS[key];
+  overlay.style.display = 'flex';
+}
+
+/* 小提示 */
+let tipTimer=null;
+function toast(text){
+  clearTimeout(tipTimer);
+  let el=document.getElementById('__tip');
+  if(!el){
+    el=document.createElement('div'); el.id='__tip';
+    el.style.cssText='position:fixed;left:50%;top:16px;transform:translateX(-50%);background:#2a2340;border:1px solid #3a3156;color:#fff;padding:10px 14px;border-radius:999px;box-shadow:0 10px 24px rgba(0,0,0,.35);z-index:9999;font-weight:700';
+    document.body.appendChild(el);
+  }
+  el.textContent=text;
+  el.style.opacity='1';
+  tipTimer=setTimeout(()=>el.style.opacity='0',1400);
+}
+
+/* 綁定按鈕 */
+document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click', ()=>openLink(b.dataset.open)));
+document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click', ()=>copyLink(b.dataset.copy)));
+document.querySelectorAll('[data-qr]').forEach(b=>b.addEventListener('click', ()=>toggleQR(b.dataset.qr)));
+// 點擊浮窗任意位置關閉
+document.getElementById('qrOverlay').addEventListener('click', function(){
+  this.style.display = 'none';
+});
+</script>
+</body>
+</html>

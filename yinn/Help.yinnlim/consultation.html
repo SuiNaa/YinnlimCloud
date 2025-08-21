@@ -1,0 +1,278 @@
+<!-- hotline.html -->
+<!doctype html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>傾訴／諮詢熱線｜曦花林</title>
+<link rel="icon" href="favicon.ico" />
+<style>
+  /* ====== 承接你既有的主題變數 ====== */
+  :root{
+    --bg:#f9f6ff; --text:#2c2a33; --muted:#64748b; --card:#fff; --border:#e6e3ef;
+    --accent:#b78ad3; --link:#3a87ff; --chip:#f2ecff; --shadow:0 8px 24px rgba(0,0,0,.08);
+    --maxw:980px;
+  }
+  [data-theme="dark"]{
+    --bg:#0f0d14; --text:#e9e7ef; --muted:#a2a0ac; --card:#151220; --border:#2b2637;
+    --accent:#9d7dd1; --link:#8fb4ff; --chip:#241e33; --shadow:0 8px 24px rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", Arial, "Microsoft JhengHei";
+    color:var(--text);
+    background:
+      radial-gradient(1200px 700px at 70% -10%, rgba(217,234,255,.35) 0%, transparent 60%),
+      linear-gradient(160deg, #ffe0ff 0%, #efe6ff 100%), var(--bg);
+    min-height:100dvh;
+  }
+  [data-theme="dark"] body{
+    background: linear-gradient(160deg,#0f0d14 0%,#151220 100%);
+  }
+
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:20px 16px}
+
+  /* ====== 動態字幕（無 <marquee>） ====== */
+  .marquee-shell{
+    position:relative; overflow:hidden; border-radius:16px;
+    background:linear-gradient(90deg, rgba(183,138,211,.22), transparent);
+    border:1px solid var(--border); box-shadow:var(--shadow); margin:16px 0 22px;
+  }
+  .marquee{
+    display:flex; gap:48px; align-items:center; padding:18px 0;
+    white-space:nowrap; font-weight:800; letter-spacing:.02em;
+    font-size: clamp(22px, 4vw, 36px);
+    animation: scroll 22s linear infinite;
+  }
+  .marquee span{ color:var(--text); opacity:.95 }
+  .marquee b{ color:var(--accent) }
+  @keyframes scroll{ from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  @media (prefers-reduced-motion: reduce){
+    .marquee{ animation:none }
+  }
+
+  /* ====== 區段標題 ====== */
+  h2{margin:22px 0 10px; font-size:1.1rem; color:var(--muted); letter-spacing:.08em}
+
+  /* ====== 連結卡 ====== */
+  .cards{ display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:12px }
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px 14px 12px;
+    box-shadow:var(--shadow); display:flex; flex-direction:column; gap:8px; min-height:128px;
+  }
+  .card .title{ font-weight:700; font-size:1.05rem }
+  .card .desc{ color:var(--muted); font-size:.92rem; line-height:1.45 }
+  .chips{ display:flex; gap:6px; flex-wrap:wrap; }
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px;
+    background:var(--chip); border:1px solid var(--border); font-size:.82rem; color:var(--text)
+  }
+  .actions{ display:flex; gap:8px; margin-top:auto }
+  .btn{
+    appearance:none; border:1px solid var(--accent); background:rgba(183,138,211,.12);
+    color:var(--accent); padding:8px 10px; border-radius:10px; font-weight:600; cursor:pointer;
+  }
+  .btn:hover{ filter:brightness(.96) }
+  a.btn{ text-decoration:none; display:inline-flex; align-items:center; gap:6px }
+
+  /* ====== 置頂與主題切換（可沿用你現有的JS） ====== */
+  .toolbar{ display:flex; justify-content:flex-end; gap:10px; margin-top:8px }
+  .theme-btn,.top-btn{
+    font-size:1rem; background:transparent; border:1px solid var(--border); color:var(--text);
+    padding:6px 10px; border-radius:10px; cursor:pointer;
+  }
+  #goTop{
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 60;
+  display: none;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 20px; line-height: 44px; text-align: center;
+  cursor: pointer;
+}
+#goTop.show{ display: inline-flex; align-items:center; justify-content:center; }
+#goTop:hover{ filter: brightness(.96); }
+[data-theme="dark"] #goTop{
+  background:#1b1626; border-color:#312a40;
+}
+</style>
+<style>
+    .toolbar{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-btn, .theme-btn{
+  font-size: 1rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background .2s;
+}
+
+.home-btn:hover, .theme-btn:hover{
+  background: rgba(0,0,0,0.05);
+}
+
+[data-theme="dark"] .home-btn:hover, 
+[data-theme="dark"] .theme-btn:hover{
+  background: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] .home-btn,
+[data-theme="dark"] .theme-btn {
+  color: #fff;
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- 工具列：主題切換 / 回到頂部（若你頁面已有可移除） -->
+    <div class="toolbar">
+      <button class="theme-btn" id="toggleTheme">🌓 主題</button>
+        <button class="home-btn" onclick="location.href='help.html'">🏠🐾返回</button>
+    </div>
+
+    <!-- 跑馬燈 -->
+    <div class="marquee-shell" aria-label="支援訊息">
+      <div class="marquee" id="marquee">
+        <span>你不是一個人 — <b>有人願意傾聽</b></span>
+        <span>需要說說話嗎？<b>現在就可以</b></span>
+        <span>焦慮、無助時，<b>先和人連上線</b></span>
+        <span>你值得被理解，<b>請給自己一個機會</b></span>
+
+        <!-- 重複一份做無縫循環 -->
+        <span>你不是一個人 — <b>有人願意傾聽</b></span>
+        <span>需要說說話嗎？<b>現在就可以</b></span>
+        <span>焦慮、無助時，<b>先和人連上線</b></span>
+        <span>你值得被理解，<b>請給自己一個機會</b></span>
+      </div>
+    </div>
+
+    <!-- 分組：台灣／香港／中國大陸／線上 -->
+    <h2>台灣</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="title">生命線協會</div>
+        <div class="desc">24 小時情緒支持，可匿名。若有危急，請立刻撥打當地緊急電話。</div>
+        <div class="chips">
+          <span class="chip">24h</span><span class="chip">電話</span><span class="chip">匿名</span>
+        </div>
+        <div class="actions">
+          <a class="btn" href="tel:1995">📞 撥打</a>
+          <a class="btn" href="http://www.life1995.org.tw" target="_blank" rel="noopener">🌐 網站</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title">同志諮詢熱線協會</div>
+        <div class="desc">同志／跨性別友善諮詢與同儕支持，固定接線時段。</div>
+        <div class="chips"><span class="chip">LGBTQ+ 友善</span><span class="chip">電話</span><span class="chip">諮詢</span></div>
+        <div class="actions">
+          <a class="btn" href="https://hotline.org.tw/services/115" target="_blank" rel="noopener">🌐 網站</a>
+          <a class="btn" href="https://www.webex.com/downloads.html" target="_blank" rel="noopener">可能需要用到webx</a>
+        </div>
+      </div>
+    </div>
+
+    <h2>香港</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="title">撒瑪利亞會</div>
+        <div class="desc">情緒危機支援與傾聽。夜間亦有接線。</div>
+        <div class="chips"><span class="chip">電話</span><span class="chip">中文／英文</span></div>
+        <div class="actions">
+          <a class="btn" href="https://www.samaritans.org.hk" target="_blank" rel="noopener">🌐 網站</a>
+          <a class="btn" href="tel:23892222">📞 撥打</a>
+        </div>
+      </div>
+    </div>
+
+    <h2>中國大陸</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="title">跨兒心理</div>
+        <div class="desc">情緒支持／心理諮詢轉介。</div>
+        <div class="chips"><span class="chip">電話</span><span class="chip">轉介</span></div>
+        <div class="actions">
+          <a class="btn" href="https://kuaerxinli.org/跨儿心理/987" target="_blank" rel="noopener">🌐 官方頁面</a>
+        </div>
+      </div>
+            <div class="card">
+        <div class="title">鎮鎮的彩虹</div>
+        <div class="desc">情緒支持／性与性别少数人群（LGBTQ+）的亲密关系和家庭关系、校园及职场等话题，为你提供法律和反家暴相关支持</div>
+        <div class="chips"><span class="chip">電話</span><span class="chip">轉介</span></div>
+        <div class="actions">
+          <a class="btn" href="https://fr.lingxi360.com/f?fid=MjkIbteHeZnsB&utm_bccid=LXEou3m6nUl7" target="_blank" rel="noopener">🌐 官方頁面</a>
+        </div>
+        </div>
+        <div class="card">
+        <div class="title">吾同</div>
+        <div class="desc">自我认同、情感支持、艾滋和恐艾咨询、校园欺凌、亲密关系暴力、家庭暴力、同志父母、同志交友资讯、跨性别等。</div>
+        <div class="chips">
+          <span class="chip">仅每日早10点至晚8点</span><span class="chip">電話</span>
+        </div>
+        <div class="actions">
+          <a class="btn" href="tel:027-59225189">📞 撥打</a>
+          <a class="btn" href="https://ff.lingxi360.com/f?fid=4Uz_1k2Tg8BN5&utm_bccid=LXE8nGvrOdDFDToA" target="_blank" rel="noopener">🌐 問卷預約</a>
+        </div>
+        </div>
+        </div>
+
+    <h2>線上與國際</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="title">Trans Lifeline</div>
+        <div class="desc">跨性別同儕接線（英文），若你在海外也可使用。</div>
+        <div class="chips"><span class="chip">跨性別同儕</span><span class="chip">English</span></div>
+        <div class="actions">
+          <a class="btn" href="https://translifeline.org/" target="_blank" rel="noopener">🌐 Website</a>
+        </div>
+      </div>
+    </div>
+  </div>
+<button id="goTop" aria-label="回到最上面">↑</button>
+<script>
+  // 主題切換（可和你現有的合併）
+  const html = document.documentElement;
+  document.getElementById('toggleTheme').addEventListener('click', ()=>{
+    html.setAttribute('data-theme', html.getAttribute('data-theme')==='dark' ? 'light':'dark');
+  });
+  // 置頂
+  document.getElementById('goTop').addEventListener('click', ()=>{
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+
+  // 跑馬燈：視窗縮放時，若內容寬度不足，複製一次避免空白
+  const mq = document.getElementById('marquee');
+  const ensureLoop = () => {
+    if (mq.scrollWidth / 2 < mq.parentElement.offsetWidth) {
+      mq.innerHTML += mq.innerHTML;
+    }
+  };
+  window.addEventListener('load', ensureLoop);
+  window.addEventListener('resize', ensureLoop);
+
+  const goTop = document.getElementById('goTop');
+window.addEventListener('scroll', () => {
+  goTop.classList.toggle('show', window.scrollY > 300);
+});
+goTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+</script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>
