@@ -6,3 +6,4 @@ assets = { directory = "./yinn", binding = "ASSETS" }
 # wrangler.toml (wrangler v3.88.0^)
 [observability.logs]
 enabled = true
+workers_dev = false
