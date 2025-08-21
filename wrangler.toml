@@ -13,4 +13,4 @@ workers_dev = false
 enabled = true
 
 # 綁定你的域名路由
-routes = ["yinnlimnas.store/*"]
+routes = ["yinnlimnas.store"]
