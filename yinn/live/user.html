@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>個人主頁</title>
+<style>
+  body{ 
+  margin:0; 
+  font-family: "DFKai-SB","KaiTi","標楷體","BiauKai",serif; 
+  background:#fafafa; 
+  color:#222; 
+}
+  .wrap{ max-width:960px; margin:0 auto; padding:24px 16px 48px; }
+  .topbar{ position:sticky; top:0; background:rgba(255,255,255,.7);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom:1px solid #eee; padding:12px 16px; display:flex; align-items:center; gap:12px; z-index:10; }
+  .topbar a{ color:var(--brand); text-decoration:none; font-weight:700; }
+  .card{ margin-top:16px; background:#fff; border:1px solid #eee; border-radius:16px;
+    box-shadow:0 8px 20px rgba(0,0,0,.06); padding:18px; }
+  .profile{ display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+  .avatar{ width:96px; height:96px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .name{ font-size:22px; font-weight:800; }
+  .muted{ color:var(--muted); font-size:14px; }
+  .btn{ padding:10px 14px; border-radius:10px; border:1px solid #ddd; background:#fff; font-weight:600; cursor:pointer; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* 商品 */
+  .my-grid{ display:grid; gap:14px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .pcard{ border:1px solid #eee; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 6px 16px rgba(0,0,0,.06); }
+  .pthumb{ width:100%; height:120px; object-fit:cover; background:#f3f3f3; display:block; }
+  .pbody{ padding:10px; }
+  .ptitle{ font-weight:700; font-size:14px; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:6px; }
+  .pprice{ color:#e91e63; font-weight:800; }
+  .pactions{ display:flex; justify-content:flex-end; padding:0 10px 10px; }
+  .pdel{ border:1px solid #ddd; background:#fff; border-radius:8px; padding:6px 8px; cursor:pointer; font-weight:700; }
+
+  /* Modal：編輯個資 */
+  .backdrop{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px;}
+  .dlg{ width:min(520px, 92vw); background:#fff; border-radius:16px; overflow:hidden; border:1px solid #eee; box-shadow:0 12px 32px rgba(0,0,0,.18);}
+  .dlg header{ padding:14px 16px; font-weight:800; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between;}
+  .dlg .body{ padding:16px;}
+  .dlg .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .dlg .field{ margin:10px 0;}
+  .dlg label{ display:block; font-size:13px; color:#777; margin-bottom:6px;}
+  .dlg .input, .dlg .file{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid #ddd; outline:none;}
+  .dlg .actions{ display:flex; gap:10px; justify-content:flex-end; padding:0 16px 16px;}
+  .closex{ cursor:pointer; font-size:22px; line-height:1; color:#888;}
+  .danger{ color:#b00020; font-weight:800; }
+  .hint{ font-size:12px; color:#777; }
+  .ok{ background:var(--brand); color:#fff; border:1px solid transparent; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700;}
+  .btn-plain{ padding:10px 14px; border:1px solid #ddd; background:#fff; border-radius:10px; cursor:pointer; font-weight:700;}
+
+  /* 發佈商品 Dialog */
+  .pb-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px;}
+  .pb{ width:min(820px, 96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:16px; border:1px solid #eee; box-shadow:0 12px 32px rgba(0,0,0,.18);}
+  .pb header{ padding:14px 16px; font-weight:800; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;}
+  .pb .body{ padding:16px;}
+  .pb .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start;}
+  .pb .field{ margin:10px 0; flex:1 1 240px;}
+  .pb label{ display:block; font-size:13px; color:#777; margin-bottom:6px;}
+  .pb .input, .pb .file, .pb textarea{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid #ddd; outline:none;}
+  .pb textarea{ min-height:120px; resize:vertical;}
+  .pill{ display:inline-flex; align-items:center; gap:8px; border:1px solid #ddd; border-radius:12px; padding:6px 10px;}
+  .switch{ display:inline-flex; align-items:center; gap:8px; }
+  .spec-row{ display:grid; grid-template-columns: 1.2fr .8fr 1fr 1fr auto; gap:8px; align-items:center; margin-bottom:8px; }
+  .spec-row.hidden{ display:none; }
+
+  /* 徽章 */
+  .btn.badge-host{ position:relative; padding-right:30px; }
+  .dotbadge{
+    position:absolute; top:-6px; right:-6px;
+    min-width:18px; height:18px; padding:0 6px;
+    border-radius:999px; background:#3b82f6; color:#fff;
+    font-size:12px; line-height:18px; text-align:center; font-weight:800;
+    box-shadow:0 2px 6px rgba(0,0,0,.2); display:none;
+  }
+  /* 收藏彈窗：固定框大小，內容可捲動 */
+.dlg.fav{
+  width: min(720px, 92vw);   /* 固定寬度上限 */
+  height: min(70vh, 560px);  /* 固定高度上限（你要更高可改）*/
+  display: flex;
+  flex-direction: column;    /* 讓 header / body / actions 垂直排列 */
+}
+
+/* 讓內容區可上下滑動 */
+.dlg.fav .body{
+  flex: 1 1 auto;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch; /* iOS 慣性捲動 */
+}
+
+/* 讓頂部/底部固定在框內（可選，但體驗更好） */
+.dlg.fav header{
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+  border-bottom: 1px solid #eee;
+}
+.dlg.fav .actions{
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+/* ====== 主題變數（白天 / 夜間）====== */
+:root{
+  --brand:#6c4ef7;
+  --muted:#777;
+  --bg:#fafafa;
+  --text:#222;
+  --card-bg:#fff;
+  --border:#eee;
+  --topbar-bg: rgba(255,255,255,.7);
+  --price:#e91e63;   /* 白天價錢 */
+  --link:#6c4ef7;
+}
+:root[data-theme="dark"]{
+  --bg:#0f0b1a;
+  --text:#cfc3ff;
+  --muted:#9a8fd1;
+  --card-bg:#161222;
+  --border:#2b2440;
+  --topbar-bg: rgba(20,16,34,.7);
+  --brand:#a48cff;
+  --link:#b39cff;
+  --price:#bf66ff;   /* 夜間價錢：深紫 */
+}
+
+/* ====== 全站以變數覆蓋（!important 確保蓋過你前面的固定色） ====== */
+body{
+  background:var(--bg) !important;
+  color:var(--text) !important;
+  font-family:"DFKai-SB","KaiTi","標楷體","BiauKai",serif !important; /* 小楷一直保留 */
+}
+.topbar{
+  background:var(--topbar-bg) !important;
+  border-bottom:1px solid var(--border) !important;
+}
+.topbar a{ color:var(--brand) !important; }
+
+/* 卡片/面板 */
+.card,.pcard,.dlg,.pb,.dropdown{
+  background:var(--card-bg) !important;
+  border:1px solid var(--border) !important;
+  color:var(--text) !important;
+}
+.dlg header{ border-bottom:1px solid var(--border) !important; }
+
+/* 文字顏色 */
+.muted{ color:var(--muted) !important; }
+
+/* 價格 */
+.pprice{ color:var(--price) !important; }
+
+/* 按鈕 */
+.btn{ background:var(--card-bg) !important; border:1px solid var(--border) !important; color:var(--text) !important; }
+.btn.primary{ background:var(--brand) !important; color:#fff !important; border-color:transparent !important; }
+
+/* 內文輸入框 */
+.dlg .input, .dlg .file, .pb .input, .pb .file, .pb textarea{
+  background:transparent !important;
+  border:1px solid var(--border) !important;
+  color:var(--text) !important;
+}
+
+/* 圖像底色（避免太亮） */
+.avatar, .pthumb{ background:var(--border) !important; }
+
+/* 下拉選單 hover 在兩種主題都清楚 */
+.dropdown .item:hover{ background:rgba(108,78,247,.12) !important; }
+
+/* 連結色 */
+a{ color:var(--link); }
+/* --- 下拉選單按鈕外觀（可共用主題變數） --- */
+.menu-wrap{ position:relative; }
+.menu-btn{
+  padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:800; line-height:1;
+  border:1px solid var(--border); background:var(--card-bg); color:var(--text);
+}
+
+/* 下拉：預設隱藏 + 動畫 */
+.dropdown{
+  position:absolute; right:0; top:calc(100% + 8px);
+  min-width:200px;
+  background:var(--card-bg); color:var(--text);
+  border:1px solid var(--border); border-radius:12px;
+  box-shadow:0 12px 28px rgba(0,0,0,.22);
+  padding:8px; z-index:1000;
+
+  /* 隱藏狀態 + 動畫起點 */
+  opacity:0; transform:translateY(-6px) scale(.98);
+  visibility:hidden; pointer-events:none;
+  transition:opacity .16s ease, transform .18s ease, visibility 0s linear .16s;
+}
+.dropdown.show{
+  opacity:1; transform:translateY(0) scale(1);
+  visibility:visible; pointer-events:auto;
+  transition:opacity .16s ease, transform .18s ease;
+}
+
+.dropdown .item{
+  width:100%; text-align:left; padding:10px 12px;
+  background:transparent; border:none; border-radius:8px;
+  color:inherit; cursor:pointer; font-size:14px;
+}
+.dropdown .item:hover{ background:rgba(108,78,247,.12); }
+
+/* --- 夜間模式下的按鈕顏色（暗底 + 紫外線文字） --- */
+:root[data-theme="dark"]{
+  --btn-bg:#1b1530;        /* 按鈕暗底 */
+  --btn-border:#3a2f55;    /* 按鈕邊線 */
+  --btn-text:#cfc3ff;      /* 紫外線文字 */
+}
+:root:not([data-theme="dark"]){
+  --btn-bg:var(--card-bg);
+  --btn-border:var(--border);
+  --btn-text:var(--text);
+}
+.btn{
+  background:var(--btn-bg) !important;
+  border:1px solid var(--btn-border) !important;
+  color:var(--btn-text) !important;
+}
+/* 主要按鈕維持品牌色（你也可改成和一般按鈕一樣） */
+.btn.primary{
+  background:var(--brand) !important;
+  color:#fff !important; border-color:transparent !important;
+}
+
+/* 讓 <button><a></a></button> 的 a 跟著變色（把你原本 inline style 蓋掉） */
+.btn a{ color:inherit !important; text-decoration:none; }
+
+/* 卡片圓角邊線在暗色更柔和（選配） */
+.card,.pcard,.dlg,.pb{ border-color:var(--border) !important; }
+.t{
+  text-decoration: none;
+  color: rgb(158, 88, 255);
+}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="shopping.html">← Esc Store</a>
+    <div style="margin-left:auto" class="row">
+      <button class="btn" onclick="logout()">登出</button>
+      <div class="menu-wrap">
+  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()" title="更多功能">%</button>
+  <div id="menuDrop" class="dropdown" role="menu">
+    <!-- 第一個選項：切換模式 -->
+    <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+    <button class="item" onclick="location.href='../index.html'">主頁</button>
+    <button class="item" onclick="location.href='Grove.Examination-Yuan.html'">參加管理員</button>
+    <button class="item" onclick="location.href='Grove. Control-Yuan.html'">Control</button>
+    <button class="item" onclick="location.href='Grove.Executive-Yuan.html'">Executive</button>
+    <button class="item" onclick="location.href='Grove.Judicial-Yuan.html'">申訴</button>
+    <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
+    <button class="item" onclick="location.href='vote.html'">投票專區</button>
+    <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+  </div>
+</div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="profile">
+        <img id="pfAvatar" class="avatar" src="" alt="使用者頭貼"/>
+        <div>
+          <div class="name" id="pfName">—</div>
+          <div class="muted" id="pfEmail">—</div>
+          <div class="muted" id="pfId" style="margin-top:6px">—</div>
+        </div>
+      </div>
+      <div style="margin-top:16px" class="row">
+        <button class="btn primary" onclick="openEdit()">編輯個人資料</button>
+        <button class="btn" onclick="openPublish()">發佈商品</button>
+        <button class="btn badge-host" onclick="markAndGo('messages','messages.html')">
+          我的訊息 <span id="msgBadge" class="dotbadge">0</span>
+        </button>
+        <button class="btn badge-host" onclick="markAndGo('ship','ipuser.html')">
+          我的發貨 <span id="shipBadge" class="dotbadge">0</span>
+        </button>
+        <button class="btn badge-host" onclick="markAndGo('buy','io.html')">
+          我的購買 <span id="buyBadge" class="dotbadge">0</span>
+        </button>
+        <button class="btn badge-host" onclick="markAndGo('appeal','dellt.html')">
+          申訴處理 <span id="appealBadge" class="dotbadge">0</span>
+        </button>
+        <button class="btn"><a href="ioc.html" style="text-decoration: none; color: #222;">查詢io</a></button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+  <div style="font-weight:800; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+    <span>我的商品</span>
+    <button class="btn" onclick="openFavorites()">我的收藏</button>
+  </div>
+  <div id="myProducts" class="my-grid"></div>
+</div>
+
+  <!-- 編輯個資 -->
+  <div class="backdrop" id="editDlg">
+    <div class="dlg">
+      <header>
+        <div>編輯個人資料</div>
+        <div class="closex" onclick="closeEdit()">×</div>
+      </header>
+      <div class="body">
+        <div class="field">
+          <label>暱稱</label>
+          <div class="row">
+            <input id="editNickname" class="input" type="text" placeholder="新的暱稱">
+            <button class="ok" onclick="updateNickname()">儲存暱稱</button>
+          </div>
+          <div class="hint">會立即同步到你的帳號。</div>
+        </div>
+
+        <div class="field">
+          <label>頭貼（上傳圖片）</label>
+          <div class="row">
+            <input id="editAvatar" class="file" type="file" accept="image/*">
+            <button class="ok" onclick="updateAvatar()">上傳並套用</button>
+          </div>
+          <div class="hint">建議 &lt; 1MB。</div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #eee;margin:14px 0">
+
+        <div class="field">
+          <div class="danger">註銷帳號</div>
+          <div class="hint" style="margin:6px 0 10px">此操作無法復原，將刪除你的帳號資料。</div>
+          <button class="btn-plain danger" onclick="deleteAccount()">我要永久刪除我的帳號</button>
+        </div>
+
+        <div id="editErr" class="hint" style="color:#b00020"></div>
+      </div>
+      <div class="actions">
+        <button class="btn-plain" onclick="closeEdit()">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 發佈商品 -->
+  <div class="pb-backdrop" id="publishDlg">
+    <div class="pb">
+      <header>
+        <div>發佈商品</div>
+        <div class="btn" onclick="closePublish()">×</div>
+      </header>
+      <div class="body">
+        <div class="row">
+          <div class="field" style="flex:1">
+            <label>展示圖片（封面，1 張）</label>
+            <input id="pbCover" class="file" type="file" accept="image/*">
+            <div class="muted">建議 &lt; 1MB。</div>
+          </div>
+          <div class="field" style="flex:2">
+            <label>商品圖片（最多 5 張）</label>
+            <input id="pbImages" class="file" type="file" accept="image/*" multiple>
+            <div class="muted">第一張不會覆蓋封面；僅作為輪播圖片。</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field"><label>商品標題</label><input id="pbTitle" class="input" type="text" placeholder="例：夏日清新短袖"></div>
+          <div class="field" style="flex:2"><label>商品簡述</label><input id="pbSummary" class="input" type="text" placeholder="一句話介紹你的商品"></div>
+        </div>
+
+        <div class="field">
+          <label>規格設定</label>
+          <div id="specList"></div>
+          <div class="row">
+            <button class="btn" onclick="addSpec()">＋新增規格</button>
+            <div class="switch">
+              <input id="samePrice" type="checkbox" checked onchange="togglePriceMode()">
+              <label for="samePrice">規格價格相同</label>
+            </div>
+          </div>
+          <div id="samePriceRow" class="row" style="margin-top:8px;">
+            <div class="pill"><span>價格</span><input id="pbPrice" class="input" type="number" min="0" step="1" style="width:140px"></div>
+            <div class="pill"><span>收款碼</span><input id="pbPayCode" class="file" type="file" accept="image/*"></div>
+            <div class="muted">所有規格共用同一價格與收款碼。</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>商品詳細描述</label>
+          <textarea id="pbDetail" class="input" placeholder="更完整的介紹、材質、尺寸…（可留空）"></textarea>
+        </div>
+        <div class="field">
+          <label>詳細描述圖片（可多張）</label>
+          <input id="pbDetailImages" class="file" type="file" accept="image/*" multiple>
+        </div>
+         <!-- ．詳細圖擺放位置 -->
+<div class="field">
+  <label>詳細描述圖片擺放位置</label>
+  <div class="row" style="align-items:center; gap:14px">
+    <label class="pill" style="cursor:pointer">
+      <input type="radio" name="pbImgPos" value="top" checked>
+      <span>圖片置頂（在文字上面）</span>
+    </label>
+    <label class="pill" style="cursor:pointer">
+      <input type="radio" name="pbImgPos" value="bottom">
+      <span>圖片最下面（文字全部之後）</span>
+    </label>
+
+    <!-- 只在「置中」時顯示：第 N 行之後 -->
+    <div id="pbMiddleBox" class="pill" style="display:none">
+      <span>插在「第</span>
+      <input id="pbAfterLine" class="input" type="number" min="0" step="1" value="0" style="width:90px">
+      <span>行」文字下面（0=最前面）</span>
+    </div>
+  </div>
+  <div class="muted">例：填 2 表示在第 2 行文字後面插入圖片群組。</div>
+</div>
+        <div id="pbErr" class="muted danger"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="closePublish()">取消</button>
+        <button class="btn ok" onclick="createProduct()">發佈</button>
+      </div>
+    </div>
+  </div>
+<!-- 我的收藏 -->
+<div class="backdrop" id="favoritesDlg">
+  <div class="dlg fav">
+    <header>
+      <div>我的收藏</div>
+      <div class="closex" onclick="closeFavorites()">×</div>
+    </header>
+    <div class="body">
+      <div id="favProducts" class="my-grid"></div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-min.js"></script>
+<script>
+  AV.init({
+    appId: 'ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz',
+    appKey: 'U66ybZWAD99LrT9zJnQlW52H',
+    serverURL: 'https://zdqo2eqb.lc-cn-n1-shared.com'
+  });
+</script>
+<script>
+/* ================== 基本常數 ================== */
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+const CURRENCY_SIGN = '¥';
+const money = n => Number(n||0).toLocaleString('zh-TW');
+const IO_TO_CNY = 60;                              // 1 io$ = ¥60
+const fmtIo = n => (Math.round(n*1e5)/1e5).toFixed(5);
+const fmtDate = iso => {
+  const d = new Date(iso);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mi = String(d.getMinutes()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+};
+/* ================== 分組 & 最後查看時間 ================== */
+const GROUPS = {
+  ship:   { include: ['order','urge_ship','receive'] },
+  buy:    { include: ['ship','reject','appeal_reject','appeal_ok'] },
+  appeal: { include: ['appeal','urge_appeal'] },
+  messages: { exclude: ['order','urge_ship','receive','ship','reject','appeal_reject','appeal_ok','appeal','urge_appeal'] }
+};
+const LS_KEY = 'sg_lastSeen';
+function getLastSeen(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'{}'); }catch(e){ return {}; } }
+function setLastSeen(groupKey){
+  const all = getLastSeen();
+  all[groupKey] = new Date().toISOString();
+  localStorage.setItem(LS_KEY, JSON.stringify(all));
+}
+
+/* ================== 登入守門 ================== */
+(function guard(){
+  const token = localStorage.getItem('sg_token');
+  const user = JSON.parse(localStorage.getItem('sg_user') || 'null');
+  if(!token || !user){
+    const home = 'index.html';
+    location.replace(`${home}?redirect=profile`);
+  }
+})();
+
+/* ================== 個資 ================== */
+async function fetchMe(){
+  const token = localStorage.getItem('sg_token');
+  try{
+    const res = await fetch(`${API}/users/me`, {
+      headers:{ 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY, 'X-LC-Session': token }
+    });
+    if(res.ok){
+      const me = await res.json();
+      const user = { objectId: me.objectId, username: me.username, email: me.email, nickname: me.nickname, avatarUrl: me.avatarUrl };
+      localStorage.setItem('sg_user', JSON.stringify(user));
+      return user;
+    }
+  }catch(e){}
+  return JSON.parse(localStorage.getItem('sg_user') || 'null');
+}
+function renderProfile(user){
+  const avatar = user.avatarUrl || 'https://via.placeholder.com/96?text=🙂';
+  pfAvatar.src = avatar;
+  pfAvatar.alt = `${user.nickname || user.username || '用戶'} 的頭貼`;
+  pfName.textContent = user.nickname || user.username || '—';
+  pfEmail.textContent = user.email || '';
+  pfId.textContent = `GID：${user.objectId || ''}`;
+}
+function logout(){ localStorage.removeItem('sg_token'); localStorage.removeItem('sg_user'); location.href = 'shopping.html'; }
+
+/* ================== 徽章計數 ================== */
+async function countUnread(opts){
+  const me = JSON.parse(localStorage.getItem('sg_user')||'null');
+  const token = localStorage.getItem('sg_token');
+  if(!me) return 0;
+
+  const where = {
+    to: { "__type":"Pointer","className":"_User","objectId": me.objectId },
+    "$or": [ { read:false }, { read:{ "$exists": false } } ]
+  };
+  if(opts?.include) where.kind = { "$in": opts.include };
+  if(opts?.exclude) where.kind = { "$nin": opts.exclude };
+
+  // 只計「最後查看時間之後」的新未讀
+  if(opts?.__groupKey){
+    const lastSeen = getLastSeen()[opts.__groupKey];
+    if(lastSeen) where.createdAt = { "$gte": { "__type":"Date", "iso": lastSeen } };
+  }
+
+  const url = `${API}/classes/Message?where=${encodeURIComponent(JSON.stringify(where))}&count=1&limit=0`;
+  try{
+    const res = await fetch(url, { headers:{ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session': token||'' }});
+    const data = await res.json(); if(!res.ok) throw new Error(data.error||'');
+    return Number(data.count||0);
+  }catch(e){
+    console.warn('countUnread error:', e.message||e);
+    return 0;
+  }
+}
+function setBadge(elId, n){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(n>0){ el.textContent = n>99 ? '99+' : String(n); el.style.display = 'inline-block'; el.parentElement.title = `${n} 則訊息未查看`; }
+  else { el.style.display = 'none'; el.parentElement.title = ''; }
+}
+async function loadAllBadges(){
+  // 三組：帶各自的 lastSeen
+  const ship   = await countUnread({ ...GROUPS.ship,   __groupKey:'ship'   });
+  const buy    = await countUnread({ ...GROUPS.buy,    __groupKey:'buy'    });
+  const appeal = await countUnread({ ...GROUPS.appeal, __groupKey:'appeal' });
+
+  // 「我的訊息」也直接獨立計數：排除系統類別，並使用自己的 lastSeen
+  const msg    = await countUnread({ ...GROUPS.messages, __groupKey:'messages' });
+
+  setBadge('shipBadge',   ship);
+  setBadge('buyBadge',    buy);
+  setBadge('appealBadge', appeal);
+  setBadge('msgBadge',    msg);
+}
+loadAllBadges();
+setInterval(loadAllBadges, 10000);
+
+/* 點分組：只記錄最後查看時間 → 刷新徽章 → 跳頁 */
+async function markAndGo(groupKey, url){
+  setLastSeen(groupKey);
+  await loadAllBadges();
+  location.href = url;
+}
+
+/* ================== 個資對話框：暱稱/頭貼/刪帳 ================== */
+function openEdit(){
+  const u = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(u) document.getElementById('editNickname').value = u.nickname || '';
+  document.getElementById('editDlg').style.display='flex';
+}
+function closeEdit(){ document.getElementById('editDlg').style.display='none'; editErr.textContent=''; }
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result.split(',')[1]);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+async function refreshMe(){
+  const token = localStorage.getItem('sg_token');
+  const res = await fetch(`${API}/users/me`, { headers:{ 'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY, 'X-LC-Session':token } });
+  const me = await res.json();
+  if(res.ok){
+    const user = {
+      objectId: me.objectId, username: me.username, email: me.email, nickname: me.nickname,
+      avatarUrl: me.avatarUrl ? `${me.avatarUrl}${me.avatarUrl.includes('?')?'&':'?'}v=${Date.now()}` : ''
+    };
+    localStorage.setItem('sg_user', JSON.stringify(user));
+    renderProfile(user);
+    return true;
+  }
+  return false;
+}
+async function updateNickname(){
+  const nick = document.getElementById('editNickname').value.trim();
+  const token = localStorage.getItem('sg_token');
+  const user = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!nick){ editErr.textContent='暱稱不可為空'; return; }
+  try{
+    const res = await fetch(`${API}/users/${user.objectId}`, {
+      method:'PUT',
+      headers:{ 'Content-Type':'application/json','X-LC-Id': APP_ID,'X-LC-Key': APP_KEY,'X-LC-Session': token },
+      body: JSON.stringify({ nickname: nick })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || '更新暱稱失敗');
+    await refreshMe();
+    editErr.textContent='✅ 已更新暱稱';
+  }catch(e){ editErr.textContent = e.message; }
+}
+async function updateAvatar(){
+  const file = document.getElementById('editAvatar').files[0];
+  if(!file){ editErr.textContent='請先選擇圖片'; return; }
+  const token = localStorage.getItem('sg_token');
+  const user = JSON.parse(localStorage.getItem('sg_user')||'null');
+  try{
+    const base64 = await fileToBase64(file);
+    const fileRes = await fetch(`${API}/files/${encodeURIComponent(file.name)}`, {
+      method:'POST', headers:{ 'Content-Type':'application/json','X-LC-Id': APP_ID,'X-LC-Key': APP_KEY }, body: JSON.stringify({ base64 })
+    });
+    const fileData = await fileRes.json();
+    if(!fileRes.ok) throw new Error(fileData.error || '頭貼上傳失敗');
+
+    const putRes = await fetch(`${API}/users/${user.objectId}`, {
+      method:'PUT', headers:{ 'Content-Type':'application/json','X-LC-Id': APP_ID,'X-LC-Key': APP_KEY,'X-LC-Session': token },
+      body: JSON.stringify({ avatarUrl: fileData.url })
+    });
+    const putData = await putRes.json();
+    if(!putRes.ok) throw new Error(putData.error || '寫入頭貼失敗');
+
+    await refreshMe();
+    document.getElementById('editAvatar').value = '';
+    editErr.textContent='✅ 已更新頭貼';
+  }catch(e){ editErr.textContent = e.message; }
+}
+//註銷===========================================
+// （選配）刪前補 ACL：讓本人可寫
+async function ensureSelfWritable(uid, token){
+  const payload = { ACL: { [uid]: { read: true, write: true } } };
+  await fetch(`${API}/users/${uid}`, {
+    method:'PUT',
+    headers:{ 'Content-Type':'application/json','X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token },
+    body: JSON.stringify(payload)
+  });
+}
+// 備援：呼叫雲端 deleteAccount（只有前端刪失敗才會用到）
+ // 備援：呼叫雲端 deleteMyAccount（只有前端刪失敗才會用到）
+async function callCloudDeleteAccount() {   // ← 名稱統一
+  const token = localStorage.getItem('sg_token') || '';
+  if (!token) throw new Error('未登入');
+
+  const res = await fetch(`${API}/functions/deleteMyAccount`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-LC-Id': APP_ID,
+      'X-LC-Key': APP_KEY,
+      'X-LC-Session': token
+    },
+    body: JSON.stringify({ hard: true })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data.error && (data.error.message || data.error)) || '雲函數刪除失敗');
+  return data.result;
+}
+
+/* ========== 🔧可調整區：資料表與狀態對應 ========== */
+/** 如果你的表名或欄位不同，改這裡就好 **/
+const TBL = {
+  Product: 'Product',
+  Ad: 'Ad', 
+  Favorite: 'Favorite',
+  Message: 'Message',
+  Order: 'Order',    // 若你沒有 Order 表，將其設成 null 即可
+  Appeal: 'Report'   // 若你沒有 Appeal 表，將其設成 null 即可
+};
+// 主要關聯欄位名稱
+const FIELDS = {
+  // Product
+  productSeller: 'seller',
+
+  // Favorite
+  favUser: 'user',
+
+  // Message（訊息）
+  msgFrom: 'from',     // 若你的訊息只有 to/kind，也想刪，就改查 where: { to: Pointer(user) } 兩邊都刪
+  msgTo: 'to',
+
+  // Order（訂單）
+  orderBuyer: 'buyer',
+  orderSeller: 'seller',
+  orderStatus: 'status',
+
+  // Appeal（申訴）
+  appealBy: 'by',          // 或者 'user' / 'plaintiff'，看你的 schema
+  appealAgainst: 'against',// 或者 'target' / 'defendant'
+  appealStatus: 'status'
+};
+
+// 哪些狀態視為「未處理，禁止註銷」
+const PENDING_ORDER_STATUSES  = ['paid','processing','shipped'];   // 你實際用的狀態字串
+const PENDING_APPEAL_STATUSES = ['open','pending','processing'];
+
+/* ========== 工具：指標/查詢/刪除 ========== */
+const ptrUser = (id) => ({ "__type":"Pointer","className":"_User","objectId": id });
+
+async function queryAll(className, where, token){
+  if(!className) return []; // ← 沒有這表就直接回空
+  const url = `${API}/classes/${className}?where=${encodeURIComponent(JSON.stringify(where))}&limit=1000`;
+  const r = await fetch(url, { headers:{ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token }});
+  if (r.status === 404) return [];         // ← 這一行
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || `查詢 ${className} 失敗`);
+  return d.results || [];
+}
+
+async function countWhere(className, where, token){
+  if(!className) return 0; // ← 沒有這表就 0
+  const url = `${API}/classes/${className}?where=${encodeURIComponent(JSON.stringify(where))}&limit=0&count=1`;
+  const r = await fetch(url, { headers:{ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token }});
+  if (r.status === 404) return 0;          // ← 這一行
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || `統計 ${className} 失敗`);
+  return Number(d.count||0);
+}
+
+async function deleteMany(className, ids, token){
+  for(const id of ids){
+    const r = await fetch(`${API}/classes/${className}/${id}`, {
+      method:'DELETE',
+      headers:{ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token }
+    });
+    if(!r.ok){
+      const d = await r.json().catch(()=>({}));
+      throw new Error(d.error || `刪除 ${className}/${id} 失敗`);
+    }
+  }
+}
+
+/* ========== 檢查是否有未處理項目（有就禁止註銷） ========== */
+async function hasPendingStuff(userId, token){
+  let pendingOrders = 0, pendingAppeals = 0;
+
+  // 訂單（買家或賣家，只要有待處理狀態就擋）
+  if(TBL.Order){
+    const wBuyer = {
+      [FIELDS.orderBuyer]: ptrUser(userId),
+      [FIELDS.orderStatus]: { "$in": PENDING_ORDER_STATUSES }
+    };
+    const wSeller = {
+      [FIELDS.orderSeller]: ptrUser(userId),
+      [FIELDS.orderStatus]: { "$in": PENDING_ORDER_STATUSES }
+    };
+    const [c1, c2] = await Promise.all([
+      countWhere(TBL.Order, wBuyer, token),
+      countWhere(TBL.Order, wSeller, token)
+    ]);
+    pendingOrders = c1 + c2;
+  }
+
+  // 申訴（提訴人或被申訴人只要有未處理就擋）
+  if(TBL.Appeal){
+    const wA = {
+      "$or": [
+        { [FIELDS.appealBy]: ptrUser(userId) },
+        { [FIELDS.appealAgainst]: ptrUser(userId) }
+      ],
+      [FIELDS.appealStatus]: { "$in": PENDING_APPEAL_STATUSES }
+    };
+    pendingAppeals = await countWhere(TBL.Appeal, wA, token);
+  }
+
+  return { pendingOrders, pendingAppeals };
+}
+
+/* ========== 連鎖刪除：先刪關聯資料 → 最後刪 _User ========== */
+async function cascadeDeleteAll(user, token){
+  const uid = user.objectId;
+
+  // ====== 1) Product：必刪（任何一筆失敗就拋錯，中止整體流程） ======
+  if(TBL.Product){
+    const prods = await queryAll(TBL.Product, { [FIELDS.productSeller]: ptrUser(uid) }, token);
+    for(const p of prods){
+      const r = await fetch(`${API}/classes/${TBL.Product}/${p.objectId}`, {
+        method:'DELETE',
+        headers:{ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token }
+      });
+      if(!r.ok){
+        const d = await r.json().catch(()=>({}));
+        throw new Error(d.error || `商品刪除失敗（${p.objectId}）`);
+      }
+    }
+  }
+
+  // ====== 1.5) Ad：必刪（和 Product 一樣處理） ======
+  if(TBL.Ad){
+    const ads = await queryAll(TBL.Ad, { seller: ptrUser(uid) }, token); // 👈 假設欄位也是 seller
+    for(const ad of ads){
+      const r = await fetch(`${API}/classes/${TBL.Ad}/${ad.objectId}`, {
+        method:'DELETE',
+        headers:{ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token }
+      });
+      if(!r.ok){
+        const d = await r.json().catch(()=>({}));
+        throw new Error(d.error || `廣告刪除失敗（${ad.objectId}）`);
+      }
+    }
+  }
+  // ====== 2) 其它類別：盡力刪（錯誤只記錄，不擋流程） ======
+  const softDelete = async (cls, ids)=>{
+    for(const id of ids){
+      try{
+        const rr = await fetch(`${API}/classes/${cls}/${id}`, {
+          method:'DELETE',
+          headers:{ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token }
+        });
+        if(!rr.ok) await rr.json(); // 觸發 catch
+      }catch(e){ console.warn(`[softDelete] ${cls}/${id} 失敗：`, e?.message||e); }
+    }
+  };
+
+  // Favorite（自己建立的收藏）
+  if(TBL.Favorite){
+    const favs = await queryAll(TBL.Favorite, { [FIELDS.favUser]: ptrUser(uid) }, token);
+    await softDelete(TBL.Favorite, favs.map(x=>x.objectId));
+  }
+
+  // Message（自己收/發的訊息）
+  if(TBL.Message){
+    const msgsFrom = await queryAll(TBL.Message, { [FIELDS.msgFrom]: ptrUser(uid) }, token);
+    const msgsTo   = await queryAll(TBL.Message, { [FIELDS.msgTo]:   ptrUser(uid) }, token);
+    const msgIds = [...new Set([...msgsFrom, ...msgsTo].map(x=>x.objectId))];
+    await softDelete(TBL.Message, msgIds);
+  }
+
+  // Order（歷史單全移除；待處理會在前置 hasPendingStuff 擋住）
+  if(TBL.Order){
+    const ordersA = await queryAll(TBL.Order, { [FIELDS.orderBuyer]: ptrUser(uid) }, token);
+    const ordersB = await queryAll(TBL.Order, { [FIELDS.orderSeller]: ptrUser(uid) }, token);
+    const orderIds = [...new Set([...ordersA, ...ordersB].map(x=>x.objectId))];
+    await softDelete(TBL.Order, orderIds);
+  }
+
+  // Appeal（歷史申訴）
+  if(TBL.Appeal){
+    const appeals = await queryAll(TBL.Appeal, {
+      "$or":[ { [FIELDS.appealBy]: ptrUser(uid) }, { [FIELDS.appealAgainst]: ptrUser(uid) } ]
+    }, token);
+    await softDelete(TBL.Appeal, appeals.map(x=>x.objectId));
+  }
+}
+
+/* ========== 取代原本的 deleteAccount() ========== */
+async function deleteAccount(){
+  if(!confirm('確定要永久刪除帳號嗎？此操作無法復原。')) return;
+
+  const token = localStorage.getItem('sg_token') || '';
+  const me = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!token || !me){ alert('尚未登入'); return; }
+
+  try{
+    // A. 有無待處理訂單 / 申訴（有則擋）
+    const { pendingOrders, pendingAppeals } = await hasPendingStuff(me.objectId, token);
+    if(pendingOrders > 0 || pendingAppeals > 0){
+      alert(`無法刪除：尚有未處理${[
+        pendingOrders?`訂單 ${pendingOrders} 筆`:'',
+        pendingAppeals?`申訴 ${pendingAppeals} 筆`:''
+      ].filter(Boolean).join('、')}。`);
+      return;
+    }
+
+    // B. 先做連鎖刪（商品為必刪，失敗會 throw）
+    await cascadeDeleteAll(me, token);
+
+    // C. 嘗試真正刪 _User（SDK）
+    try{
+      await deleteSelfViaSDK();   // 你現有的函式
+    }catch(e){
+      console.warn('刪 _User 失敗，進入匿名化流程：', e?.message||e);
+      // D. 刪不掉就匿名化停用（釋放 username / email 以利重註冊）
+      await anonymizeSelf();
+    }
+
+    // E. 結尾：清登入 & 導回
+    localStorage.removeItem('sg_token');
+    localStorage.removeItem('sg_user');
+    alert('帳號與資料已刪除（或已匿名化停用）');
+    location.href = 'shopping.html';
+
+  }catch(err){
+    alert('刪除失敗：' + (err?.message || err));
+  }
+}
+
+/* ================== 發佈商品 ================== */
+function openPublish(){ specList.innerHTML=''; addSpec(); document.getElementById('publishDlg').style.display='flex'; }
+function closePublish(){ document.getElementById('publishDlg').style.display='none'; pbErr.textContent=''; }
+function addSpec(){
+  const row = document.createElement('div');
+  row.className = 'spec-row';
+  row.innerHTML = `
+    <input class="input sp-name"  type="text"   placeholder="規格名稱（例：M / 紅色）" data-k="name">
+    <input class="input sp-price" type="number" min="0" step="1" placeholder="價格" data-k="price">
+    <input class="file  sp-pay"   type="file"   accept="image/*" data-k="pay">
+    <button class="btn sp-del" onclick="this.parentElement.remove()">刪除</button>`;
+  specList.appendChild(row); applyPriceMode();
+}
+function togglePriceMode(){ applyPriceMode(); }
+function applyPriceMode(){
+  const same = document.getElementById('samePrice').checked;
+  document.getElementById('samePriceRow').style.display = same ? 'flex' : 'none';
+  document.querySelectorAll('#specList .spec-row').forEach(row=>{
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = same ? '1.2fr 0fr 0fr auto' : '1.2fr .8fr 1fr auto';
+    row.querySelectorAll('.sp-price, .sp-pay').forEach(el=>{ el.style.display = same ? 'none' : 'block'; });
+  });
+}
+async function uploadOne(file){
+  const base64 = await fileToBase64(file);
+  const r = await fetch(`${API}/files/${encodeURIComponent(file.name)}`,{
+    method:'POST', headers:{'Content-Type':'application/json','X-LC-Id':APP_ID,'X-LC-Key':APP_KEY}, body: JSON.stringify({ base64 })
+  });
+  const data = await r.json(); if(!r.ok) throw new Error(data.error || '檔案上傳失敗'); return data.url;
+}
+async function uploadMany(fileList, limit=5){
+  const files = Array.from(fileList||[]).slice(0, limit); const urls=[];
+  for(const f of files){ urls.push(await uploadOne(f)); } return urls;
+}
+function toLCFile(url, name){ return { "__type":"File", "url":url, "name": name || ("pay_"+Date.now()) }; }
+async function createProduct(){
+  const err = v => pbErr.textContent = v || ''; err('');
+  const token = localStorage.getItem('sg_token');
+  const me = JSON.parse(localStorage.getItem('sg_user')||'null');
+  const title = pbTitle.value.trim(), summary = pbSummary.value.trim(), detail = pbDetail.value.trim();
+  if(!title){ err('請輸入商品標題'); return; }
+
+  try{
+    const coverFile  = document.getElementById('pbCover').files[0];
+    const imgsFile   = document.getElementById('pbImages').files;
+    const detailFile = document.getElementById('pbDetailImages').files;
+    const coverUrl   = coverFile ? await uploadOne(coverFile) : '';
+    const imagesUrl  = await uploadMany(imgsFile, 5);
+    const detailUrls = await uploadMany(detailFile, 12);
+
+    const same = document.getElementById('samePrice').checked;
+    let price=null, commonPayUrl='', commonPayFile=undefined;
+    if(same){
+      const p = document.getElementById('pbPrice').value;
+      if(p===''){ err('請輸入商品價格'); return; }
+      price = Number(p);
+      const payFile = document.getElementById('pbPayCode').files[0];
+      if(payFile){ const payUrl = await uploadOne(payFile); commonPayUrl = payUrl; commonPayFile = toLCFile(payUrl, payFile.name); }
+    }
+
+    const variants = [];
+    for(const row of document.querySelectorAll('#specList .spec-row')){
+      const name = row.querySelector('[data-k="name"]').value.trim();
+      if(!name) continue;
+      if(!same){
+        const p = row.querySelector('[data-k="price"]').value; if(p===''){ err('規格價格未填'); return; }
+        const v = { name, price: Number(p) };
+        const payF = row.querySelector('[data-k="pay"]').files[0];
+        if(payF){ const payUrl = await uploadOne(payF); v.payCodeUrl = payUrl; v.payCode = toLCFile(payUrl, payF.name); }
+        variants.push(v);
+      }else{ variants.push({ name }); }
+    }
+    if(variants.length===0){ err('請至少新增一個規格'); return; }
+
+// ← 在這裡加 ▼▼
+const pos = (document.querySelector('input[name="pbImgPos"]:checked') || {}).value || 'top';
+
+// 接著才建立 payload
+const payload = {
+  title, summary, description: detail,
+  samePrice: same, price: same?price:undefined,
+  commonPayUrl: same?commonPayUrl:undefined, commonPayCode: same?commonPayFile:undefined,
+  imageUrl: coverUrl || imagesUrl[0] || '',
+  images: imagesUrl,
+  detailImages: detailUrls,
+
+  // 新增的兩個欄位
+  detailImagePos: pos,              // 'top' | 'middle' | 'bottom'
+
+  variants,
+  seller: { "__type":"Pointer", "className":"_User", "objectId": me.objectId },
+  status: "published", currency: "CN¥",
+  ACL: { "*": { "read": true }, [me.objectId]: { "read": true, "write": true } }
+};
+
+    const res = await fetch(`${API}/classes/Product`,{
+      method:'POST', headers:{ 'Content-Type':'application/json','X-LC-Id': APP_ID,'X-LC-Key': APP_KEY,'X-LC-Session': token }, body: JSON.stringify(payload)
+    });
+    const data = await res.json(); if(!res.ok) throw new Error(data.error || '發佈失敗，請稍後再試');
+    closePublish(); await loadMyProducts(); alert('🎉 商品已發佈成功！');
+  }catch(e){ console.error(e); err(e.message || '發佈失敗'); }
+}
+// 切換「置中」時顯示/隱藏行號輸入
+document.addEventListener('change', (e)=>{
+  if(e.target && e.target.name === 'pbImgPos'){
+    const v = e.target.value;
+    document.getElementById('pbMiddleBox').style.display = (v === 'middle') ? 'inline-flex' : 'none';
+  }
+});
+/* ================== 商品清單 ================== */
+function renderMyProducts(list){
+  const box = document.getElementById('myProducts');
+  if(!list || !list.length){ box.innerHTML = `<div class="muted" style="padding:6px 2px">尚未發佈商品</div>`; return; }
+  box.innerHTML = '';
+  list.forEach(p=>{
+    const card = document.createElement('div'); card.className = 'pcard';
+    const img = p.imageUrl || (p.images && p.images[0]) || 'https://via.placeholder.com/320x240?text=%F0%9F%8C%9E';
+    const link = `shuser.html?id=${p.objectId}`;
+    const price = (p.samePrice && typeof p.price==='number') ? p.price : (Array.isArray(p.variants)&&p.variants[0] ? p.variants[0].price : 0);
+    card.innerHTML = `
+      <a href="${link}" style="text-decoration:none;color:inherit">
+        <img class="pthumb" src="${img}" alt="">
+        <div class="pbody">
+          <div class="ptitle" title="${p.title || ''}">${p.title || '未命名商品'}</div>
+          <div class="pprice">${CURRENCY_SIGN}${money(Number(price) || 0)}</div>
+        </div>
+      </a>
+      <div class="pactions">
+        <button class="pdel" onclick="deleteProduct('${p.objectId}')">刪除</button>
+      </div>`;
+    box.appendChild(card);
+  });
+}
+async function loadMyProducts(){
+  const token = localStorage.getItem('sg_token');
+  const me = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!me) return;
+  const where = encodeURIComponent(JSON.stringify({ seller: { "__type":"Pointer", "className":"_User", "objectId": me.objectId } }));
+  const res = await fetch(`${API}/classes/Product?where=${where}&order=-createdAt`, {
+    headers:{ 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY, 'X-LC-Session': token }
+  });
+  const data = await res.json();
+  if(res.ok) renderMyProducts(data.results || []);
+  else console.warn('loadMyProducts error', data);
+}
+async function deleteProduct(objectId){
+  if(!confirm('確定要刪除這個商品嗎？')) return;
+  const token = localStorage.getItem('sg_token');
+  try{
+    const res = await fetch(`${API}/classes/Product/${objectId}`, {
+      method:'DELETE', headers:{ 'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY, 'X-LC-Session': token }
+    });
+    if(!res.ok){ const err = await res.json().catch(()=>({})); throw new Error(err.error || '刪除失敗（請檢查 CLP/ACL）'); }
+    await loadMyProducts();
+  }catch(e){ alert(e.message); }
+}
+loadMyProducts();
+setInterval(loadMyProducts, 6000);
+
+/* ================== 啟動 ================== */
+fetchMe().then(u => { if(u) renderProfile(u); });
+</script>
+<script>
+  function openFavorites(){
+  document.getElementById('favoritesDlg').style.display = 'flex';
+  loadFavorites();
+}
+function closeFavorites(){
+  document.getElementById('favoritesDlg').style.display = 'none';
+}
+//===============================
+
+async function deleteSelfViaSDK(){
+  const token = localStorage.getItem('sg_token');
+  if(!token) throw new Error('未登入或缺少 Session');
+
+  try{
+    await AV.User.become(token);   // 用現有 Session 變成當前用戶（你不是用 SDK 登入）
+    const me = AV.User.current();
+    if(!me) throw new Error('無法取得當前用戶（become 失敗）');
+    await me.destroy();            // 由 SDK 刪除自己
+  }catch(err){
+    // 常見：_User CLP 未開「刪除：已登入用戶」、或該 User 的 ACL 沒給自己 delete
+    throw new Error('刪除用戶失敗：' + (err && err.message ? err.message : err));
+  }
+}
+// 模擬收藏清單（正式可從後端讀取或 localStorage）
+async function loadFavorites(){
+  const box = document.getElementById('favProducts');
+  box.innerHTML = '<div class="muted">載入中…</div>';
+
+  const token = localStorage.getItem('sg_token');
+  const me = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!me){ box.innerHTML='<div class="muted">請先登入</div>'; return; }
+
+  // 讀 Favorite，夾帶 product
+  const where = encodeURIComponent(JSON.stringify({
+    user: { "__type":"Pointer", "className":"_User", "objectId": me.objectId }
+  }));
+  const url = `${API}/classes/Favorite?where=${where}&include=product&order=-createdAt`;
+  const res = await fetch(url, {
+    headers:{ 'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY, 'X-LC-Session':token }
+  });
+  const data = await res.json();
+
+  if(!res.ok){ box.innerHTML=`<div class="muted">${data.error||'讀取失敗'}</div>`; return; }
+  const list = data.results||[];
+  if(!list.length){ box.innerHTML='<div class="muted">暫無收藏商品</div>'; return; }
+
+  box.innerHTML = '';
+  list.forEach(f=>{
+    const p = f.product; if(!p) return;
+    const img   = p.imageUrl || (p.images && p.images[0]) || 'https://via.placeholder.com/320x240?text=%F0%9F%8C%9E';
+    const link  = `shuser.html?id=${p.objectId}`;
+    const price = (p.samePrice && typeof p.price==='number')
+      ? p.price
+      : ((Array.isArray(p.variants)&&p.variants[0]) ? Number(p.variants[0].price||0) : 0);
+    const ioAmt = price / IO_TO_CNY;
+
+    const card = document.createElement('div');
+    card.className = 'pcard';
+    card.innerHTML = `
+      <a href="${link}" style="text-decoration:none;color:inherit;display:block">
+        <img class="pthumb" src="${img}" alt="">
+        <div class="pbody">
+          <div class="ptitle" title="${p.title||''}">${p.title||'未命名商品'}</div>
+          <div class="pprice">io$: ${fmtIo(ioAmt)} &nbsp;&nbsp;｜&nbsp;&nbsp; ${CURRENCY_SIGN}${money(price)}</div>
+          <div class="muted" style="margin-top:4px;font-size:12px">收藏於 ${fmtDate(f.createdAt)}</div>
+        </div>
+      </a>`;
+    box.appendChild(card);
+  });
+}
+async function anonymizeSelf(){
+  const token = localStorage.getItem('sg_token') || '';
+  if(!token) throw new Error('未登入');
+  // 取得自己的 id
+  await AV.User.become(token);
+  const me = AV.User.current();
+  if(!me) throw new Error('找不到當前用戶');
+
+  const payload = {
+    username: `deleted_${me.id}_${Date.now()}`,
+    email: '',
+    mobilePhoneNumber: '',
+    nickname: '(deleted)',
+    avatarUrl: '',
+    authData: null,
+    disabled: true
+  };
+  const r = await fetch(`${API}/users/${me.id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type':'application/json',
+      'X-LC-Id': APP_ID,
+      'X-LC-Key': APP_KEY,
+      'X-LC-Session': token
+    },
+    body: JSON.stringify(payload)
+  });
+  if(!r.ok){
+    const d = await r.json().catch(()=>({}));
+    throw new Error(d.error || '匿名化失敗');
+  }
+}
+</script>
+<script src="im.js?v=0.0.1"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

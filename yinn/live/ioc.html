@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IO 查詢</title>
+<style>
+  :root{ --brand:#6c4ef7; --muted:#777; --ok:#16a34a; --warn:#f59e0b; --bad:#e11d48; }
+  *{box-sizing:border-box}
+  body{ margin:0; font-family: system-ui, -apple-system, "Noto Sans TC", Arial, sans-serif; background:#f6f7fb; color:#222; }
+  .wrap{ max-width:900px; margin:0 auto; padding:140px 14px 60px; }
+  .back-home{ position:fixed; top:20px; left:20px; z-index:110; padding:10px 14px; border-radius:10px; border:1px solid #ddd; background:#fff; font-weight:700; text-decoration:none; color:var(--brand); }
+  .search-bar{ position:fixed; top:24px; left:50%; transform:translateX(-50%); z-index:100; display:flex; align-items:center; gap:10px; width:min(800px, 92vw); }
+  .search-input{ flex:1 1 auto; height:46px; padding:0 16px; border:1px solid #ddd; border-radius:999px; outline:none; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.04); font-size:16px; }
+  .btn{ padding:10px 16px; border-radius:12px; border:1px solid #ddd; background:#fff; font-weight:700; cursor:pointer; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+  .hint-under{ position:fixed; top:78px; left:50%; transform:translateX(-50%); width:min(800px, 92vw); color:var(--muted); font-size:14px; }
+  .card{ background:#fff; border:1px solid #eee; border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,.06); padding:18px; }
+  .result{ margin-top:16px; }
+  .urow{ display:flex; gap:14px; align-items:center; }
+  .avatar{ width:64px; height:64px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .title{ font-size:18px; font-weight:800; }
+  .kv{ display:grid; grid-template-columns: 120px 1fr; gap:8px 14px; margin-top:12px; }
+  .label{ color:#666; }
+  .pill{ display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-weight:800; font-size:12px; }
+  .ok{ background:#eaf7ee; color:#186a3a; }
+  .warn{ background:#fff7e6; color:#8a5a00; }
+  .bad{ background:#fee7ee; color:#8a1230; }
+  .none{ background:#eef2ff; color:#3730a3; }
+  .err{ color:var(--bad); margin-top:8px; }
+  /* === 主題變數（含白天淡粉選單） === */
+:root{
+  --brand:#6c4ef7; --muted:#777;
+  --dropdown-bg:#fdeaff;        /* 淡粉 */
+  --dropdown-border:#f5ccff;
+  --dropdown-text:#4a3a6a;
+}
+
+html[data-theme="dark"]{
+  --text:#cfc3ff; --muted:#9a8fd1;
+  --brand:#a48cff;
+  --card-bg:#161222; --card-border:#2b2440; --page-bg:#0f0b1a;
+  --btn-bg:#1b1629; --btn-border:#2b2440; --btn-text:#cfc3ff;
+  --shadow:0 10px 28px rgba(0,0,0,.45);
+}
+
+/* === 圓球按鈕 === */
+.menu-wrap{ position:relative; display:inline-flex; gap:8px; align-items:center; }
+.menu-btn{
+  width:34px; height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:800; line-height:1;
+  background:var(--brand); color:#fff; border:none; cursor:pointer;
+  transition:transform .18s ease, box-shadow .18s ease;
+  box-shadow:0 6px 14px rgba(108,78,247,.22);
+}
+.menu-btn:hover{ transform:scale(1.08); }
+.menu-btn:active{ transform:scale(.95); }
+html[data-theme="dark"] .menu-btn{
+  background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--btn-text); box-shadow:none;
+}
+
+/* === 下拉選單（白天淡粉；夜間暗色；無突起） === */
+.dropdown{
+  position:absolute; top:calc(100% + 8px); left:0;
+  transform:translateX(8px) translateY(-6px) scale(.98);
+  opacity:0; visibility:hidden; pointer-events:none;
+  min-width:220px; max-width:min(320px,80vw);
+  background:var(--dropdown-bg); color:var(--dropdown-text);
+  border:1px solid var(--dropdown-border);
+  border-radius:14px; padding:8px; z-index:1200;
+  box-shadow:0 16px 32px rgba(0,0,0,.18);
+  transition:opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+  right: -90px;              /* 靠右邊對齊 */
+  left: auto;            /* 禁用原本的 left */
+  max-width: 90vw;       /* 最多佔螢幕 90% 寬 */
+  overflow-wrap: break-word;
+}
+.dropdown.show{ transform:translateX(8px) translateY(0) scale(1); opacity:1; visibility:visible; pointer-events:auto; }
+.dropdown::after{ content:none; }             /* ← 去掉突起 */
+.dropdown .item{ width:100%; text-align:left; padding:10px 12px; border:0; background:transparent; color:inherit; border-radius:8px; cursor:pointer; transition:.12s; }
+.dropdown .item:hover{ background:rgba(108,78,247,.10); transform:translateY(-1px); }
+@media (max-width: 560px) {
+  .dropdown {
+    left: 0 !important;
+    right: auto !important;
+    width: 92vw;         /* 小螢幕直接鋪滿 */
+  }
+}
+html[data-theme="dark"] .dropdown{
+  background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); box-shadow:var(--shadow);
+}
+
+/* === 夜間整頁覆寫 === */
+html[data-theme="dark"] body{ background:var(--page-bg); color:var(--text); }
+html[data-theme="dark"] .wrap{ color:var(--text); }
+html[data-theme="dark"] .card{ background:var(--card-bg); border:1px solid var(--card-border); box-shadow:var(--shadow); }
+
+/* 固定在上面的兩個區塊 */
+html[data-theme="dark"] .back-home{
+  background:var(--card-bg); color:var(--text);
+  border:1px solid var(--card-border);
+}
+html[data-theme="dark"] .hint-under{ color:var(--muted); }
+
+/* 搜尋列 */
+html[data-theme="dark"] .search-input{
+  background:transparent; color:var(--text);
+  border:1px solid var(--card-border);
+  box-shadow:none;
+}
+html[data-theme="dark"] .btn{
+  background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--btn-text);
+}
+html[data-theme="dark"] .btn.primary{
+  background:var(--brand); color:#161222; border-color:transparent;
+}
+
+/* 小頭像邊框在暗色時 */
+html[data-theme="dark"] .avatar{ background:#1e1930; border:1px solid var(--card-border); }
+
+/* 標籤膠囊（ok/warn/bad/none）在暗色保持可讀 */
+html[data-theme="dark"] .ok{ background:#16331f; color:#a8ffd1; }
+html[data-theme="dark"] .warn{ background:#3a2c0f; color:#ffd992; }
+html[data-theme="dark"] .bad{ background:#3a0f1d; color:#ff9ab0; }
+html[data-theme="dark"] .none{ background:#1e1f3a; color:#cfd3ff; }
+</style>
+</head>
+<body>
+  <a class="back-home" href="user.html">← 返回個人主頁</a>
+  <div class="search-bar">
+    <input id="ioInput" class="search-input" type="text" placeholder="輸入 IO 號碼，例如：IO202408240001">
+    <button class="btn primary" onclick="searchByIO()">查詢</button>
+    <div class="menu-wrap">
+  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+  <div id="menuDrop" class="dropdown" role="menu">
+    <!-- 第一個選項：切換模式 -->
+    <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+     <button class="item" onclick="location.href='../index.html'">主頁</button>
+    <button class="item" onclick="location.href='Grove.Examination-Yuan.html'">參加管理員</button>
+    <button class="item" onclick="location.href='Grove. Control-Yuan.html'">Control</button>
+    <button class="item" onclick="location.href='Grove.Executive-Yuan.html'">Executive</button>
+    <button class="item" onclick="location.href='Grove.Judicial-Yuan.html'">申訴</button>
+    <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
+    <button class="item" onclick="location.href='vote.html'">投票專區</button>
+    <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+  </div>
+</div>
+  </div>
+  <div class="hint-under">小技巧：網址可用 <code>?io=你的IO號</code> 直接打開查詢</div>
+
+  <div class="wrap">
+    <div class="card">
+      <div id="result" class="result"></div>
+      <div id="err" class="err"></div>
+    </div>
+  </div>
+
+<script>
+/* ====== LeanCloud 常數 ====== */
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+
+/* ====== 匯率：Io$1 = 60 ====== */
+const IO_RATE = 60;
+
+/* ====== 小工具 ====== */
+const q = (s)=>document.querySelector(s);
+const fmtMoney = (n)=> (typeof n==='number' && isFinite(n)) ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : '—';
+const toIo$ = (p)=> {
+  const v = Number(p)/IO_RATE;
+  return isFinite(v) ? v.toFixed(6) : '—';
+};
+const statusToBadge = (st)=>{
+  if(!st) return `<span class="pill none">未發貨</span>`;
+  const s=String(st).toLowerCase();
+  if(['received','signed','delivered','completed','done','finish','finished'].includes(s)) return `<span class="pill ok">已簽收</span>`;
+  if(['shipped','ship','shipping','sent','dispatched'].includes(s)) return `<span class="pill ok">已發貨</span>`;
+  if(['rejected','reject'].includes(s)) return `<span class="pill bad">已駁回</span>`;
+  if(['appeal','after_sale','aftersale','service','refund'].includes(s)) return `<span class="pill warn">售後階段</span>`;
+  return `<span class="pill none">未發貨</span>`;
+};
+
+/* 內嵌 SVG 預設頭像（避免外站 SSL/跨域問題） */
+const AVATAR_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+    <circle cx="48" cy="48" r="48" fill="#eef2ff"/>
+    <circle cx="48" cy="36" r="16" fill="#c7d2fe"/>
+    <rect x="20" y="58" width="56" height="22" rx="11" fill="#c7d2fe"/>
+  </svg>`);
+
+/* ====== 讀訂單 ====== */
+async function fetchOrderByIO(io){
+  const token = localStorage.getItem('sg_token') || '';
+  const where = encodeURIComponent(JSON.stringify({ io }));
+  // 不賭欄位名，先拿訂單本體；product/variant 仍嘗試 include 以顯示標題/規格
+  const url = `${API}/classes/Order?where=${where}&include=${encodeURIComponent('product,variant')}&limit=1`;
+  const res = await fetch(url, { headers:{ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token }});
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error || '查詢失敗');
+  return data.results && data.results[0] || null;
+}
+
+/* 從訂單裡自動找任何 _User 指標的 objectId */
+function findAnyUserId(order){
+  if(!order || typeof order!=='object') return null;
+  for(const k of Object.keys(order)){
+    const v = order[k];
+    if(v && typeof v==='object' && v.__type==='Pointer' && v.className==='_User' && v.objectId){
+      return v.objectId; // 命中一個就回傳
+    }
+  }
+  return null;
+}
+
+/* 如果有快照欄位就用快照（不需要再請求） */
+function readSnapshotUser(order){
+  if(!order) return null;
+  if(order.buyerNickname || order.buyerAvatarUrl || order.buyerGid){
+    return {
+      objectId: order.buyerGid || order.buyerId || '',
+      nickname: order.buyerNickname || order.buyerName || '',
+      avatarUrl: order.buyerAvatarUrl || ''
+    };
+  }
+  return null;
+}
+
+/* 直接 GET /users/:id（你現在的 _User CLP 允許 get） */
+async function fetchUserById(id){
+  const token = localStorage.getItem('sg_token') || '';
+  const res = await fetch(`${API}/users/${id}`, { headers:{ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token }});
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error || '讀取用戶失敗');
+  return data;
+}
+
+/* 決定顯示哪個買家資訊：快照優先 → 指標掃描 → 失敗用預設 */
+async function resolveBuyer(order){
+  // 1) 快照
+  const snap = readSnapshotUser(order);
+  if(snap) return snap;
+
+  // 2) 掃描任何 _User 指標
+  const uid = findAnyUserId(order);
+  if(uid){
+    try{
+      const u = await fetchUserById(uid);
+      return {
+        objectId: u.objectId || uid,
+        nickname: u.nickname || u.username || u.email || '',
+        avatarUrl: u.avatarUrl || (u.avatar && u.avatar.url) || ''
+      };
+    }catch(e){
+      console.warn('[resolveBuyer] 無法讀 _User：', e.message||e);
+      return { objectId: uid, nickname: '', avatarUrl: '' };
+    }
+  }
+  return { objectId:'—', nickname:'', avatarUrl:'' };
+}
+
+/* 渲染 */
+function render(order, buyer){
+  const box = q('#result'), err = q('#err'); err.textContent='';
+  if(!order){ box.innerHTML = `<div class="muted">查無此 IO 號碼，請再確認。</div>`; return; }
+
+  const avatar = buyer.avatarUrl || AVATAR_FALLBACK;
+  const nickname = buyer.nickname || '(未命名)';
+  const gid = buyer.objectId || '—';
+
+  const product = order.product || {};
+  const title = product.title || '(未命名商品)';
+  const spec = order.variantName || order.specName || (order.variant && order.variant.name) || '—';
+  const price = Number(order.price != null ? order.price : (product.price != null ? product.price : 0));
+  const io = order.io || '';
+  const status = order.status || '';
+
+  box.innerHTML = `
+    <div class="urow">
+      <img class="avatar" src="${avatar}" alt="">
+      <div>
+        <div class="title">${nickname}</div>
+        <div class="muted">GID：${gid}</div>
+      </div>
+    </div>
+    <div class="kv">
+      <div class="label">IO 號碼</div><div>${io}</div>
+      <div class="label">商品名稱</div><div>${title}</div>
+      <div class="label">規格</div><div>${spec}</div>
+      <div class="label">價格</div>
+      <div>CN¥ ${fmtMoney(price)}</div>
+      <div class="label">Io$ 金額</div><div>Io$ ${toIo$(price)} <span class="muted"></span></div>
+      <div class="label">訂單狀態</div><div>${statusToBadge(status)}</div>
+    </div>
+  `;
+}
+
+async function searchByIO(){
+  const io = q('#ioInput').value.trim();
+  const err = q('#err'); err.textContent=''; q('#result').innerHTML='';
+  if(!io){ err.textContent='請先輸入 IO 號碼'; return; }
+  try{
+    const order = await fetchOrderByIO(io);
+    console.log('[Order raw]', order);
+    const buyer = order ? await resolveBuyer(order) : {objectId:'—',nickname:'',avatarUrl:''};
+    render(order, buyer);
+  }catch(e){ err.textContent = e.message || '查詢失敗'; }
+}
+
+/* 支援 ?io=xxx */
+(function boot(){
+  const u = new URL(location.href);
+  const io = (u.searchParams.get('io')||'').trim();
+  if(io){ q('#ioInput').value = io; searchByIO(); }
+})();
+</script>
+<script src="im.js"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

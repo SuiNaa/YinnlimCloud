@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>網站申明</title>
+<style>
+  :root{ --bg:#f6f3ea; --text:#222; --muted:#666; --card:#fff; --border:#eee; --brand:#6c4ef7; }
+  *{ box-sizing:border-box }
+
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"DFKai-SB","KaiTi","標楷體","BiauKai",serif;
+  }
+  .wrap{ max-width:980px; margin:0 auto; padding:20px 14px 80px; }
+  header.top{ display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; }
+  h1{ margin:0; font-size:22px; }
+  .hint{ color:var(--muted); font-size:13px; }
+
+  .toolbar{ margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .btn{ padding:8px 12px; border-radius:10px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:800; }
+  .btn[disabled]{ opacity:.5; cursor:not-allowed; }
+
+  .themes{ display:flex; gap:8px; align-items:center; }
+  .swatch{ width:22px; height:22px; border-radius:50%; border:1px solid rgba(0,0,0,.08); cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.06); background:#fff; }
+  .swatch[aria-selected="true"]{ outline:2px solid var(--text); }
+
+  .editor{ min-height:calc(100vh - 120px); padding:4px 0; outline:none; }
+  .editor[contenteditable="false"]{ user-select:text; }
+  .editor:empty::before{ content: attr(data-placeholder); color:#999; }
+
+  /* 顏色主題 */
+  body.theme-pink  { --bg:#fff6f9; --card:#fff; --border:#ffd9e6; --brand:#ff66a3; }
+  body.theme-blue  { --bg:#f3f7ff; --card:#fff; --border:#d9e2ff; --brand:#5a7dff; }
+  body.theme-purple{ --bg:#f6f3ff; --card:#fff; --border:#e0d6ff; --brand:#7a5aff; }
+  body.theme-dark  { --bg:#0f1115; --text:#f0f0f0; --muted:#9aa3b2; --card:#171a21; --border:#2a2f3a; --brand:#8e7aff; }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000; color:#fff; padding:8px 12px; border-radius:10px; opacity:0; transition:opacity .18s; z-index:10; }
+
+  /* 標題樣式（無右側線） */
+  .heading{ font-weight:900; font-size:20px; letter-spacing:.5px; margin:18px 0 10px; }
+
+  /* 紫色分割線 */
+  .divider{ height:2px; background:var(--brand); border-radius:2px; margin:10px 0 14px; }
+
+  /* h1 右側即時狀態 */
+  .live { margin-left:8px; font-size:12px; color:var(--muted); line-height:22px; }
+  .live.fade { opacity:.15; transition:opacity .5s; }
+
+  /* 字體樣式面板（彈出） */
+.stylebox{
+  position: fixed;               /* 🚩 改成 fixed */
+  z-index:1000; display:none;
+  padding:10px; border:1px solid #ddd; border-radius:12px; background:#fff;
+  box-shadow:0 10px 28px rgba(0,0,0,.18);
+  gap:10px; align-items:center;
+}
+  .stylebox-row{ display:flex; gap:10px; align-items:center; }
+  .stylebox input[type="color"]{ width:36px; height:28px; padding:0; border:none; background:transparent; }
+  .stylebox input[type="range"]{ width:180px; }
+  .stylebox .mini{ font-size:12px; padding:6px 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <button class="btn" onclick="goBack()">← 返回</button>
+    <!-- 新增：字體顏色/大小按鈕（在返回旁邊） -->
+    <button class="btn" id="btnStyle" disabled>添加字體顏色與大小</button>
+
+    <div>
+      <h1 id="docTitle">網站規則（憲章） <span id="liveStatus" class="live">讀取中…</span></h1>
+      <div class="hint" id="permHint">讀取中…</div>
+    </div>
+
+    <div class="toolbar">
+      <div class="themes" title="背景主題">
+        <div class="swatch" data-theme="pink"   style="background:#ffd5e6"></div>
+        <div class="swatch" data-theme="blue"   style="background:#cfe0ff"></div>
+        <div class="swatch" data-theme="purple" style="background:#d9d0ff"></div>
+        <div class="swatch" data-theme="dark"   style="background:#1c2130"></div>
+      </div>
+      <button class="btn" id="btnHeading" disabled>設為標題</button>
+      <button class="btn" id="btnDivider" disabled>加入分割線</button>
+      <button class="btn" id="btnDelDivider" disabled>刪除分割線</button>
+    </div>
+  </header>
+
+  <div id="editor" class="editor" contenteditable="false"
+       role="textbox" aria-multiline="true"
+       data-placeholder="請開始撰寫規則…"></div>
+</div>
+
+<!-- 字體樣式面板 -->
+<div id="styleBox" class="stylebox">
+  <div class="stylebox-row">
+    <label>顏色：</label>
+    <input id="colorPicker" type="color" value="#000000">
+    <button class="btn mini" id="btnClearColor">取消顏色</button>
+  </div>
+  <div class="stylebox-row">
+    <label>大小：</label>
+    <input id="sizeRange" type="range" min="12" max="48" step="1" value="16">
+    <span id="sizeLabel" style="width:36px;text-align:right;">16</span>px
+  </div>
+</div>
+
+<div id="toast" class="toast">—</div>
+
+<script>
+/* ===== 基本設定 ===== */
+const API="https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID="ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY="U66ybZWAD99LrT9zJnQlW52H";
+const SUPER_UID="68b19eeb90ed2201c4839219";
+/* ===== 立法院通關證 + 來源驗證 ===== */
+// 讀一次性通關證
+function readPass(){
+  try{
+    const raw = sessionStorage.getItem('constitution_pass');
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch{ return null; }
+}
+// 消耗並驗證通關證（必須 uid 符合、from=legislature、未過期）
+function consumePass(expectedUid){
+  const p = readPass();
+  const ok = !!p
+    && p.uid === expectedUid
+    && p.from === 'legislature'
+    && typeof p.exp === 'number'
+    && Date.now() <= p.exp;
+  if(p) sessionStorage.removeItem('constitution_pass'); // 一次性
+  return ok;
+}
+// 來源頁是否真的是同站的 legislature.html（容許查詢參數）
+function cameFromLegislature(){
+  try{
+    if(!document.referrer) return false;
+    const r = new URL(document.referrer);
+    const here = new URL(location.href);
+    if(r.origin !== here.origin) return false;
+    return /legislature\.html$/i.test(r.pathname);
+  }catch{ return false; }
+}
+const AUTH={ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY };
+function lc(){ const t=localStorage.getItem('sg_token'); return t?{...AUTH,'X-LC-Session':t}:AUTH; }
+function h(s){return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
+function toast(s){const t=document.getElementById('toast'); t.textContent=s; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0',1500);}
+
+let ME=null, CAN_EDIT=false, DOC=null, LAST_UPDATED_AT=null;
+// 只要視口尺寸/偏移改變，就重算位置（支援 iPad 鍵盤/縮放）
+window.addEventListener('resize', repositionStyleBox);
+window.addEventListener('scroll', repositionStyleBox, { passive: true });
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', repositionStyleBox);
+  visualViewport.addEventListener('scroll',  repositionStyleBox);
+}
+function consumeUrlPass(expectedUid){
+  try{
+    const url = new URL(location.href);
+    const from = url.searchParams.get('from');
+    const u    = url.searchParams.get('u');
+    const t    = parseInt(url.searchParams.get('t') || '0', 10);
+
+    const ok = (from === 'legislature') &&
+               (u === expectedUid) &&
+               Number.isFinite(t) &&
+               Date.now() <= t;
+
+    if(ok){
+      // 立即作廢（清掉參數，避免重新整理又通過）
+      url.searchParams.delete('from');
+      url.searchParams.delete('u');
+      url.searchParams.delete('t');
+      history.replaceState(null, '', url.toString());
+      return true;
+    }
+  }catch{}
+  return false;
+}
+// 你原本就有 selectionchange；把呼叫改成上面的 repositionStyleBox
+document.addEventListener('selectionchange', ()=>{
+  if (styleBox.style.display === 'block') {
+    const r = getRangeInEditor();
+    if (r) savedRange = r.cloneRange();
+    repositionStyleBox();      // 🚩 用新函式
+  }
+});
+
+/* ===== 狀態字（h1 右側） ===== */
+const live = {
+  el: null, timer: null,
+  set(txt){
+    if(!this.el) this.el=document.getElementById('liveStatus');
+    this.el.classList.remove('fade');
+    this.el.textContent = txt;
+    if(this.timer) clearTimeout(this.timer);
+    if (txt.startsWith('✅')) {
+      this.timer=setTimeout(()=> this.el.classList.add('fade'), 2000);
+    }
+  }
+};
+
+/* 登入 */
+async function requireLogin(){
+  const token=localStorage.getItem('sg_token'); const me=JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!token||!me){ alert('請先登入'); location.replace('index.html'); return false; }
+  ME=me; return true;
+}
+
+/* 權限 */
+async function whichInternalGroup(uid){
+  if(uid===SUPER_UID) return 'SUPER';
+  const p={ "__type":"Pointer","className":"_User","objectId":uid };
+  const where=encodeURIComponent(JSON.stringify({ "$or":[{user:p},{User:p}], active:true }));
+  for(const t of ['Legislator','Admin','ExamStaff']){
+    try{
+      const r=await fetch(`${API}/classes/${t}?where=${where}&limit=1`,{headers:lc()});
+      if(r.ok){ const d=await r.json(); if(d.results && d.results.length>0) return t; }
+    }catch(_){}
+  }
+  return null;
+}
+
+/* 讀取／寫入 */
+async function fetchDoc(){
+  const where=encodeURIComponent(JSON.stringify({ key:"main" }));
+  const r=await fetch(`${API}/classes/ConstitutionDoc?where=${where}&limit=1`,{headers:lc()});
+  const d=await r.json();
+  if(!r.ok) throw new Error(d.error||'讀取失敗');
+  if(!d.results || !d.results[0]) throw new Error('尚未建立 ConstitutionDoc（key="main"）。');
+  DOC=d.results[0]; LAST_UPDATED_AT=DOC.updatedAt; return DOC;
+}
+async function saveDoc({content,theme,force}={}){
+  if(!CAN_EDIT || !DOC) return;
+  live.set('儲存中…');
+  const latest=await fetch(`${API}/classes/ConstitutionDoc/${DOC.objectId}`,{headers:lc()});
+  const snap=await latest.json();
+  if(latest.ok && snap.updatedAt && !force && snap.updatedAt!==LAST_UPDATED_AT){
+    toast('有新版本被其他人更新了'); live.set('⚠️ 有新版本'); return;
+  }
+  const body={};
+  if(typeof content==='string') body.content=content;
+  if(typeof theme==='string') body.theme=theme;
+  body.lastEditedBy={ "__type":"Pointer","className":"_User","objectId":ME.objectId };
+  const r=await fetch(`${API}/classes/ConstitutionDoc/${DOC.objectId}`,{
+    method:'PUT', headers:{'Content-Type':'application/json',...lc()}, body:JSON.stringify(body)
+  });
+  const d=await r.json();
+  if(!r.ok){ live.set('❌ 儲存失敗'); throw new Error(d.error||'儲存失敗'); }
+  LAST_UPDATED_AT=d.updatedAt||LAST_UPDATED_AT;
+  live.set('✅ 已儲存');
+}
+
+/* 主題 */
+function applyTheme(name,persist){
+  document.body.classList.remove('theme-pink','theme-blue','theme-purple','theme-dark');
+  document.body.classList.add('theme-'+name);
+  document.querySelectorAll('.swatch').forEach(s=>s.setAttribute('aria-selected', s.dataset.theme===name));
+  if(persist && CAN_EDIT){ saveDoc({theme:name}).catch(e=>toast(e.message||'主題儲存失敗')); }
+  else { localStorage.setItem('constitution_theme', name); }
+}
+
+/* iPad/空白聚焦補丁（更保守） */
+function ensureEditorReady(){
+  const ed = document.getElementById('editor');
+  if (!CAN_EDIT || !ed) return;
+  const onlyText = (ed.textContent || '').replace(/\u200B/g,'').trim();
+  if (!ed.innerHTML || onlyText === '') {
+    ed.innerHTML = '';
+    const p = document.createElement('p');
+    p.appendChild(document.createElement('br'));
+    ed.appendChild(p);
+  }
+  requestAnimationFrame(() => {
+    if (!document.body.contains(ed)) return;
+    try { ed.focus({ preventScroll: true }); } catch { ed.focus(); }
+    const sel = (typeof window.getSelection === 'function') ? window.getSelection() : null;
+    if (!sel) return;
+    const last = ed.lastChild;
+    if (last && last.nodeType === 1) sel.collapse(last, last.childNodes.length);
+    else sel.collapse(ed, ed.childNodes.length);
+  });
+}
+
+/* 編輯狀態 */
+function setEditable(on){
+  const ed = document.getElementById('editor');
+  const toolbar = document.querySelector('.toolbar'); // 主題 + 三個按鈕都在這裡
+  ed.setAttribute('contenteditable', on ? 'true' : 'false');
+
+  // 編輯工具整組顯示 / 隱藏
+  if(toolbar) toolbar.style.display = on ? 'flex' : 'none';
+
+  // 萬一你想只禁用不隱藏，也保留這行：
+  ['btnStyle','btnHeading','btnDivider','btnDelDivider'].forEach(id=>{
+    const b=document.getElementById(id); if(b) b.disabled=!on;
+  });
+
+  const hint=document.getElementById('permHint');
+  if(hint) hint.textContent = on ? '你具有編輯權限（即時儲存）' : '唯讀模式';
+
+  if (on) ensureEditorReady();
+}
+
+/* 即時儲存（防抖） */
+let saveTimer=null;
+function scheduleAutosave(){
+  if(!CAN_EDIT) return;
+  live.set('儲存中…');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async ()=>{ try{ await saveDoc({content:document.getElementById('editor').innerHTML}); }catch(e){ toast(e.message||'儲存失敗'); } },600);
+}
+// 清理佔位字元（WORD JOINER），避免殘留在內容裡
+document.getElementById('editor').addEventListener('input', ()=>{
+  const ed = document.getElementById('editor');
+  ed.querySelectorAll('span[data-probe]').forEach(sp=>{
+    if (sp.textContent && sp.textContent.indexOf('\u2060') !== -1) {
+      sp.textContent = sp.textContent.replace(/\u2060/g,'');
+      sp.removeAttribute('data-probe');
+    }
+    if (sp.textContent === '') sp.replaceWith(document.createTextNode(''));
+  });
+});
+/* 工具：Range 取得/設定 */
+function getRangeInEditor(){
+  const ed=document.getElementById('editor');
+  const sel=window.getSelection();
+  if(!sel || sel.rangeCount===0) return null;
+  const r=sel.getRangeAt(0);
+  return ed.contains(r.commonAncestorContainer) ? r : null;
+}
+function setSelectionToAfter(node){
+  const range=document.createRange();
+  range.setStartAfter(node); range.collapse(true);
+  const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+}
+
+/* ===== 內容操作 ===== */
+/* 設為標題 */
+function makeHeadingFromSelection(){
+  if(!CAN_EDIT) return;
+  const r=getRangeInEditor();
+  const ed=document.getElementById('editor');
+  if(!r){ ed.focus(); return; }
+  if(r.collapsed){
+    const el=document.createElement('div'); el.className='heading'; el.textContent='（請輸入標題）';
+    r.insertNode(el); setSelectionToAfter(el); scheduleAutosave(); return;
+  }
+  const el=document.createElement('div'); el.className='heading'; el.textContent=r.toString();
+  r.deleteContents(); r.insertNode(el); setSelectionToAfter(el); scheduleAutosave();
+}
+
+/* 插入/刪除分割線 */
+function insertPurpleDividerAtCaret(){
+  if(!CAN_EDIT) return;
+  const r=getRangeInEditor(); const ed=document.getElementById('editor');
+  const line=document.createElement('div'); line.className='divider';
+  if(!r){ ed.appendChild(line); } else { r.insertNode(line); setSelectionToAfter(line); }
+  scheduleAutosave();
+}
+function deleteNearestDivider(){
+  if(!CAN_EDIT) return;
+  const ed=document.getElementById('editor'); const r=getRangeInEditor();
+  if(!r){ ed.focus(); return; }
+  const caretRect=r.getBoundingClientRect(); const divs=Array.from(ed.querySelectorAll('.divider'));
+  if(divs.length===0) return;
+  let best=null,bestDist=Infinity;
+  divs.forEach(d=>{
+    const dr=d.getBoundingClientRect();
+    const cx=dr.left+dr.width/2, cy=dr.top+dr.height/2;
+    const dx=(caretRect.left+caretRect.width/2)-cx;
+    const dy=(caretRect.top+caretRect.height/2)-cy;
+    const dist=Math.abs(dy)+Math.abs(dx)*0.2;
+    if(dist<bestDist){bestDist=dist;best=d;}
+  });
+  if(best){
+    const next=best.nextSibling; best.remove();
+    if(next){ setSelectionToAfter(next.previousSibling || next); }
+    else{
+      const range=document.createRange(); range.selectNodeContents(ed); range.collapse(false);
+      const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    }
+    scheduleAutosave();
+  }
+}
+
+/* ===== 字體顏色與大小：面板 & 邏輯 ===== */
+const styleBox = document.getElementById('styleBox');
+let savedRange = null; // 永遠記住當前要操作的選區
+
+function saveSelection(){
+  const r = getRangeInEditor();
+  if (r) savedRange = r.cloneRange();
+}
+
+function restoreSelection(){
+  if (!savedRange) return null;
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(savedRange);
+  // 確認 savedRange 仍在 editor 裡（避免DOM變動後失效）
+  const r = getRangeInEditor();
+  return r || null;
+}
+const colorPicker = document.getElementById('colorPicker');
+const sizeRange = document.getElementById('sizeRange');
+const sizeLabel = document.getElementById('sizeLabel');
+const btnClearColor = document.getElementById('btnClearColor');
+let styleRange = null; // 開面板時記錄的 range
+// 取得視口資訊（支援 iOS 的 visualViewport）
+function getViewportBox(){
+  const vv = window.visualViewport;
+  if (vv) {
+    return {
+      left: vv.offsetLeft,
+      top: vv.offsetTop,
+      width: vv.width,
+      height: vv.height
+    };
+  }
+  return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+}
+
+// 把 styleBox 放在 range 附近，並且不超出視窗
+function placeStyleBoxAtRange(range){
+  const box = styleBox;
+  if (!box || !range) return;
+
+  // 先顯示，才能量到寬高
+  box.style.display = 'block';
+
+  const rect = range.getBoundingClientRect();
+  const vp = getViewportBox();
+  const margin = 8; // 與邊界/選區的間距
+  const bw = box.offsetWidth || 260;
+  const bh = box.offsetHeight || 80;
+
+  // 優先放在選區下方；如果下方空間不夠，就放上方
+  let topCandidate = rect.bottom + margin;
+  const bottomRoom = vp.top + vp.height - (rect.bottom + margin) - bh;
+  if (bottomRoom < 0) {
+    topCandidate = rect.top - bh - margin;
+  }
+
+  // 水平置中，然後夾住左右邊界
+  let leftCandidate = rect.left + rect.width/2 - bw/2;
+  leftCandidate = Math.max(vp.left + margin, Math.min(leftCandidate, vp.left + vp.width - margin - bw));
+
+  // 再夾住上下邊界
+  topCandidate  = Math.max(vp.top + margin, Math.min(topCandidate,  vp.top + vp.height - margin - bh));
+
+  // 寫回（fixed 基於視口）
+  box.style.left = `${leftCandidate}px`;
+  box.style.top  = `${topCandidate}px`;
+}
+function showStyleBox(){
+  if(!CAN_EDIT) return;
+  saveSelection();
+  const r = savedRange || getRangeInEditor();
+  if(!r){ ensureEditorReady(); return; }
+  placeStyleBoxAtRange(r);     // 🚩 用新函式定位
+}
+
+// 讓面板跟著選區移動 & 夾邊界
+function repositionStyleBox(){
+  if (styleBox.style.display !== 'block') return;
+  const r = savedRange || getRangeInEditor();
+  if (!r) return;
+  placeStyleBoxAtRange(r);     // 🚩 用新函式定位
+}
+
+function hideStyleBox(){ styleBox.style.display='none'; }
+
+/* 將樣式套在 styleRange 或目前選取 */
+function applyStyle({ color = null, size = null, clearColor = false } = {}) {
+  // 每次操作前把選區還原回編輯器
+  const r = restoreSelection();
+  if (!r) return;
+
+  const sel = window.getSelection();
+
+  // -------- 情況 A：只有游標（未選字） --------
+  if (r.collapsed) {
+    if (clearColor) {
+      // 往上找最近有 color 的祖先，把 color 拔掉即可
+      let el = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
+      while (el && el !== document.getElementById('editor')) {
+        if (el.style && el.style.color) { el.style.color = ''; break; }
+        el = el.parentElement;
+      }
+    }
+    // 插一個有樣式的 span，之後打字沿用（WORD JOINER 避免小點）
+    const span = document.createElement('span');
+    if (!clearColor && color) span.style.color = color;
+    if (size) span.style.fontSize = size + 'px';
+    span.textContent = '\u2060';
+    span.setAttribute('data-probe', '1');
+
+    r.insertNode(span);
+
+    // 游標留在這個 span 內部，方便連續操作
+    const nr = document.createRange();
+    nr.selectNodeContents(span);
+    nr.collapse(true);
+    sel.removeAllRanges(); sel.addRange(nr);
+    saveSelection();       // 記住新的選區
+    scheduleAutosave();
+    return;
+  }
+
+  // -------- 情況 B：有選到一段文字 --------
+  if (clearColor) {
+    // 1) 取出選區內容
+    const frag = r.extractContents();
+
+    // 2) 走訪 fragment，把所有元素的 color 清掉
+    const clearNodeColor = (node) => {
+      if (node.nodeType === 1 && node.style) node.style.color = '';
+      for (let i = 0; i < node.childNodes.length; i++) clearNodeColor(node.childNodes[i]);
+    };
+    clearNodeColor(frag);
+
+    // 3) 用一個臨時包裝器放回去（為了好設定「仍保持選取」）
+    const wrapper = document.createElement('span'); // 不加樣式
+    wrapper.appendChild(frag);
+    r.insertNode(wrapper);
+
+    // 4) 把選取設為 wrapper 的內容
+    const nr = document.createRange();
+    nr.selectNodeContents(wrapper);
+    sel.removeAllRanges(); sel.addRange(nr);
+    saveSelection();
+    scheduleAutosave();
+    return;
+  }
+
+  // 不是清顏色：套顏色/大小 -> 用 span 包住原來選區
+  const span = document.createElement('span');
+  if (color) span.style.color = color;
+  if (size)  span.style.fontSize = size + 'px';
+
+  try {
+    // 若選區是「純文字或可整體包住的節點」，這招最快
+    r.surroundContents(span);
+  } catch {
+    // 含部分節點邊界時會 throw，改為抽出後再包回
+    const frag = r.extractContents();
+    span.appendChild(frag);
+    r.insertNode(span);
+  }
+
+  // 再把選取設為剛剛的內容（不是放到後面，避免選取消失）
+  const nr = document.createRange();
+  nr.selectNodeContents(span);
+  sel.removeAllRanges(); sel.addRange(nr);
+  saveSelection();
+
+  scheduleAutosave();
+}
+
+/* 事件：顏色/大小/清除顏色 */
+colorPicker.addEventListener('input', ()=>{
+  restoreSelection();
+  applyStyle({ color: colorPicker.value });
+});
+
+sizeRange.addEventListener('input', ()=>{
+  sizeLabel.textContent = sizeRange.value;
+  restoreSelection();
+  applyStyle({ size: parseInt(sizeRange.value, 10) });
+});
+
+btnClearColor.addEventListener('click', (e)=>{
+  e.preventDefault();
+  restoreSelection();
+  applyStyle({ clearColor: true });
+});
+document.addEventListener('selectionchange', ()=>{
+  if (styleBox.style.display === 'block') {
+    const r = getRangeInEditor();
+    if (r) savedRange = r.cloneRange();
+  }
+});
+
+document.addEventListener('selectionchange', ()=>{
+  if (styleBox.style.display === 'block') {
+    const r = getRangeInEditor();
+    if (r) savedRange = r.cloneRange();
+    repositionStyleBox();
+  }
+});
+/* 點任意處關閉面板（但點面板本身不關） */
+document.addEventListener('mousedown', (e)=>{
+  if(styleBox.style.display==='block' && !styleBox.contains(e.target) && e.target.id!=='btnStyle'){
+    hideStyleBox();
+  }
+});
+
+/* 啟動 */
+(async()=>{
+  live.set('讀取中…');
+  if(!await requireLogin()) return;
+
+  const GROUP = await whichInternalGroup(ME.objectId);
+const IS_INTERNAL = (GROUP === 'SUPER' || !!GROUP);
+
+// 兩種通關方式「擇一」即可：sessionStorage 或 URL 參數
+const PASS_FROM_SESSION = consumePass(ME.objectId) && cameFromLegislature();
+const PASS_FROM_URL     = consumeUrlPass(ME.objectId);
+
+// 仍然必須是內部（含 SUPER），且通關成功
+CAN_EDIT = !!IS_INTERNAL && (PASS_FROM_SESSION || PASS_FROM_URL);
+
+  try{
+    const doc=await fetchDoc();
+    document.getElementById('docTitle').firstChild.textContent = (doc.title || '網站規則（憲章）')+' ';
+    document.getElementById('editor').innerHTML = doc.content || '';
+    let theme=doc.theme || 'pink';
+    if(!CAN_EDIT) theme = localStorage.getItem('constitution_theme') || theme;
+    applyTheme(theme,false);
+    live.set('✅ 已載入');
+  }catch(e){ alert(e.message||'載入失敗'); live.set('❌ 載入失敗'); }
+
+  setEditable(CAN_EDIT);
+
+  document.querySelectorAll('.swatch').forEach(s=>{
+    s.addEventListener('click', ()=> applyTheme(s.dataset.theme||'pink', true));
+  });
+
+  const ed=document.getElementById('editor');
+  ed.addEventListener('input', scheduleAutosave);
+
+  document.getElementById('btnHeading').addEventListener('click', makeHeadingFromSelection);
+  document.getElementById('btnDivider').addEventListener('click', insertPurpleDividerAtCaret);
+  document.getElementById('btnDelDivider').addEventListener('click', deleteNearestDivider);
+
+  /* 新增：打開樣式面板 */
+  document.getElementById('btnStyle').addEventListener('click', showStyleBox);
+  // 避免點面板裡的東西把焦點帶走（保持編輯器選區）
+styleBox.addEventListener('mousedown', (e)=>{
+  if (!e.target.closest('input,button,label')) {
+    e.preventDefault();
+  }
+});
+})();
+
+/* 返回 */
+function goBack(){
+  try{
+    const ref=document.referrer||''; const same=ref && new URL(ref).origin===location.origin;
+    if(same){ location.href=ref; return; }
+  }catch(e){}
+  if(history.length>1){ history.back(); return; }
+  location.href='shopping.html';
+}
+</script>
+</body>
+</html>

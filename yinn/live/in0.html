@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>找回密碼（多應用）</title>
+<style>
+  :root{ --brand:#6c4ef7; --muted:#777; }
+  *{ box-sizing:border-box }
+  body{
+  margin:0; background:#f5f7fb; color:#222;
+  font-family: "DFKai-SB","KaiTi","標楷體","BiauKai",serif;
+  display:grid; place-items:center; min-height:100vh;
+}
+  .card{
+    width:min(460px, 92vw); background:#fff; border:1px solid #eee; border-radius:16px;
+    box-shadow:0 14px 38px rgba(0,0,0,.08); padding:18px;
+  }
+  h1{ margin:4px 0 2px; font-size:20px }
+  p{ margin:6px 0 14px; color:var(--muted) }
+  label{ display:block; font-size:13px; color:var(--muted); margin:6px 0 }
+  .row{ display:flex; gap:10px; align-items:center; }
+  .input{ width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:12px; outline:none; }
+  .btn{ padding:12px 16px; border-radius:12px; border:1px solid transparent; background:var(--brand); color:#fff; font-weight:800; cursor:pointer; }
+  .btn[disabled]{ opacity:.6; cursor:not-allowed }
+  .msg{ margin-top:10px; font-size:14px; }
+  .ok{ color:#1b8f46; }
+  .err{ color:#b00020; }
+  .back{ display:inline-block; margin-top:16px; color:var(--brand); text-decoration:none; font-weight:700 }
+  .apps{ display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 6px; }
+  .tab{
+    padding:8px 10px; border:1px solid #ddd; border-radius:10px; background:#fff; cursor:pointer; font-weight:700;
+  }
+  .tab.active{ border-color:var(--brand); box-shadow:0 0 0 3px rgba(108,78,247,.12) }
+  small.hint{ display:block; color:#999; margin-top:6px }
+  .menu-wrap{
+  position:fixed;
+  top:10px;   /* 距離上方 */
+  left:10px;  /* 靠左側 */
+  display:flex;
+  gap:6px;    /* ← 和返回鍵、% 鍵的間距 */
+  z-index:2000;
+}
+.menu-btn, .back-btn{
+  width:50px; height:50px;
+  border-radius:50%;
+  border:1px solid #ccc;
+  background:#fff;
+  cursor:pointer;
+  font-weight:900;
+}
+body.dark .menu-btn, body.dark .back-btn{
+  background:#333; color:#fff; border-color:#555;
+}
+/* ========== 主題變數（與前面頁面一致） ========== */
+:root{
+  --brand:#6c4ef7; --muted:#777;
+  /* 白天 dropdown：淡粉 */
+  --dropdown-bg:#fdeaff;
+  --dropdown-border:#f5ccff;
+  --dropdown-text:#4a3a6a;
+
+  --page-bg:#f5f7fb;
+  --card-bg:#fff;
+  --card-border:#eee;
+
+  --btn-bg:#fff;
+  --btn-border:#ddd;
+  --btn-text:#222;
+}
+html[data-theme="dark"]{
+  --text:#cfc3ff;
+  --muted:#9a8fd1;
+  --brand:#a48cff;
+
+  --page-bg:#0f0b1a;
+  --card-bg:#161222;
+  --card-border:#2b2440;
+
+  --btn-bg:#1b1629;
+  --btn-border:#2b2440;
+  --btn-text:#cfc3ff;
+  --shadow:0 10px 28px rgba(0,0,0,.45);
+}
+
+/* 全局套色 */
+body{ background:var(--page-bg); color:#222; }
+html[data-theme="dark"] body{ color:var(--text); }
+html[data-theme="dark"] .card{ background:var(--card-bg); border-color:var(--card-border); box-shadow:var(--shadow); }
+html[data-theme="dark"] .input{ background:transparent; border:1px solid var(--card-border); color:var(--text); }
+html[data-theme="dark"] .btn{ background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--btn-text); }
+html[data-theme="dark"] .btn[disabled]{ opacity:.6; }
+html[data-theme="dark"] .btn:not([disabled]).primary{ background:var(--brand); color:#161222; border-color:transparent; }
+
+/* 讓現有的 card/文字顏色跟著變 */
+.card{ background:var(--card-bg); border:1px solid var(--card-border); }
+p, .hint, .msg, small, label{ color:var(--muted); }
+.btn{ background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--btn-text); }
+
+/* ========== 左上角：返回＋％圓球 ========== */
+.menu-wrap{
+  position:fixed;
+  top:10px;               /* 想更貼邊就改小一點，例如 6px */
+  left:10px;
+  display:flex;
+  gap:6px;
+  z-index:2000;           /* 高於內容 */
+}
+.menu-btn, .back-btn{
+  width:36px; height:36px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; line-height:1;
+  background:var(--btn-bg); color:var(--btn-text);
+  border:1px solid var(--btn-border);
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(0,0,0,.12);
+}
+.menu-btn:hover, .back-btn:hover{ transform:scale(1.05); }
+.menu-btn:active, .back-btn:active{ transform:scale(.96); }
+html[data-theme="dark"] .menu-btn,
+html[data-theme="dark"] .back-btn{ box-shadow:none; }
+
+/* 下拉選單：不擠版面、在按鈕下方展開、避免超出螢幕 */
+.dropdown{
+  position:fixed;               /* 跟著視窗，不推擠內容 */
+  top:56px;                     /* 36 高 + 10 上邊距 + 緩衝 */
+  left:10px;
+  min-width:220px; max-width:min(90vw, 360px);
+  border-radius:14px; padding:8px;
+  transform:translateY(-6px) scale(.98);
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+  background:var(--dropdown-bg); color:var(--dropdown-text);
+  border:1px solid var(--dropdown-border);
+  box-shadow:0 16px 32px rgba(0,0,0,.18);
+}
+.dropdown.show{ opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0) scale(1); }
+/* 夜間的下拉 */
+html[data-theme="dark"] .dropdown{
+  background:var(--card-bg); color:var(--text);
+  border:1px solid var(--card-border); box-shadow:var(--shadow);
+}
+.dropdown::after{ content:none; }    /* 去掉突起箭頭 */
+.dropdown .item{
+  width:100%; text-align:left; padding:10px 12px;
+  border:0; background:transparent; color:inherit;
+  border-radius:8px; cursor:pointer; transition:.12s;
+}
+.dropdown .item:hover{ background:rgba(164,140,255,.12); transform:translateY(-1px); }
+
+/* 小螢幕安全邊界（避免被右邊卡住） */
+@media (max-width:480px){
+  .dropdown{ left:6px; right:6px; max-width:none; }
+}
+</style>
+</head>
+<body>
+    <div class="menu-wrap">
+  <!-- 返回按鈕 -->
+  <button class="back-btn" onclick="history.back()">←Esc</button>
+  <!-- % 選單 -->
+  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+  <div id="menuDrop" class="dropdown" role="menu">
+    <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+     <button class="item" onclick="location.href='../index.html'">主頁</button>
+    <button class="item" onclick="location.href='Grove.Examination-Yuan.html'">參加管理員</button>
+    <button class="item" onclick="location.href='Grove. Control-Yuan.html'">Control</button>
+    <button class="item" onclick="location.href='Grove.Executive-Yuan.html'">Executive</button>
+    <button class="item" onclick="location.href='Grove.Judicial-Yuan.html'">申訴</button>
+    <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
+    <button class="item" onclick="location.href='vote.html'">投票專區</button>
+    <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+  </div>
+</div>
+  <div class="card">
+    <h1>找回密碼</h1>
+    <p>請選擇要重置的區域。</p>
+
+    <!-- 應用切換 -->
+    <div class="apps">
+      <button class="tab active" data-app="store">Sunlit Grove Store</button>
+      <button class="tab" data-app="grove">Grove Hub（sunlit Cloud）</button>
+      <button class="tab" data-app="lim">LimTown（Yinnlim）</button>
+    </div>
+    <small id="targetHint" class="hint">目前：Sunlit Grove Store</small>
+
+    <label for="email">電子郵件（Email）</label>
+    <div class="row">
+      <input id="email" class="input" type="email" placeholder="you@example.com" autocomplete="email" required>
+      <button id="go" class="btn" onclick="sendReset()">確認</button>
+    </div>
+    <div id="msg" class="msg"></div>
+
+    <!-- 成功後顯示 -->
+    <button id="backStore" class="btn" style="display:none; margin-top:10px;"
+            onclick="location.href='shopping.html'">
+      已經重置，回 Store
+    </button>
+
+    <a class="back" href="shopping.html">← 返回 Store</a>
+  </div>
+
+<script>
+/* ===== 多應用設定（前端只放 Server / AppID / AppKey；別放 Master Key） ===== */
+const APPS = {
+  // 你的「原始碼裡那組」→ Sunlit Grove Store
+  store: {
+    label: 'Sunlit Grove Store',
+    server: 'https://zdqo2eqb.lc-cn-n1-shared.com',
+    appId:  'ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz',
+    appKey: 'U66ybZWAD99LrT9zJnQlW52H'
+  },
+  // Grove Hub（sunlit Cloud）
+  grove: {
+    label: 'Grove Hub（sunlit Cloud）',
+    server: 'https://0juo0jzb.lc-cn-n1-shared.com',
+    appId:  '0juO0jzBkrv1Oi04bHljaWDW-gzGzoHsz',
+    appKey: 'kFMz8niEbd8BlPbFKDyTZC2Q'
+  },
+  // LimTown（Yinnlim）
+  lim: {
+    label: 'LimTown（Yinnlim）',
+    server: 'https://jxpf13zi.lc-cn-n1-shared.com',
+    appId:  'jxPF13ZiTBmbFt75fXRnYs42-gzGzoHsz',
+    appKey: 'ydXYcG0fGtWLgWetR0szCygQ'
+  }
+};
+
+// 預設選 Store
+let currentKey = 'store';
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+function updateActive(appKey){
+  currentKey = appKey;
+  $$('.tab').forEach(b=>{
+    b.classList.toggle('active', b.dataset.app === appKey);
+  });
+  $('#targetHint').textContent = '目前：' + APPS[appKey].label;
+  // 成功後的返回字樣固定回 Store，如需不同頁面可在此依 appKey 改連結
+  $('#backStore').style.display = 'none';
+  $('#msg').className = 'msg';
+  $('#msg').textContent = '';
+}
+$$('.tab').forEach(b=>{
+  b.addEventListener('click', ()=> updateActive(b.dataset.app));
+});
+
+/* ===== 發送重設密碼 Email =====
+   LeanCloud REST: POST {server}/1.1/requestPasswordReset  body: { email }
+   成功或失敗都顯示同樣的訊息，避免被用來猜帳號。
+*/
+async function sendReset(){
+  const cfg = APPS[currentKey];
+  const API = cfg.server + '/1.1';
+  const APP_ID  = cfg.appId;
+  const APP_KEY = cfg.appKey;
+
+  const email = $('#email').value.trim();
+  const btn = $('#go');
+  const msg = $('#msg');
+
+  msg.className = 'msg'; msg.textContent = '';
+  if(!email){
+    msg.classList.add('err'); msg.textContent = '請先輸入電子郵件。';
+    return;
+  }
+
+  btn.disabled = true;
+
+  try{
+    const res = await fetch(`${API}/requestPasswordReset`, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'X-LC-Id': APP_ID,
+        'X-LC-Key': APP_KEY
+      },
+      body: JSON.stringify({ email })
+    });
+
+    // 不論成功或失敗都顯示相同提示（避免帳號探測）；錯誤細節僅寫到 console
+    if(!res.ok){
+      const data = await res.json().catch(()=> ({}));
+      console.warn('reset error:', data);
+    }
+
+    msg.classList.add('ok');
+    msg.textContent = `如果此電子郵件已註冊（${cfg.label}），我們已寄出重設密碼的郵件，請前往信箱點擊連結完成重設。`;
+    $('#backStore').style.display = 'inline-block';
+  }catch(e){
+    console.warn(e);
+    msg.classList.add('err');
+    msg.textContent = '目前無法送出郵件，請稍後再試。';
+  }finally{
+    btn.disabled = false;
+  }
+}
+</script>
+<script src="im.js"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Grove Executive Yuan</title>
+<style>
+  :root{ --brand:#6c4ef7; --danger:#e91e63; --card:#fff; --border:#eee; --text:#222; --muted:#666; --bg:#f6f3ea; }
+  *{ box-sizing:border-box }
+  body{ margin:0; font-family:system-ui,-apple-system,"Noto Sans TC",Arial,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap{ max-width:980px; margin:0 auto; padding:20px 14px 60px; }
+  h1{ margin:6px 0 8px; text-align:center; font-size:22px; }
+  .hint{ text-align:center; color:var(--muted); font-size:13px; }
+  .toolbar{ display:flex; gap:8px; justify-content:center; margin:14px 0 10px; }
+  .btn{ padding:10px 14px; border-radius:10px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:800; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+  .btn.danger{ background:var(--danger); color:#fff; border-color:transparent; }
+  .btn[disabled]{ opacity:.5; cursor:not-allowed; }
+  .grid{ display:grid; grid-template-columns:1fr; gap:12px; margin-top:10px; }
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.06); padding:14px; }
+  .row{ display:flex; gap:12px; align-items:center; }
+  .avatar{ width:64px; height:64px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .title{ font-weight:900; font-size:18px; }
+  .meta{ color:var(--muted); font-size:13px; margin-top:4px; display:flex; flex-wrap:wrap; gap:10px; }
+  .chip{ padding:2px 8px; border-radius:999px; background:#f2efff; color:#4b39b9; border:1px solid #ded6ff; font-size:12px; font-weight:800; }
+  .hr{ height:1px; background:#eee; margin:10px 0; }
+  .counter{ font-weight:900; }
+  .countdown{ margin-left:auto; color:#333; font-variant-numeric:tabular-nums; }
+  .empty{ color:#777; text-align:center; padding:22px; }
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000; color:#fff; padding:10px 14px; border-radius:10px; opacity:0; transition:opacity .18s; z-index:10; }
+  /* modal */
+  .backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); z-index:5000; padding:16px; }
+  .modal{ width:min(640px,92vw); max-height:92vh; overflow:auto; background:#fff; border:1px solid #eee; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.18); }
+  .modal header{ position:sticky; top:0; background:#fff; padding:12px 14px; border-bottom:1px solid #eee; font-weight:900; display:flex; justify-content:space-between; align-items:center; }
+  .modal .body{ padding:14px; }
+  .modal .actions{ padding:10px 14px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end; }
+  .reason{ white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Grove Executive Yuan</h1>
+  <div class="hint">僅限超級帳號或考試院（E）成員進入。本頁可在投票「截止後」執行罷免。</div>
+  <div class="toolbar">
+    <!-- 返回按鈕 -->
+  <button class="btn" onclick="location.href='shopping.html'">Esc Store</button>
+  <button class="btn" onclick="goBack()" style="margin-bottom:1px">← 返回</button>
+    <button class="btn" onclick="reloadAll()">重新整理</button>
+  </div>
+
+  <div id="list" class="grid"></div>
+  <div id="empty" class="empty" style="display:none;">目前沒有需要處理的罷免投票</div>
+
+  <h2 style="text-align:center;margin:24px 0 8px">罷免歷史</h2>
+  <div id="histList" class="grid"></div>
+  <div id="histEmpty" class="empty" style="display:none;">尚無罷免紀錄</div>
+</div>
+
+<div id="toast" class="toast">—</div>
+
+<!-- 理由彈框 -->
+<div id="reasonsDlg" class="backdrop" role="dialog" aria-modal="true">
+  <div class="modal">
+    <header>
+      <div>被檢舉理由（公開）</div>
+      <button class="btn" onclick="closeReasons()">×</button>
+    </header>
+    <div class="body" id="reasonsBody"></div>
+    <div class="actions"><button class="btn" onclick="closeReasons()">關閉</button></div>
+  </div>
+</div>
+
+<script>
+const API="https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID="ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY="U66ybZWAD99LrT9zJnQlW52H";
+const SUPER_UID="68b19eeb90ed2201c4839219";
+
+const AUTH={ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY };
+function lcHeaders(){ const t=localStorage.getItem('sg_token'); return t?{...AUTH,'X-LC-Session':t}:AUTH; }
+function h(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+function toast(s){ const t=document.getElementById('toast'); t.textContent=s; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0',1600); }
+const $=s=>document.querySelector(s);
+
+let ME=null, TOKEN=null;
+async function requireLogin(){
+  TOKEN=localStorage.getItem('sg_token')||''; ME=JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!TOKEN||!ME){ alert('請先登入'); location.replace('index.html'); return false; }
+  return true;
+}
+async function isExamStaff(uid){
+  if(uid===SUPER_UID) return true;
+  const p={ "__type":"Pointer","className":"_User","objectId":uid };
+  const w=encodeURIComponent(JSON.stringify({ "$or":[{user:p},{User:p}], active:true }));
+  const r=await fetch(`${API}/classes/ExamStaff?where=${w}&limit=1`,{ headers:lcHeaders() });
+  const d=await r.json();
+  return r.ok&&d.results&&d.results.length>0;
+}
+
+async function fetchVotes(){
+  const where = encodeURIComponent(JSON.stringify({
+    "$or": [
+      { status: "open" },
+      { status: "closed", result: "ended" } // 已結束但尚未決定
+    ]
+  }));
+  const url = `${API}/classes/RecallVote?where=${where}&order=-createdAt&limit=50&include=target,createdBy`;
+  const r = await fetch(url,{ headers:lcHeaders() });
+  const d = await r.json();
+  return r.ok ? (d.results||[]) : [];
+}
+async function countChoice(voteId,val){
+  const where=encodeURIComponent(JSON.stringify({ vote:{ "__type":"Pointer","className":"RecallVote","objectId":voteId }, choice:val }));
+  const r=await fetch(`${API}/classes/RecallBallot?where=${where}&count=1&limit=0`,{ headers:lcHeaders() }); const d=await r.json();
+  return (r.ok&&typeof d.count==='number')? d.count:0;
+}
+
+function fmtLeft(ms){ if(ms<=0) return'已截止'; const d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),m=Math.floor(ms%36e5/6e4); return(d?`${d}天`:'')+`${h}時${m}分`; }
+function openReasons(list){ const body=$('#reasonsBody'); body.innerHTML=(list||[]).length? list.map((t,i)=>`<div class="card"><b>#${i+1}</b><div class="reason">${h(t||'')}</div></div>`).join(''):'<div class="hint">（無提供理由）</div>'; $('#reasonsDlg').style.display='flex'; }
+function closeReasons(){ $('#reasonsDlg').style.display='none'; }
+
+async function renderCard(v){
+  const tgt  = v.target || {};
+  const gid  = tgt.objectId || v.targetGid || '';
+  const nick = tgt.nickname || tgt.username || '(未命名)';
+  const ava  = (tgt.avatarUrl ? tgt.avatarUrl.replace(/^http:/,'https:') : '')
+              || 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="100%" height="100%" rx="32" ry="32" fill="#f3f3f3"/></svg>`);
+
+  const isOpen    = v.status === 'open';
+  const isEnded   = v.status === 'closed' && v.result === 'ended';   // 已結束、待決定
+  const startsAt  = new Date(v.startsAt?.iso || v.startsAt);
+  const endsAt    = new Date(v.endsAt?.iso || v.endsAt);
+  const left      = endsAt - Date.now();
+
+  const [yesCnt, noCnt] = await Promise.all([
+    countChoice(v.objectId,'是'),
+    countChoice(v.objectId,'否')
+  ]);
+
+  const el = document.createElement('div');
+  el.className = 'card';
+
+  // 標籤
+  const stateChip = isOpen ? '進行中'
+                   : isEnded ? '已結束（待決定）'
+                   : (v.result==='removed' ? '已罷免'
+                      : v.result==='vetoed' ? '已否決'
+                      : v.result==='canceled' ? '已取消'
+                      : '已關閉');
+
+  el.innerHTML = `
+    <div class="row">
+      <img class="avatar" src="${ava}" alt="">
+      <div>
+        <div class="title">${h(nick)} <span class="chip">GID:${gid}</span> <span class="chip">${stateChip}</span></div>
+        <div class="meta">
+          <div>${startsAt.toLocaleString()} ～ ${endsAt.toLocaleString()}</div>
+          ${isOpen ? `<div class="countdown" data-id="${v.objectId}" data-end="${endsAt.toISOString()}">剩餘 ${fmtLeft(left)}</div>` : ''}
+        </div>
+      </div>
+      <button class="btn" onclick='openReasons(${JSON.stringify(v.reasons||[])})'>查看被檢舉理由</button>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row" style="gap:8px;justify-content:space-between;flex-wrap:wrap">
+      <div class="counter">是 <b data-yes>${yesCnt}</b>／否 <b data-no>${noCnt}</b></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${isOpen ? `<button class="btn" data-endvote ${left>0?'disabled':''}>結束投票</button>` : ''}
+        ${isEnded ? `
+          <button class="btn danger" data-fire>執行罷免</button>
+          <button class="btn" data-veto>否決罷免</button>
+        ` : ''}
+        ${ME?.objectId===SUPER_UID ? `<button class="btn" data-cancel>取消投票</button>` : ''}
+      </div>
+    </div>
+  `;
+
+  // ============ 事件 ============
+  // 結束投票（open -> ended）
+  const endBtn = el.querySelector('[data-endvote]');
+  if (endBtn){
+    endBtn.addEventListener('click', async ()=>{
+      if (Date.now() < endsAt.getTime()) { alert('尚未到截止時間'); return; }
+      const y = await countChoice(v.objectId,'是');
+      const n = await countChoice(v.objectId,'否');
+      if (!confirm(`要結束這場投票嗎？（不立即做出罷免決定）目前票數：是 ${y} / 否 ${n}`)) return;
+      try{
+        await endRecall(v, y, n);
+        toast('投票已結束');
+        await reloadAll(); await reloadHistory();
+      }catch(e){ alert(e.message||'結束失敗'); }
+    });
+  }
+
+  // 執行罷免（只允許在 ended 狀態）
+  const fireBtn = el.querySelector('[data-fire]');
+  if (fireBtn){
+    fireBtn.addEventListener('click', async ()=>{
+      if (!isEnded) { alert('需先結束投票，才可執行罷免'); return; }
+      const y = await countChoice(v.objectId,'是');
+      const n = await countChoice(v.objectId,'否');
+      const reason = window.prompt(`請輸入「執行罷免」理由（將公開於投票頁）：\n票數：是 ${y} / 否 ${n}`);
+      if (reason === null || reason.trim()==='') { alert('必須輸入理由'); return; }
+      if (!confirm(`確認罷免「${nick}」？`)) return;
+      try{
+        await executeRecall(v, gid, y, n, reason.trim());
+        toast('已執行罷免');
+        await reloadAll(); await reloadHistory();
+      }catch(e){ alert(e.message||'執行失敗'); }
+    });
+  }
+
+  // 否決罷免（只允許在 ended 狀態）
+  const vetoBtn = el.querySelector('[data-veto]');
+  if (vetoBtn){
+    vetoBtn.addEventListener('click', async ()=>{
+      if (!isEnded) { alert('需先結束投票，才可否決'); return; }
+      const y = await countChoice(v.objectId,'是');
+      const n = await countChoice(v.objectId,'否');
+
+      if (y > n){
+        if (!confirm(`目前同意票較多（是 ${y} / 否 ${n}）。確定要「否決罷免」嗎？`)) return;
+      }
+      const reason = window.prompt(`請輸入「否決罷免」理由（將公開於投票頁）：\n票數：是 ${y} / 否 ${n}`);
+      if (reason === null || reason.trim()==='') { alert('必須輸入理由'); return; }
+
+      try{
+        await vetoRecall(v, y, n, reason.trim());
+        toast('已否決罷免');
+        await reloadAll(); await reloadHistory();
+      }catch(e){ alert(e.message||'否決失敗'); }
+    });
+  }
+
+  // 取消投票（只有超級 GID）
+  const cancelBtn = el.querySelector('[data-cancel]');
+  if (cancelBtn){
+    cancelBtn.addEventListener('click', async ()=>{
+      if (ME?.objectId !== SUPER_UID) { alert('你沒有權限'); return; }
+      if (!confirm('確定要取消這場投票嗎？（將無法再操作）')) return;
+      try{
+        await cancelRecall(v);
+        toast('投票已取消');
+        await reloadAll(); await reloadHistory();
+      }catch(e){ alert(e.message||'取消失敗'); }
+    });
+  }
+
+  return el;
+}
+// 結束投票（不做決定，等待之後「執行罷免 / 否決罷免」）
+async function endRecall(vote, y, n){
+  const headers = { 'Content-Type':'application/json', ...lcHeaders() };
+  await fetch(`${API}/classes/RecallVote/${vote.objectId}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      status: 'closed',
+      result: 'ended',  // 已結束、待決定
+      yesCount: y,
+      noCount:  n,
+      closedAt: { "__type":"Date","iso": new Date().toISOString() },
+      closedBy: { "__type":"Pointer","className":"_User","objectId": ME.objectId }
+    })
+  });
+}
+
+// 執行罷免（要求輸入理由）
+async function executeRecall(vote, targetGid, y, n, reason){
+  const headers = { 'Content-Type':'application/json', ...lcHeaders() };
+  await fetch(`${API}/classes/RecallVote/${vote.objectId}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      status: 'closed',
+      result: 'removed',         // 最終決定：罷免
+      yesCount: y,
+      noCount: n,
+      decision: 'removed',
+      decisionReason: reason||'',
+      decidedAt: { "__type":"Date","iso": new Date().toISOString() },
+      decidedBy: { "__type":"Pointer","className":"_User","objectId": ME.objectId }
+    })
+  });
+  // 這裡要不要順便封鎖、或發系統訊息，由你決定再加
+}
+
+// 否決罷免（要求輸入理由）
+async function vetoRecall(vote, y, n, reason){
+  const headers = { 'Content-Type':'application/json', ...lcHeaders() };
+  await fetch(`${API}/classes/RecallVote/${vote.objectId}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      status: 'closed',
+      result: 'vetoed',          // 最終決定：否決罷免
+      yesCount: y,
+      noCount: n,
+      decision: 'vetoed',
+      decisionReason: reason||'',
+      decidedAt: { "__type":"Date","iso": new Date().toISOString() },
+      decidedBy: { "__type":"Pointer","className":"_User","objectId": ME.objectId }
+    })
+  });
+}
+
+// 只有超級 GID 能用的「取消投票」
+async function cancelRecall(vote){
+  const headers = { 'Content-Type':'application/json', ...lcHeaders() };
+  await fetch(`${API}/classes/RecallVote/${vote.objectId}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      status: 'closed',
+      result: 'canceled',
+      canceledAt: { "__type":"Date","iso": new Date().toISOString() },
+      canceledBy: { "__type":"Pointer","className":"_User","objectId": ME.objectId }
+    })
+  });
+}
+async function executeRecall(vote,targetGid,y,n){
+    // 結束投票（不罷免）
+async function endRecall(vote, y, n){
+  const headers = { 'Content-Type':'application/json', ...lcHeaders() };
+  // 你可以把 result 換成你想要的字串（例如 'ended' 或 'not_removed'）
+  await fetch(`${API}/classes/RecallVote/${vote.objectId}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      status: 'closed',
+      result: 'ended',      // 表示「已結束投票（未執行罷免）」 
+      yesCount: y,
+      noCount:  n,
+      closedAt: { "__type":"Date","iso": new Date().toISOString() },
+      closedBy: { "__type":"Pointer","className":"_User","objectId": ME.objectId }
+    })
+  });
+}
+  const headers={'Content-Type':'application/json',...lcHeaders()};
+  await fetch(`${API}/classes/RecallVote/${vote.objectId}`,{method:'PUT',headers,body:JSON.stringify({status:'closed',result:'removed',yesCount:y,noCount:n,closedAt:{ "__type":"Date","iso":new Date().toISOString()},closedBy:{ "__type":"Pointer","className":"_User","objectId":ME.objectId }})});
+}
+async function sendMsg(toId,text){ const headers={'Content-Type':'application/json',...lcHeaders()}; await fetch(`${API}/classes/Message`,{method:'POST',headers,body:JSON.stringify({kind:'system',text,body:text,read:"false",from:{ "__type":"Pointer","className":"_User","objectId":ME.objectId},to:{ "__type":"Pointer","className":"_User","objectId":toId},ACL:{ "*":{ "read":false },[ME.objectId]:{ "read":true,"write":true},[toId]:{ "read":true } }})}); }
+
+async function reloadAll(){ const list=$('#list'),empty=$('#empty'); list.innerHTML='';empty.style.display='none'; try{const rows=await fetchVotes(); if(!rows.length){empty.style.display='block';return;} for(const v of rows){ const card=await renderCard(v); if(card) list.appendChild(card);} }catch(e){empty.style.display='block';empty.textContent=e.message;} }
+
+async function fetchRecallHistory(){
+  const where = encodeURIComponent(JSON.stringify({
+    status:'closed',
+    result: { "$in": ['removed','vetoed','canceled'] }
+  }));
+  const url = `${API}/classes/RecallVote?where=${where}&order=-decidedAt,-closedAt&limit=50&include=target,closedBy,decidedBy`;
+  const r = await fetch(url,{headers:lcHeaders()});
+  const d = await r.json();
+  return r.ok ? (d.results||[]) : [];
+}
+
+function renderHistoryItem(v){
+  const tgt=v.target||{}; const gid=tgt.objectId||v.targetGid||''; const name=tgt.nickname||tgt.username||'';
+  const who=(v.decidedBy&& (v.decidedBy.nickname||v.decidedBy.username||v.decidedBy.objectId)) ||
+             (v.closedBy && (v.closedBy.nickname||v.closedBy.username||v.closedBy.objectId)) || '未知';
+  const when=(v.decidedAt && (new Date(v.decidedAt.iso||v.decidedAt)).toLocaleString()) ||
+             (v.closedAt  && (new Date(v.closedAt.iso ||v.closedAt)).toLocaleString()) || '';
+  const y=v.yesCount||0, n=v.noCount||0;
+
+  let label = (v.result==='removed') ? '已罷免'
+            : (v.result==='vetoed')  ? '已否決'
+            : (v.result==='canceled')? '已取消'
+            : '已關閉';
+
+  const reason = v.decisionReason ? `<div class="meta">理由：${h(v.decisionReason)}</div>` : '';
+
+  const el=document.createElement('div');
+  el.className='card';
+  el.innerHTML = `
+    <div class="title">${label}：${h(name)} <span class="chip">GID:${gid}</span></div>
+    <div class="meta">執行者：${h(who)}　時間：${when}　票數：是 ${y} / 否 ${n}</div>
+    ${reason}
+  `;
+  return el;
+}
+async function reloadHistory(){ const box=$('#histList'),emp=$('#histEmpty'); box.innerHTML='';emp.style.display='none'; try{const rows=await fetchRecallHistory(); if(!rows.length){emp.style.display='block';return;} rows.forEach(v=>box.appendChild(renderHistoryItem(v))); }catch(e){emp.style.display='block';emp.textContent=e.message;} }
+
+function tick(){
+  document.querySelectorAll('.countdown').forEach(el=>{
+    const end  = new Date(el.dataset.end);
+    const left = end - Date.now();
+    el.textContent = '剩餘 ' + fmtLeft(left);
+    const card  = el.closest('.card');
+    const endBtn = card.querySelector('[data-endvote]');
+    if (endBtn && left <= 0) endBtn.disabled = false;
+  });
+}
+let pollTimer=null;function startPolling(){stopPolling();pollTimer=setInterval(tick,30000);}function stopPolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
+/* === 讀「立法院公眾投票」清單（給行政院提建議） === */
+async function fetchPublicLegVotes(){
+  const where = encodeURIComponent(JSON.stringify({ scope:'public', status:'open' }));
+  const r = await fetch(`${API}/classes/SuggestionVote?where=${where}&order=-createdAt&limit=50&include=suggestion`,{headers:lcHeaders()});
+  const d = await r.json(); return r.ok ? (d.results||[]) : [];
+}
+async function sendExecutiveAdvice(sugId, text){
+  const payload = {
+    suggestion: { "__type":"Pointer","className":"BillSuggestion","objectId":sugId },
+    text,
+    by: { "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    ACL:{
+      "*": { "read": false },
+      "role:Legislator": { "read": true },
+      "role:Admin":      { "read": true },
+      "role:ExamStaff":  { "read": true },
+      [SUPER_UID]:       { "read": true, "write": true }
+    }
+  };
+  const r = await fetch(`${API}/classes/ExecutiveAdvice`,{
+    method:'POST', headers:{'Content-Type':'application/json',...lcHeaders()}, body:JSON.stringify(payload)
+  });
+  const d = await r.json(); if(!r.ok) throw new Error(d.error||'送出失敗');
+}
+async function renderLegVotesForAdvice(){
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<h2 style="text-align:center;margin:16px 0 8px">立法院投票（可提出建議）</h2><div id="advBox" class="grid"></div>`;
+  document.querySelector('.wrap').appendChild(wrap);
+  const box = document.getElementById('advBox');
+  const rows = await fetchPublicLegVotes();
+  if(!rows.length){ box.innerHTML='<div class="empty">目前沒有需要建議的投票</div>'; return; }
+  box.innerHTML = rows.map(v=>`
+    <div class="card">
+      <div class="title">投票（L）</div>
+      <div class="reason" style="white-space:pre-wrap">${h(v.body||'')}</div>
+      <div class="hr"></div>
+      <button class="btn primary" data-adv="${v.suggestion?.objectId||''}">提出建議</button>
+    </div>
+  `).join('');
+  box.querySelectorAll('[data-adv]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const sugId = btn.getAttribute('data-adv'); if(!sugId) return;
+      const text = prompt('請輸入給立法院的建議內容'); if(text===null || !text.trim()) return;
+      try{ await sendExecutiveAdvice(sugId, text.trim()); toast('已送出建議，立法院將可見'); }
+      catch(e){ alert(e.message||'送出失敗'); }
+    });
+  });
+}
+(async()=>{ if(!await requireLogin()) return; if(!await isExamStaff(ME.objectId)){ alert('你沒有權限進入行政院'); location.replace('index.html'); return; } await reloadAll();
+await reloadHistory();
+await renderLegVotesForAdvice();   // ← 加在這裡
+tick();
+startPolling(); })();
+// ===== 返回上一頁 =====
+function goBack(){
+  try{
+    const ref = document.referrer || '';
+    const sameOrigin = ref && new URL(ref).origin === location.origin;
+    if (sameOrigin) { location.href = ref; return; }
+  }catch(e){}
+  if (history.length > 1) { history.back(); return; }
+  location.href = 'shopping.html';
+}
+</script>
+</body>
+</html>

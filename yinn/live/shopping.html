@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>購物首頁</title>
+<style>
+  :root{
+    --glass-bg: rgba(255,255,255,.55);
+    --glass-border: rgba(255,255,255,.7);
+    --brand:#6c4ef7; --text:#222; --muted:#777; --accent:#e91e63;
+  }
+  *{box-sizing:border-box}
+  body{
+  margin:0;
+  font-family:"DFKai-SB","KaiTi","標楷體","BiauKai",serif;
+  background:#fafafa;
+  color:var(--text);
+  padding-top:72px;
+}
+  .navbar{ position:fixed; inset:0 0 auto 0; height:72px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:var(--glass-bg); backdrop-filter: blur(12px) saturate(120%); -webkit-backdrop-filter: blur(12px) saturate(120%); border-bottom:1px solid var(--glass-border); z-index:1000; }
+  /* 讓搜尋列可以相對 brand 絕對定位 */
+  .brand{ position:relative; display:flex; align-items:center; gap:0px; font-weight:700; color:var(--brand); }
+  .brand img{ width:32px; height:32px; border-radius:8px; }
+  .nav-right{ display:flex; align-items:center; gap:10px; }
+  .btn{ padding:8px 12px; border-radius:10px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:600; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+  .user-chip{ display:flex; align-items:center; gap:10px; padding:6px 10px; border-radius:999px; background:#fff; border:1px solid #eaeaea; text-decoration:none; color:inherit; }
+  .user-chip img{ width:28px; height:28px; border-radius:50%; object-fit:cover; }
+  .container{ max-width:1120px; margin:20px auto; padding:0 16px; }
+  .product-grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap:20px; }
+  .card{ display:block; background:#fff; border:1px solid #eee; border-radius:14px; overflow:hidden; box-shadow:0 6px 18px rgba(0,0,0,.06); transition:.18s; color:inherit; text-decoration:none; }
+  .card:hover{ transform:translateY(-3px); box-shadow:0 10px 24px rgba(0,0,0,.08); }
+  .thumb{ width:100%; height:180px; object-fit:cover; background:#f3f3f3; }
+  .card-body{ padding:12px; }
+  .title{ font-weight:700; font-size:16px; line-height:1.4; margin:4px 0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .meta-line{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+  .price{ color:var(--accent); font-weight:800; }
+  .seller{ color:var(--muted); font-size:13px; max-width:50%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  @media (max-width:520px){ .navbar{ height:64px; } body{ padding-top:64px; } .thumb{ height:160px; } }
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:2000; padding:16px; }
+  .modal{ width:min(460px,92vw); background:#fff; border:1px solid #eee; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.18); overflow:hidden; }
+  .modal header{ padding:12px 14px; font-weight:800; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
+  .modal .body{ padding:14px; }
+  .modal .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .modal .field{ margin:8px 0; width:100%; }
+  .modal label{ display:block; font-size:12px; color:#777; margin-bottom:6px; }
+  .modal .input,.modal .file{ width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; outline:none; }
+  .modal .actions{ padding:10px 14px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end; }
+  .modal .err{ color:#b00020; font-size:13px; margin-top:6px; }
+  .closex{ cursor:pointer; font-size:22px; line-height:1; color:#888; }
+  /* === Hero 廣告板 === */
+.hero {
+  position: relative;
+  max-width: 1120px;
+  margin: 16px auto 0;
+  padding: 0 16px;
+}
+.hero-frame {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #eee;
+  aspect-ratio: 16/6;  /* 自動等比高度，手機也好看 */
+}
+.hero-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transform: translateX(0);
+  transition: transform .45s ease;
+}
+.hero-slide {
+  min-width: 100%;
+  height: 100%;
+  position: relative;
+}
+.hero-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;  /* 改成 contain */
+  background: #ddd;     /* 留底色，避免空白 */
+}
+.hero-slide a { display:block; width:100%; height:100%; }
+.hero-dots {
+  position: absolute; left:50%; bottom:10px; transform:translateX(-50%);
+  display:flex; gap:8px; z-index:5;
+}
+.hero-dot {
+  width:8px; height:8px; border-radius:50%;
+  background: rgba(255,255,255,.6); border:1px solid rgba(0,0,0,.15);
+  cursor:pointer;
+}
+.hero-dot.active { background:#fff; }
+.hero-nav {
+  position:absolute; inset:0; display:flex; justify-content:space-between; align-items:center; pointer-events:none;
+}
+.hero-btn {
+  pointer-events:auto; user-select:none;
+  width:42px; height:42px; border-radius:50%; border:1px solid rgba(0,0,0,.1);
+  background:rgba(255,255,255,.75); backdrop-filter:blur(6px);
+  display:grid; place-items:center; margin:0 6px; cursor:pointer; font-weight:900;
+}
+@media (max-width:600px){
+  .hero-frame{ aspect-ratio: 16/9; }
+}
+/* 廣告板右下角投放廣告按鈕 */
+.ad-fab {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0,0,0,.25);
+  z-index: 20;
+  transition: background .2s ease;
+}
+.ad-fab:hover {
+  background: #5339c9; /* 深一點的品牌色 */
+}
+.section-title{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;                 /* 文字和線的間距 */
+  margin:20px auto 20px;    /* 與廣告板、商品區的距離 */
+  font-size:18px;
+  font-weight:700;
+  color:#fd85ff;
+  text-align:center;
+}
+.section-title::before,
+.section-title::after{
+  content:"";
+  flex:1;                   /* 兩側線自動延伸 */
+  border-top:2px dashed #fd85ff;  /* 想要實線就改成 solid */
+  opacity:.9;
+}
+
+.section-title::before { left: 0; }
+.section-title::after  { right: 0; }
+.io-line{
+  margin-top:4px;
+  font-size:13px;
+  color:#6c4ef7;   /* 想要低調一點可改成 #777 */
+  font-weight:700;
+}
+/*---------搜尋*/
+/* 🔍 按鈕：保留微互動 */
+.search-btn{
+  margin-left:8px; width:36px; height:36px; border-radius:999px;
+  border:1px solid #ddd; background:#fff; cursor:pointer; font-size:18px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.search-btn:hover{ transform: translateY(-1px); box-shadow:0 6px 14px rgba(0,0,0,.08); }
+
+/* ▶ 讓 .brand 裡的內容能水平排、並預留空間 */
+.brand{ position:relative; display:flex; align-items:center; gap:0; font-weight:700; color:var(--brand); }
+
+/* ▶ 搜尋列「從左邊（🔍）往右展開」，不會覆蓋 hero */
+/* ▶ 搜尋列「從左邊（🔍）往右展開」，不會覆蓋 hero */
+.search-bar{
+  position: relative;        /* ← 這裡從 static 換成 relative */
+  display:inline-flex; align-items:center; gap:8px;
+  overflow:hidden;
+  white-space:nowrap;
+
+  width:0;
+  opacity:0;
+  transform:scaleX(.92);
+  transform-origin:left center;
+  pointer-events:none;
+  visibility:hidden;
+
+  margin-left:8px;
+  background:#fff;
+  border:1px solid #ddd; border-radius:999px; padding:6px 8px;
+  box-shadow:0 8px 20px rgba(0,0,0,.10);
+
+  transition:
+    width .26s cubic-bezier(.2,.8,.2,1),
+    opacity .2s ease,
+    transform .26s cubic-bezier(.2,.8,.2,1),
+    visibility 0s linear .26s;
+}
+
+.search-bar.show{
+  overflow: visible;
+  width: clamp(260px, 44vw, 520px);  /* 展開的目標寬度 */
+  opacity:1;
+  transform:scaleX(1);
+  pointer-events:auto;
+  visibility:visible;
+  transition:
+    width .3s cubic-bezier(.2,.8,.2,1),
+    opacity .2s ease,
+    transform .3s cubic-bezier(.2,.8,.2,1),
+    visibility 0s;
+}
+
+.search-input{
+  border:none; outline:none; width:100%; font-size:14px;
+}
+.search-go, .search-close{
+  border:1px solid #eee; background:#f9f9f9; border-radius:999px; padding:6px 10px; cursor:pointer;
+  transition: transform .12s ease, box-shadow .18s ease;
+}
+.search-go:hover, .search-close:hover{ transform: translateY(-1px); box-shadow:0 6px 12px rgba(0,0,0,.08); }
+.search-close{ border:none; background:transparent; font-size:18px; padding:0 6px; }
+
+@media (max-width:600px){
+  .search-bar.show{ width: clamp(220px, 72vw, 520px); }
+}
+/*------搜尋-------匡---*/
+/* ===== 搜尋下拉建議 ===== */
+.suggest-box{
+  position:absolute; left:0; top:100%;
+  margin-top:6px;
+  width:100%;                /* ← 用 100% 對齊 .search-bar 的實際寬度 */
+  min-width:260px;           /* 可保留下限 */
+  max-width:520px;           /* 與 search-bar 的上限一致 */
+  background:#fff; border:1px solid #eee; border-radius:12px;
+  box-shadow:0 10px 24px rgba(0,0,0,.10);
+  overflow:hidden; z-index:1200; display:none;
+}
+.suggest-item{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; cursor:pointer;
+}
+.suggest-item:hover{ background:#f7f7ff; }
+.suggest-avatar{ width:30px; height:30px; border-radius:50%; object-fit:cover; }
+.suggest-name{ font-weight:700; }
+.suggest-gid{ font-size:12px; color:#888; margin-left:auto; }
+.no-suggest{ padding:10px 12px; color:#777; font-size:14px; }
+.btm{
+ padding:5px 5px; 
+ border-radius:10px; 
+ border:1px solid #fff4d6; 
+ background:#ffdbb9; 
+ font-weight:600; 
+ cursor:pointer;
+ margin-left: 10px;
+}
+
+/* ===== 夜間主題變數 ===== */
+:root[data-theme="dark"]{
+  --glass-bg: rgba(20,16,34,.65);
+  --glass-border: rgba(163,143,255,.14);
+
+  --text:#cfc3ff;          /* 全站文字（紫外線感） */
+  --muted:#9a8fd1;         /* 次要文字 */
+  --brand:#a48cff;         /* 品牌紫 */
+  --accent:#bf66ff;        /* 價格/重點色（深紫粉） */
+
+  --card-bg:#161222;       /* 卡片/下拉/輸入底色 */
+  --card-border:#2b2440;   /* 卡片邊框 */
+  --page-bg:#0f0b1a;       /* 頁面底色 */
+
+  --btn-bg:#1b1629;        /* 一般按鈕底色 */
+  --btn-border:#2b2440;
+  --btn-text:#cfc3ff;
+
+  --chip-bg:#1b1629;       /* user-chip */
+  --chip-border:#2b2440;
+
+  --shadow: 0 10px 28px rgba(0,0,0,.45);
+}
+/* 夜間：廣告板底色要暗 */
+:root[data-theme="dark"] .hero-frame {
+  background: #612a84;   /* 深紫黑底，避免白色刺眼 */
+}
+
+/* 夜間：廣告圖沒填滿（object-fit: contain 時）露出的背景 */
+:root[data-theme="dark"] .hero-slide img {
+  background: #74268c;
+}
+
+/* ===== 全站覆寫：讓顏色跟著變數走 ===== */
+:root[data-theme="dark"] body{
+  background:var(--page-bg);
+  color:var(--text);
+  font-family:"DFKai-SB","KaiTi","標楷體","BiauKai",serif; /* 永遠保留小楷 */
+}
+
+/* 頂部欄（玻璃感） */
+:root[data-theme="dark"] .navbar{
+  background:var(--glass-bg);
+  border-bottom:1px solid var(--glass-border);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+}
+:root[data-theme="dark"] .brand{ color:var(--brand); }
+
+/* 一般按鈕 / 主要按鈕 */
+:root[data-theme="dark"] .btn{
+  background:var(--btn-bg);
+  border:1px solid var(--btn-border);
+  color:var(--btn-text);
+  box-shadow:none;
+}
+:root[data-theme="dark"] .btn.primary{
+  background:var(--brand);
+  color:#161222;
+  border-color:transparent;
+}
+/* 「找回/重置 密碼」那顆 btm */
+:root[data-theme="dark"] .btm{
+  background:var(--btn-bg);
+  border:1px solid var(--btn-border);
+  color:var(--text);
+}
+:root[data-theme="dark"] .btm a{ color:var(--text); }
+
+/* 使用者 chip */
+:root[data-theme="dark"] .user-chip{
+  background:var(--chip-bg);
+  border:1px solid var(--chip-border);
+  color:var(--text);
+}
+
+/* 卡片/商品/陰影 */
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .modal,
+:root[data-theme="dark"] .dropdown{
+  background:var(--card-bg);
+  color:var(--text);
+  border:1px solid var(--card-border);
+  box-shadow:var(--shadow);
+}
+:root[data-theme="dark"] .card:hover{
+  transform:translateY(-3px);
+  box-shadow:0 16px 40px rgba(0,0,0,.55);
+}
+
+/* 商品縮圖底色、hero 底色 */
+:root[data-theme="dark"] .thumb{ background:#1e1930; }
+:root[data-theme="dark"] .hero-frame{ background:#1e1930; }
+
+/* 商品資訊 */
+:root[data-theme="dark"] .price{ color:var(--accent); }
+:root[data-theme="dark"] .seller{ color:var(--muted); }
+:root[data-theme="dark"] .io-line{ color:var(--brand); }
+
+/* Modal 細節 */
+:root[data-theme="dark"] .modal header{
+  border-bottom:1px solid var(--card-border);
+}
+:root[data-theme="dark"] .modal .input,
+:root[data-theme="dark"] .modal .file{
+  background:transparent;
+  color:var(--text);
+  border:1px solid var(--card-border);
+}
+:root[data-theme="dark"] .modal .actions{
+  border-top:1px solid var(--card-border);
+}
+:root[data-theme="dark"] .closex{ color:#a79be0; }
+
+/* 搜尋（按鈕＋展開列＋建議） */
+:root[data-theme="dark"] .search-btn{
+  background:var(--btn-bg);
+  border:1px solid var(--btn-border);
+  color:var(--text);
+}
+:root[data-theme="dark"] .search-bar{
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  color:var(--text);
+  box-shadow:0 12px 28px rgba(0,0,0,.45);
+}
+:root[data-theme="dark"] .search-input{ color:var(--text); }
+:root[data-theme="dark"] .search-go,
+:root[data-theme="dark"] .search-close{
+  background:#1e1930;
+  border:1px solid var(--card-border);
+  color:var(--text);
+}
+:root[data-theme="dark"] .suggest-box{
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  color:var(--text);
+}
+:root[data-theme="dark"] .suggest-item:hover{ background:rgba(164,140,255,.12); }
+:root[data-theme="dark"] .no-suggest{ color:var(--muted); }
+
+/* 下拉選單（彈匡）＆靈動感 hover */
+:root[data-theme="dark"] .menu-btn{
+  background:var(--btn-bg);
+  border:1px solid var(--btn-border);
+  color:var(--btn-text);
+}
+:root[data-theme="dark"] .dropdown .item:hover{
+  background:rgba(164,140,255,.12);
+  transform:translateY(-1px);
+  transition:transform .12s ease, background .18s ease;
+}
+
+/* Hero 小圓點＋左右箭頭 */
+:root[data-theme="dark"] .hero-dot{
+  background:rgba(255,255,255,.35);
+  border:1px solid rgba(255,255,255,.18);
+}
+:root[data-theme="dark"] .hero-dot.active{ background:#fff; }
+:root[data-theme="dark"] .hero-btn{
+  background:rgba(36,30,56,.85);
+  border:1px solid var(--card-border);
+  color:#ddd;
+}
+
+/* 浮動「＋」投放廣告按鈕 */
+:root[data-theme="dark"] .ad-fab{
+  background:var(--brand);
+  color:#161222;
+  box-shadow:0 6px 18px rgba(0,0,0,.55);
+}
+
+/* 分段標題線條與顏色 */
+:root[data-theme="dark"] .section-title{
+  color:#d89bff;
+}
+:root[data-theme="dark"] .section-title::before,
+:root[data-theme="dark"] .section-title::after{
+  border-top:2px dashed #d89bff;
+  opacity:.9;
+}
+
+/* 連結顏色（如需要） */
+:root[data-theme="dark"] a{ color:var(--brand); }
+/* ===== 下拉選單（彈匡）樣式＋動畫 ===== */
+.menu-wrap{ position:relative; }
+.menu-btn{
+  padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:800; line-height:1;
+  border:1px solid #ddd; background:#fff; color:#222;
+}
+:root[data-theme="dark"] .menu-btn{
+  border-color:var(--btn-border); background:var(--btn-bg); color:var(--btn-text);
+}
+
+.dropdown{
+  position:absolute; right:0; top:calc(100% + 8px);
+  min-width:200px; background:#fff; color:#222;
+  border:1px solid #eee; border-radius:12px;
+  box-shadow:0 12px 28px rgba(0,0,0,.22); padding:8px; z-index:1200;
+  opacity:0; transform:translateY(-6px) scale(.98);
+  visibility:hidden; pointer-events:none;
+  transition:opacity .16s ease, transform .18s ease, visibility 0s linear .16s;
+}
+.dropdown.show{
+  opacity:1; transform:translateY(0) scale(1);
+  visibility:visible; pointer-events:auto; transition:opacity .16s ease, transform .18s ease;
+}
+:root[data-theme="dark"] .dropdown{
+  background:var(--card-bg); color:var(--text); border:1px solid var(--card-border);
+}
+
+.dropdown .item{
+  width:100%; text-align:left; padding:10px 12px;
+  background:transparent; border:none; border-radius:8px;
+  color:inherit; cursor:pointer; font-size:14px;
+}
+.dropdown .item:hover{ background:rgba(108,78,247,.12); }
+
+/* 讓搜尋下拉/搜尋列在夜間也暗色（可選） */
+:root[data-theme="dark"] .search-bar{
+  background:var(--card-bg); border:1px solid var(--card-border); color:var(--text);
+}
+:root[data-theme="dark"] .search-input{ color:var(--text); }
+:root[data-theme="dark"] .suggest-box{
+  background:var(--card-bg); border:1px solid var(--card-border); color:var(--text);
+}
+/* 夜間模式：找回/重置密碼 */
+:root[data-theme="dark"] .btm a {
+  color: #bb86fc !important;  /* 紫外線色 */
+}
+.btm a {
+  color: #222;  /* 亮色模式下正常深灰 */
+  text-decoration: none;
+}
+/* 讓搜尋輸入本身跟著主題換色（含 iOS/Safari 特性） */
+.search-input{
+  background: transparent;
+  color: var(--text);
+  caret-color: var(--brand);
+}
+
+/* placeholder 顏色：亮/暗都跟變數走 */
+.search-input::placeholder{ color: var(--muted); opacity: .95; }
+:root[data-theme="dark"] .search-input::placeholder{ color: var(--muted); opacity: .85; }
+
+/* 夜間：整個搜尋列底色、邊框已跟著變數；再保險指定一次 */
+:root[data-theme="dark"] .search-bar{
+  background: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+  color: var(--text) !important;
+}
+
+/* ✅ 自動填入(autofill) 在 Safari/Chrome 會強制淺底，這裡覆蓋它 */
+.search-input:-webkit-autofill,
+.search-input:-webkit-autofill:hover,
+.search-input:-webkit-autofill:focus{
+  -webkit-text-fill-color: var(--text) !important;
+  transition: background-color 9999s ease-in-out 0s !important; /* 去黃底閃爍 */
+  box-shadow: 0 0 0px 1000px #fff inset;           /* 亮色時維持白底 */
+}
+:root[data-theme="dark"] .search-input:-webkit-autofill,
+:root[data-theme="dark"] .search-input:-webkit-autofill:hover,
+:root[data-theme="dark"] .search-input:-webkit-autofill:focus{
+  -webkit-text-fill-color: var(--text) !important;
+  box-shadow: 0 0 0px 1000px var(--card-bg) inset !important;  /* 夜間用暗底 */
+}
+
+/* 搜尋按鈕也同步暗色（若你前面已加可忽略） */
+:root[data-theme="dark"] .search-go,
+:root[data-theme="dark"] .search-close{
+  background:#1e1930; border-color: var(--card-border); color: var(--text);
+}
+</style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="brand">
+      <img src="favicon.ico" alt="logo">
+       <span>Sunlit Grove Store</span>
+       <button class="btm"><a href="in0.html">找回/重置 密碼</a></button>
+    <!-- 這顆跳轉按鈕：只有登入才顯示 -->
+    <a id="adManageBtn" href="cd.html" title="管理我的廣告"
+       style="display:none; margin-left:8px; padding:2px 8px; border-radius:8px; border:1px solid #ddd; text-decoration:none; font-weight:700; color:#6c4ef7; background:#fff;">
+      ^ - ^
+    </a>
+    <div class="menu-wrap">
+  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+  <div id="menuDrop" class="dropdown" role="menu">
+    <!-- 第一個選項：切換模式 -->
+    <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+    <button class="item" onclick="location.href='../index.html'">主頁</button>
+    <button class="item" onclick="location.href='Grove.Examination-Yuan.html'">參加管理員</button>
+    <button class="item" onclick="location.href='Grove. Control-Yuan.html'">Control</button>
+    <button class="item" onclick="location.href='Grove.Executive-Yuan.html'">Executive</button>
+    <button class="item" onclick="location.href='Grove.Judicial-Yuan.html'">申訴</button>
+    <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
+    <button class="item" onclick="location.href='vote.html'">投票專區</button>
+    <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+    <!-- 你自己的其它連結/按鈕往下加 -->
+    <!-- <button class="item">我的其它功能</button> -->
+  </div>
+</div>
+    <!-- 🔍 搜尋（按鈕 + 可展開的搜尋列） -->
+<button id="searchBtn" class="search-btn" title="搜尋" aria-label="搜尋"
+        onclick="toggleSearch()">
+  🔍
+</button>
+
+
+<div id="searchBar" class="search-bar" role="search" aria-hidden="true">
+  <input id="searchInput" class="search-input" type="search"
+         placeholder="搜尋 GID／暱稱／商品名稱（#只搜商品名~只搜價格）"
+         onkeydown="if(event.key==='Enter'){ runSearch(); }">
+  <button class="search-go" onclick="runSearch()">搜尋</button>
+  <button class="search-close" aria-label="關閉搜尋" onclick="toggleSearch(false)">♡</button>
+  <div id="searchSuggest" class="suggest-box" role="listbox" aria-label="搜尋建議"></div>
+</div>
+  </div>
+  <div class="nav-right" id="navRight">…</div>
+</nav>
+    <!-- 首頁滑動廣告板 -->
+<section class="hero">
+  <div class="hero-frame" id="adHero">
+    <div class="hero-track" id="adTrack"></div>
+    <div class="hero-dots" id="adDots"></div>
+    <div class="hero-nav">
+      <div class="hero-btn" onclick="adPrev()">‹</div>
+      <div class="hero-btn" onclick="adNext()">›</div>
+    </div>
+    <!-- ✅ 浮動投放廣告按鈕（預設隱藏，登入才顯示） -->
+    <button class="ad-fab" id="adCreateBtn" style="display:none" onclick="openAdModal()">＋</button>
+  </div>
+</section>
+<h5 class="section-title">Sunlit Grove商品</h5>
+  <main class="container">
+    <div class="product-grid" id="productGrid"></div>
+  </main>
+  <h5 class="section-title">≤IO$1商品</h5>
+<main class="container">
+  <div class="product-grid" id="cheapGrid"></div>
+</main>
+
+  <!-- 登入 -->
+  <div class="modal-backdrop" id="loginModal">
+    <div class="modal">
+      <header><div>登入</div><div class="closex" onclick="closeModal('loginModal')">×</div></header>
+      <div class="body">
+        <div class="field"><label>電子郵件</label><input id="loginEmail" class="input" type="email" placeholder="name@example.com" autocomplete="username email"></div>
+        <div class="field"><label>密碼</label><input id="loginPass" class="input" type="password" placeholder="輸入密碼" autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()"></div>
+        <div id="loginErr" class="err"></div>
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="switchToRegister()">沒有帳號？去註冊</button></div>
+      </div>
+      <div class="actions"><button class="btn" onclick="closeModal('loginModal')">取消</button><button class="btn primary" onclick="doLogin()">登入</button></div>
+    </div>
+  </div>
+
+  <!-- 註冊 -->
+  <div class="modal-backdrop" id="registerModal">
+    <div class="modal">
+      <header><div>註冊</div><div class="closex" onclick="closeModal('registerModal')">×</div></header>
+      <div class="body">
+        <div class="field"><label>電子郵件（必填）</label><input id="regEmail" class="input" type="email" placeholder="name@example.com"></div>
+        <div class="field"><label>密碼（必填）</label><input id="regPass" class="input" type="password" placeholder="設定密碼" onkeydown="if(event.key==='Enter') doRegister()"></div>
+        <div class="field"><label>暱稱（必填）</label><input id="regNickname" class="input" type="text" placeholder="顯示名稱"></div>
+        <div class="field"><label>頭貼（可選）</label><input id="regAvatar" class="file" type="file" accept="image/*"></div>
+        <div id="regErr" class="err"></div>
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="switchToLogin()">已有帳號？去登入</button></div>
+      </div>
+      <div class="actions"><button class="btn" onclick="closeModal('registerModal')">取消</button><button class="btn primary" onclick="doRegister()">建立帳號</button></div>
+    </div>
+  </div>
+<!-- 投放廣告 Modal（登入者限定） -->
+<div class="modal-backdrop" id="adModal" style="display:none">
+  <div class="modal">
+    <header>
+      <div>投放廣告</div>
+      <div class="closex" onclick="closeModal('adModal')">×</div>
+    </header>
+    <div class="body">
+      <div class="field">
+        <label>廣告標題（顯示用，可選）</label>
+        <input id="adTitle" class="input" type="text" placeholder="例如：夏日特賣 5 折起">
+      </div>
+      <div class="field">
+        <label>跳轉連結（必填，需 http(s)）</label>
+        <input id="adLink" class="input" type="url" placeholder="https://example.com/sale">
+      </div>
+      <div class="field">
+        <label>廣告圖片（必填，建議 1120x420 或 16:6）</label>
+        <input id="adImage" class="file" type="file" accept="image/*">
+      </div>
+      <div class="field" style="display:flex; gap:10px">
+        <div style="flex:1">
+          <label>開始時間（可選）</label>
+          <input id="adStart" class="input" type="datetime-local">
+        </div>
+        <div style="flex:1">
+          <label>結束時間（可選）</label>
+          <input id="adEnd" class="input" type="datetime-local">
+        </div>
+      </div>
+      <div id="adErr" class="err"></div>
+      <div style="font-size:12px; color:#777;">上傳後立即生效；若設了時段，會自動在時段內顯示。</div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeModal('adModal')">取消</button>
+      <button class="btn primary" onclick="createAd()">送出</button>
+    </div>
+  </div>
+</div>
+<script>
+/** ====== LeanCloud 設定 ====== */
+const APP_ID="ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY="U66ybZWAD99LrT9zJnQlW52H";
+const API="https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const CURRENCY_SIGN='¥';
+const money=n=>Number(n||0).toLocaleString('zh-TW');
+// ====== io$ 匯率與格式 ======
+const IO_TO_CNY = 60;
+const fmtIo = n => (Math.round(n * 1e5) / 1e5).toFixed(5);
+
+
+/** ====== 小工具 ====== */
+const $=s=>document.querySelector(s);
+function openLogin(){ $('#loginModal').style.display='flex'; }
+function openRegister(){ $('#registerModal').style.display='flex'; }
+function closeModal(id){ document.getElementById(id).style.display='none'; }
+function switchToRegister(){ closeModal('loginModal'); openRegister(); }
+function switchToLogin(){ closeModal('registerModal'); openLogin(); }
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
+function fileToBase64(file){ return new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onload=()=>resolve(fr.result.split(',')[1]); fr.onerror=reject; fr.readAsDataURL(file); }); }
+
+/** ====== 導覽列 ====== */
+function renderNav(){
+  const navRight=$('#navRight');
+  const user=JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!user){
+    navRight.innerHTML=`<button class="btn" onclick="openLogin()">登入</button><button class="btn primary" onclick="openRegister()">註冊</button>`;
+  }else{
+    const avatar=user.avatarUrl||'https://via.placeholder.com/60?text=🙂';
+    const name=user.nickname||user.username||'用戶';
+    navRight.innerHTML=`<a class="user-chip" href="user.html"><img src="${avatar}" alt=""><div style="font-weight:700; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHTML(name)}</div></a><button class="btn" style="margin-left:6px" onclick="logout()">登出</button>`;
+  }
+  // 讓 ^-^ 管理按鈕僅登入時顯示
+const manageBtn = document.getElementById('adManageBtn');
+if (manageBtn) manageBtn.style.display = user ? 'inline-block' : 'none';
+}
+
+function logout(){ localStorage.removeItem('sg_token'); localStorage.removeItem('sg_user'); renderNav(); }
+
+/** ====== 商品清單 + 即時輪詢 ====== */
+function displayPrice(p){
+  if(p.samePrice && typeof p.price==='number') return p.price;
+  if(Array.isArray(p.variants)&&p.variants.length && typeof p.variants[0].price==='number') return p.variants[0].price;
+  if(typeof p.price==='number') return p.price;
+  return 0;
+}
+function makeProductCard(p, showIo=false){
+  const cover=p.imageUrl||(Array.isArray(p.images)&&p.images[0])||'https://via.placeholder.com/400x300?text=%F0%9F%8C%9E';
+  const price=displayPrice(p);
+  const sellerName=(p.seller&&(p.seller.nickname||p.seller.username))?(p.seller.nickname||p.seller.username):'商家';
+  const ioLine = showIo ? `<div class="io-line">≈ io$ ${fmtIo(price/IO_TO_CNY)}</div>` : '';
+
+  const a=document.createElement('a');
+  a.className='card';
+  a.href=`shuser.html?id=${p.objectId}`;
+  a.setAttribute('aria-label',`查看 ${p.title||'商品'} 詳細`);
+  a.innerHTML=`
+    <img class="thumb" src="${cover}" alt="">
+    <div class="card-body">
+      <div class="title" title="${escapeHTML(p.title||'')}">${escapeHTML(p.title||'未命名商品')}</div>
+      <div class="meta-line">
+        <div>
+          <div class="price">${CURRENCY_SIGN}${money(price)}</div>
+          ${ioLine}
+        </div>
+        <div class="seller">${escapeHTML(sellerName)}</div>
+      </div>
+    </div>`;
+  return a;
+}
+const shownProductIds=new Set();
+let latestCreatedAtIso=null;
+
+async function loadProducts(){
+  try{
+    const res=await fetch(`${API}/classes/Product?order=-createdAt&limit=100&include=seller`,{
+      headers:{'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY}
+    });
+    const data=await res.json();
+    if(!res.ok){ console.warn('loadProducts error:',data); return; }
+    PRODUCTS = data.results || [];   // ← 新增
+
+    const gridAll=document.getElementById('productGrid');
+    const gridCheap=document.getElementById('cheapGrid');
+    gridAll.innerHTML='';
+    if(gridCheap) gridCheap.innerHTML='';
+
+    (data.results||[]).forEach(p=>{
+      shownProductIds.add(p.objectId);
+
+      // 所有商品
+      gridAll.appendChild(makeProductCard(p, false));
+
+      // ≤ IO$1（= ≤ 60 CNY）的商品，加到第二區塊，並顯示 io$
+      const price=displayPrice(p);
+      if(price <= 60 && gridCheap){
+        gridCheap.appendChild(makeProductCard(p, true));
+      }
+    });
+
+    const latest=(data.results||[]).reduce((max,it)=>{
+      const t=new Date(it.createdAt).toISOString();
+      return (!max||t>max)?t:max;
+    },null);
+    latestCreatedAtIso=latest||new Date().toISOString();
+    PRODUCTS = data.results || [];
+    rebuildSellers(PRODUCTS);
+  }catch(e){ console.error(e); }
+}
+async function pollNewProducts(){
+  if(!latestCreatedAtIso) return;
+  const where={ createdAt:{ "$gt":{ "__type":"Date","iso":latestCreatedAtIso } } };
+  const url=`${API}/classes/Product?where=${encodeURIComponent(JSON.stringify(where))}&order=createdAt&include=seller&limit=50`;
+  try{
+    const r=await fetch(url,{ headers:{'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY} });
+    const d=await r.json();
+    if(!r.ok){ return; }
+    const list=d.results||[];
+    if(list.length){
+      const gridAll = document.getElementById('productGrid');
+      const gridCheap = document.getElementById('cheapGrid');
+      for(let i=list.length-1;i>=0;i--){
+        const p=list[i];
+        if(shownProductIds.has(p.objectId)) continue;
+        shownProductIds.add(p.objectId);
+
+        // 上方：所有商品
+        if (gridAll) gridAll.prepend(makeProductCard(p, false));
+
+        // 下方：≤ IO$1（≤ 60 CNY），顯示 io$ 行
+        const price = displayPrice(p);
+        if (gridCheap && price <= 60) {
+          gridCheap.prepend(makeProductCard(p, true));
+        }
+        // 更新
+         PRODUCTS.unshift(p);
+         rebuildSellers(PRODUCTS);
+      }
+      latestCreatedAtIso=new Date(list[list.length-1].createdAt).toISOString();
+    }
+  }catch(e){ console.warn('poll error',e); }
+}
+setInterval(pollNewProducts, 5000);
+
+/** ====== 登入：若帳號不存在→引導註冊 ====== */
+function suggestRegister(email){
+  alert('這個 Email 尚未註冊，請先建立帳號。');
+  closeModal('loginModal'); openRegister();
+  if(email) document.getElementById('regEmail').value=email;
+}
+async function doLogin(){
+  const email=($('#loginEmail').value||'').trim();
+  const password=($('#loginPass').value||'').trim();
+  if(!email||!password){ $('#loginErr').textContent='請輸入電子郵件與密碼'; return; }
+  $('#loginErr').textContent='';
+  try{
+    const res=await fetch(`${API}/login?username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,{
+      headers:{'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY}
+    });
+    const data=await res.json();
+    if(!res.ok){
+      if(Number(data.code)===211){ return suggestRegister(email); } // 使用者不存在
+      $('#loginErr').textContent=data.error||'帳號或密碼錯誤'; return;
+    }
+    const meRes=await fetch(`${API}/users/me`,{
+      headers:{'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':data.sessionToken}
+    });
+    const me=await meRes.json();
+    if(!meRes.ok){ $('#loginErr').textContent=me.error||'讀取使用者狀態失敗'; return; }
+    localStorage.setItem('sg_token',data.sessionToken||'');
+    localStorage.setItem('sg_user',JSON.stringify({
+      objectId:me.objectId, username:me.username, email:me.email, nickname:me.nickname, avatarUrl:me.avatarUrl||''
+    }));
+    closeModal('loginModal'); 
+    renderNav(); 
+    // 若你想登入後跳頁：location.href='user.html';
+  }catch(err){ $('#loginErr').textContent=err.message||'登入失敗'; }
+}
+
+/** ====== Email MX 檢查（Cloudflare DoH） ====== */
+async function hasMXRecord(email){
+  const m=String(email).trim().match(/@([^@\s]+)$/);
+  if(!m) return false;
+  const domain=m[1].toLowerCase();
+  const disposable=['mailinator.com','guerrillamail.com','10minutemail.com','tempmail.com'];
+  if(disposable.includes(domain)) return false;
+  try{
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(), 3000);
+    const url=`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`;
+    const res=await fetch(url,{ headers:{'Accept':'application/dns-json'}, signal:controller.signal });
+    clearTimeout(timer);
+    if(!res.ok) return false;
+    const data=await res.json();
+    return Array.isArray(data.Answer) && data.Answer.some(a=>a.type===15);
+  }catch(e){
+    return null; // 被牆/超時
+  }
+}
+
+/** ====== 註冊：格式+MX 檢查→建立→自動登入 ====== */
+async function doRegister(){
+  const email=($('#regEmail').value||'').trim();
+  const password=($('#regPass').value||'').trim();
+  const nickname=($('#regNickname').value||'').trim();
+
+  const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailRe.test(email)){ $('#regErr').textContent='請輸入有效的電子郵件地址'; return; }
+
+  $('#regErr').textContent='正在檢查郵箱可用性（MX）…';
+  const mxOk=await hasMXRecord(email);
+  if(mxOk===false){ $('#regErr').textContent='這個郵箱域名沒有 MX 記錄，可能不能收信'; return; }
+  if(mxOk===null){ $('#regErr').textContent='DNS 查詢被阻擋：無法確認郵箱可用性（可稍後再試）'; return; }
+
+  if(!password||!nickname){ $('#regErr').textContent='請完整填寫：電子郵件、密碼、暱稱'; return; }
+  $('#regErr').textContent='';
+
+  let avatarUrl='';
+  const f=document.getElementById('regAvatar').files[0];
+  if(f){
+    try{
+      const base64=await fileToBase64(f);
+      const rf=await fetch(`${API}/files/${encodeURIComponent(f.name)}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-LC-Id':APP_ID,'X-LC-Key':APP_KEY},
+        body:JSON.stringify({base64})
+      });
+      const rd=await rf.json();
+      if(!rf.ok) throw new Error(rd.error||'頭貼上傳失敗');
+      avatarUrl=rd.url;
+    }catch(err){
+      $('#regErr').textContent=err.message||'頭貼上傳失敗';
+      return;
+    }
+  }
+
+  const payload={ username:email, email, password, nickname, ...(avatarUrl?{avatarUrl}:{}) };
+
+  try{
+    const res=await fetch(`${API}/users`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-LC-Id':APP_ID,'X-LC-Key':APP_KEY},
+      body:JSON.stringify(payload)
+    });
+    const created=await res.json();
+    if(!res.ok) throw new Error(created.error||'註冊失敗');
+
+    // 直接自動登入：優先用回傳的 sessionToken；沒有就用帳密再登一次
+    let sessionToken=created.sessionToken;
+    if(!sessionToken){
+      const loginRes=await fetch(`${API}/login?username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,{
+        headers:{'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY}
+      });
+      const loginData=await loginRes.json();
+      if(!loginRes.ok) throw new Error(loginData.error||'自動登入失敗');
+      sessionToken=loginData.sessionToken;
+    }
+
+    const meRes=await fetch(`${API}/users/me`,{
+      headers:{'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':sessionToken}
+    });
+    const me=await meRes.json();
+    if(!meRes.ok) throw new Error(me.error||'讀取使用者狀態失敗');
+
+    localStorage.setItem('sg_token',sessionToken||'');
+    localStorage.setItem('sg_user',JSON.stringify({
+      objectId:me.objectId, username:me.username, email:me.email, nickname:me.nickname, avatarUrl:me.avatarUrl||''
+    }));
+
+    closeModal('registerModal'); renderNav();
+    alert('🎉 註冊成功，已自動為你登入！');
+    // 若你想自動跳頁：location.href='user.html';
+  }catch(err){
+    $('#regErr').textContent=err.message||'註冊失敗';
+  }
+}
+//搜尋====================
+function parseQueryMode(raw=''){
+  const s = raw.trim();
+  if(!s) return { mode:'none', text:'' };
+  if(/^#/.test(s)) return { mode:'title', text: s.replace(/^#\s*/,'') };
+  if(/^(~|～)/.test(s)) return { mode:'price', text: s.replace(/^(~|～)\s*/,'') };
+  return { mode:'free', text: s };  // 沒前綴
+}
+/* ====== 產品快取 / 賣家索引 ====== */
+let PRODUCTS = [];                 // 你原本就有
+const SELLERS_MAP = new Map();     // 你原本就有
+const PRODUCT_COUNT = new Map();   // ← 新增：sellerId -> 商品數
+
+function rebuildSellers(products){
+  SELLERS_MAP.clear();
+  PRODUCT_COUNT.clear();           // ← 新增
+  (products||[]).forEach(p=>{
+    const s = p.seller || {};
+    if(!s || !s.objectId) return;
+    // 建商品數
+    PRODUCT_COUNT.set(s.objectId, (PRODUCT_COUNT.get(s.objectId)||0) + 1);
+    // 建賣家索引
+    if(!SELLERS_MAP.has(s.objectId)){
+      SELLERS_MAP.set(s.objectId, {
+        id: s.objectId,
+        nickname: s.nickname || '',
+        username: s.username || '',
+        avatarUrl: s.avatarUrl || 'https://via.placeholder.com/60?text=🙂'
+      });
+    }
+  });
+}
+/* ====== debounce 小工具 ====== */
+function debounce(fn, ms=150){
+  let t=null; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); };
+}
+//伺服器搜尋==============================
+// ===== 唯一版本：searchUsersRemote =====
+function regexEscape(s=''){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+
+let LAST_USER_Q = '';
+let LAST_USER_LIST = [];
+
+async function searchUsersRemote(keyword){
+  const kw = (keyword || '').trim();
+  if (!kw) return [];
+  if (kw === LAST_USER_Q && LAST_USER_LIST.length) return LAST_USER_LIST;
+
+  const re = regexEscape(kw);
+  const where = {
+    "$or": [
+      { nickname: { "$regex": re, "$options": "i" } },
+      { username: { "$regex": re, "$options": "i" } },
+      { email:    { "$regex": re, "$options": "i" } },
+      { objectId: { "$regex": re, "$options": "i" } }
+    ]
+  };
+
+  const headers = { 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY };
+  const token = localStorage.getItem('sg_token');
+  if (token) headers['X-LC-Session'] = token;   // ← 很重要：帶 session
+
+  const url = `${API}/users?where=${encodeURIComponent(JSON.stringify(where))}&limit=20&order=-updatedAt`;
+  try{
+    const r = await fetch(url, { headers });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'search users failed');
+    const list = (d.results || []).map(u => ({
+      id: u.objectId,
+      nickname: u.nickname || '',
+      username: u.username || '',
+      avatarUrl: u.avatarUrl || 'https://via.placeholder.com/60?text=🙂',
+      productCount: PRODUCT_COUNT.get(u.objectId) || 0
+    }));
+    LAST_USER_Q = kw;
+    LAST_USER_LIST = list;
+    return list;
+  }catch(e){
+    console.warn('searchUsersRemote error:', e);
+    LAST_USER_Q = kw;
+    LAST_USER_LIST = [];
+    return [];
+  }
+}
+/* 產生建議清單（暱稱/使用者名稱/GID 模糊） */
+const updateSuggest = debounce(async function(raw){
+  const box = document.getElementById('searchSuggest');
+  const bar = document.getElementById('searchBar');
+  if(!box || !bar) return;
+
+  const kw = (raw||'').trim();
+  if(!kw){ box.style.display='none'; box.innerHTML=''; return; }
+
+  // 先打遠端找「所有用戶」
+  let list = await searchUsersRemote(kw);
+
+  // 若遠端回傳很少，再把目前頁面上「曾出現過的賣家」補進來（避免漏）
+  if(list.length < 8){
+    const keys = expandHan(kw).map(normalizeText);
+    SELLERS_MAP.forEach(s=>{
+      const name = normalizeText(s.nickname || s.username || '');
+      const hit = keys.some(k=> name.includes(k)) ||
+                  String(s.id).toLowerCase().includes(normalizeText(kw));
+      if(hit && !list.some(x=>x.id===s.id)){
+        list.push({
+          id: s.id,
+          nickname: s.nickname||'',
+          username: s.username||'',
+          avatarUrl: s.avatarUrl||'https://via.placeholder.com/60?text=🙂',
+          productCount: PRODUCT_COUNT.get(s.id) || 0
+        });
+      }
+    });
+  }
+
+  // 只留前 8
+  list = list.slice(0,8);
+
+  // 沒資料
+  if(!list.length){
+    box.innerHTML = `<div class="no-suggest">沒有找到使用者</div>`;
+    box.style.display = bar.classList.contains('show') ? 'block' : 'none';
+    return;
+  }
+
+  // render（帶「商品數」）
+  box.innerHTML = list.map(s=>{
+    const name = escapeHTML(s.nickname || s.username || '用戶');
+    const gid  = escapeHTML(s.id);
+    const avatar = s.avatarUrl || 'https://via.placeholder.com/60?text=🙂';
+    const cnt = s.productCount|0;
+    return `
+      <div class="suggest-item" role="option" onclick="goProfile('${gid}')">
+        <img class="suggest-avatar" src="${avatar}" alt="">
+        <div class="suggest-name">${name}</div>
+        <div class="suggest-gid">${gid}</div>
+        <div style="font-size:12px;color:#999;margin-left:8px;">商品數 ${cnt}</div>
+      </div>`;
+  }).join('');
+
+  box.style.display = bar.classList.contains('show') ? 'block' : 'none';
+}, 180);
+
+/* 依點擊的人，導向 seller 或 user */
+function goProfile(targetId){
+  const me = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(me && me.objectId === targetId){
+    location.href='user.html';
+  }else{
+    location.href=`seller.html?id=${encodeURIComponent(targetId)}`;
+  }
+}
+
+/* 監聽輸入框：即時建議 */
+(function(){
+  const input = document.getElementById('searchInput');
+  if(!input) return;
+  input.addEventListener('input', e=> updateSuggest(e.target.value));
+})();
+/* ====== 簡繁對照（小字庫，雙向） ====== */
+const ST_MAP = {
+  '国':'國','体':'體','台':'臺','后':'後','发':'發','广':'廣','车':'車','电':'電','网':'網','软':'軟','书':'書',
+  '买':'買','卖':'賣','优':'優','爱':'愛','蓝':'藍','绿':'綠','红':'紅','黄':'黃','银':'銀','门':'門','间':'間',
+  '这':'這','个':'個','会':'會','产':'產','医':'醫','学':'學','历':'歷','复':'複','杂':'雜','条':'條','声':'聲'
+};
+const TS_MAP = Object.fromEntries(Object.entries(ST_MAP).map(([s,t])=>[t,s]));
+
+/* 把字串做簡繁擴展：傳回 [原字串, 簡轉繁版, 繁轉簡版]（去重） */
+function expandHan(s=''){
+  const toT = [...s].map(ch => ST_MAP[ch] || ch).join('');
+  const toS = [...s].map(ch => TS_MAP[ch] || ch).join('');
+  return Array.from(new Set([s, toT, toS]));
+}
+
+/* 正規化：去空白、全形轉半形、統一小寫 */
+function normalizeText(s=''){
+  // NFKC 會把全形數字英文字元標點轉為半形
+  return s.normalize('NFKC').toLowerCase().replace(/\s+/g,'');
+}
+
+/* 解析價格查詢：支援 < <= = >= > 以及 ¥ / io$ */
+function parsePriceQuery(q){
+  // e.g. "≤60" "io$<=1" ">= 100" "¥=66" "60"
+  const m = q.replace(/\s+/g,'').match(/^(io\$|¥|￥)?\s*(<=|≥|>=|<|>|=)?\s*([\d.]+)$/i);
+  if(!m) return null;
+  let [, unit, op, num] = m;
+  op = op || '=';                         // 默認等於
+  let value = parseFloat(num||'0');
+  if(!isFinite(value)) return null;
+  // io$ 轉人民幣
+  if(unit && /^io\$/i.test(unit)) value = value * IO_TO_CNY;
+  // 無單位但小於 5 的數字，若帶有 "io$" 字樣則已處理；否則視為 CNY
+  return { op, valueCNY: value };
+}
+
+/* 開關搜尋列 */
+function toggleSearch(force){
+  const bar = document.getElementById('searchBar');
+  const input = document.getElementById('searchInput');
+  const box = document.getElementById('searchSuggest');
+  if(!bar) return;
+
+  const isOpen = bar.classList.contains('show');
+  const wantOpen = (typeof force === 'boolean') ? force : !isOpen;
+
+  if(wantOpen){
+    bar.classList.add('show');
+    bar.setAttribute('aria-hidden','false');
+    setTimeout(()=> input?.focus(), 160);
+    if(box) box.style.display='block';
+  }else{
+    bar.classList.remove('show');
+    bar.setAttribute('aria-hidden','true');
+    if(input) input.value='';
+    if(box){ box.style.display='none'; box.innerHTML=''; }  // 關掉建議
+    restoreAllProducts();
+  }
+}
+
+/* 還原主清單與 ≤IO$1 區塊 */
+function restoreAllProducts(){
+  const gridAll = document.getElementById('productGrid');
+  const gridCheap = document.getElementById('cheapGrid');
+  if(!gridAll) return;
+  gridAll.innerHTML = '';
+  PRODUCTS.forEach(p => gridAll.appendChild(makeProductCard(p, false)));
+  if(gridCheap){
+    gridCheap.innerHTML = '';
+    PRODUCTS.forEach(p=>{
+      const price=displayPrice(p);
+      if(price<=60) gridCheap.appendChild(makeProductCard(p, true));
+    });
+  }
+}
+
+/* 執行搜尋 */
+function runSearch(){
+  const input = document.getElementById('searchInput');
+  if(!input) return;
+
+  const raw = (input.value||'').trim();
+
+  // === 這段是新加的「密碼捷徑」：*G~admin → 直接跳轉 ===
+  // 若想大小寫必須完全相同，把 /i 拿掉，改成 raw === '*G~admin'
+  if (/^\*G~admin$/i.test(raw)) {
+    location.href = 'Grove. Control-Yuan.html';
+    return;
+  }
+
+  // ↓↓↓ 下面全是你原本就有的搜尋邏輯，保持不變 ↓↓↓
+  const { mode, text } = parseQueryMode(raw);
+  const qNorm = normalizeText(text);
+
+  if(!qNorm){ restoreAllProducts(); return; }
+
+  // 解析：GID（維持原行為）
+  const gidLike = qNorm.match(/[a-z0-9]{16,26}/i)?.[0];
+
+  // 解析：文字鍵（做簡繁展開）
+  const textKeys = expandHan(text).map(normalizeText);
+
+  // 解析：價格（只有 mode==='price' 才解析）
+  let priceFilter = null;
+  if(mode==='price'){
+    // 支援 "~60" / "~ io$1"
+    const priceMatch = qNorm
+      .replace(/^rmb/,'').replace(/^cny/,'').replace(/^y?uan/,'');
+    priceFilter = parsePriceQuery(priceMatch);
+    if(!priceFilter){  // 使用者可能輸入錯
+      restoreAllProducts();
+      return;
+    }
+  }
+
+  // ===== 真正篩選 =====
+  const results = PRODUCTS.filter(p=>{
+    const title = normalizeText(p.title||'');
+    const sellerName = normalizeText((p.seller?.nickname) || (p.seller?.username) || '');
+
+    // GID 命中
+    if(gidLike){
+      if(String(p.objectId).toLowerCase().includes(gidLike)) return true;
+      if(String(p.seller?.objectId||'').toLowerCase().includes(gidLike)) return true;
+    }
+
+    // 價格（只有在 mode==='price' 時會生效）
+    // 價格（只有在 mode==='price' 時會生效）
+if (priceFilter) {
+  const price = Number(displayPrice(p) || 0);
+  const v = priceFilter.valueCNY;
+  // 用等於（允許浮點數微誤差）
+  const ok = Math.abs(price - v) < 1e-6;
+  if (!ok) return false;
+}
+
+    // 文字命中：根據模式不同決定比對範圍
+    if(mode==='title'){
+      // 只看商品名稱
+      const hit = textKeys.some(k => title.includes(k));
+      if(!hit) return false;
+    }else{
+      // free / 其他：商品名或賣家名都可
+      if(textKeys.length){
+        const hit = textKeys.some(k => (title.includes(k) || sellerName.includes(k)));
+        // 若沒有任何其它條件（不是價格、不是 gid），而且文字沒中，就排除
+        if(!hit && !priceFilter && !gidLike) return false;
+      }
+    }
+
+    return true;
+  });
+
+  // ====== 若是純找人（像 lim），但那人沒有商品 → 下方不動 ======
+  const onlyText = (mode!=='price' && !gidLike && textKeys.length>0);
+  const noProductFound = results.length===0;
+  const hitUserNoProduct =
+    (LAST_USER_Q && normalizeText(LAST_USER_Q) === normalizeText(text) &&
+     LAST_USER_LIST.some(u =>
+       (normalizeText(u.nickname||u.username||'').includes(normalizeText(text)) ||
+        (u.id||'').toLowerCase().includes(normalizeText(text))) &&
+       (u.productCount|0)===0
+     )
+    );
+
+  if(onlyText && noProductFound && hitUserNoProduct){
+    // 這代表使用者是在找人（ex: lim）但對方沒上架 → 保持商品清單不變
+    restoreAllProducts();
+    return;
+  }
+
+  // ====== 渲染 ======
+  const gridAll = document.getElementById('productGrid');
+  const gridCheap = document.getElementById('cheapGrid');
+
+  if(gridAll){
+    gridAll.innerHTML = '';
+    results.forEach(p => gridAll.appendChild(makeProductCard(p, false)));
+  }
+  if(gridCheap){
+    gridCheap.innerHTML = '';
+    results.forEach(p=>{
+      const price=displayPrice(p);
+      if(price<=60) gridCheap.appendChild(makeProductCard(p, true));
+    });
+  }
+}
+/** ====== 啟動 ====== */
+renderNav();
+loadProducts();
+
+</script>
+<script>
+// ==== 廣告板資料 ====
+let AD_LIST = [];
+let AD_IDX = 0;
+let AD_TIMER = null;
+
+// 導覽列：補上「投放廣告」按鈕控制
+const _origRenderNav = renderNav;
+renderNav = function(){
+  _origRenderNav();
+  const user = JSON.parse(localStorage.getItem('sg_user') || 'null');
+  const btn = document.getElementById('adCreateBtn');
+  if(btn) btn.style.display = user ? 'inline-block' : 'none';
+};
+
+// ✅ 覆寫完，立刻再跑一次，讓按鈕狀態正確
+renderNav();
+
+// 工具：ISO from input[type=datetime-local]
+function toISO(dtLocal){
+  if(!dtLocal) return null;
+  const d = new Date(dtLocal);
+  if(isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+// 讀取廣告
+async function loadAds(){
+  // 顯示中的條件：active=true（預設）、時間在 start~end 之內（若有設定）
+  const nowIso = new Date().toISOString();
+  const where = {
+    active: { "$ne": false },
+    "$and": [
+      { "$or": [ { startAt: { "$exists": false } }, { startAt: { "$lte": { "__type":"Date","iso": nowIso } } } ] },
+      { "$or": [ { endAt:   { "$exists": false } }, { endAt:   { "$gte": { "__type":"Date","iso": nowIso } } } ] }
+    ]
+  };
+  const url = `${API}/classes/Ad?where=${encodeURIComponent(JSON.stringify(where))}&order=-createdAt&limit=12`;
+  try{
+    const r = await fetch(url, { headers:{'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY} });
+    const d = await r.json();
+    if(!r.ok){ console.warn('loadAds error', d); return; }
+    AD_LIST = (d.results||[]).map(x=>({
+      id: x.objectId,
+      title: x.title || '',
+      imageUrl: x.imageUrl || (Array.isArray(x.images)&&x.images[0]) || '',
+      linkUrl: x.linkUrl || '#'
+    })).filter(x=>x.imageUrl && x.linkUrl);
+
+    renderAds();
+  }catch(e){ console.warn(e); }
+}
+
+function renderAds(){
+  const track = document.getElementById('adTrack');
+  const dots  = document.getElementById('adDots');
+  if(!track || !dots) return;
+
+  track.innerHTML = '';
+  dots.innerHTML  = '';
+
+  if(!AD_LIST.length){
+  const empty = document.createElement('div');
+  empty.className = 'hero-slide';
+
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="420">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#eee"/>
+        <stop offset="1" stop-color="#ddd"/>
+      </linearGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#g)"/>
+    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+          font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif"
+          font-size="36" fill="#888">廣告位（尚無投放）</text>
+  </svg>`.trim();
+
+  const dataUri = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  empty.innerHTML = `<img src="${dataUri}" alt="廣告位（尚無投放）">`;
+  track.appendChild(empty);
+  clearInterval(AD_TIMER); AD_TIMER=null;
+  return;
+}
+
+  AD_LIST.forEach((ad,i)=>{
+    const slide = document.createElement('div');
+    slide.className = 'hero-slide';
+    slide.innerHTML = `
+      <a href="${ad.linkUrl}" target="_blank" rel="noopener noreferrer">
+        <img src="${ad.imageUrl}" alt="${escapeHTML(ad.title||'廣告')}">
+      </a>`;
+    track.appendChild(slide);
+
+    const dot = document.createElement('div');
+    dot.className = 'hero-dot' + (i===AD_IDX?' active':'');
+    dot.onclick = ()=>adGo(i);
+    dots.appendChild(dot);
+  });
+
+  adGo(AD_IDX||0, true);
+  adAutoplay();
+}
+
+function adGo(idx, noAnim=false){
+  if(!AD_LIST.length) return;
+  AD_IDX = (idx + AD_LIST.length) % AD_LIST.length;
+  const track = document.getElementById('adTrack');
+  const dots  = [...document.querySelectorAll('.hero-dot')];
+  if(noAnim) track.style.transition='none'; else track.style.transition='transform .45s ease';
+  track.style.transform = `translateX(${-AD_IDX*100}%)`;
+  dots.forEach((d,i)=>d.classList.toggle('active', i===AD_IDX));
+  // 之後的動畫要恢復
+  if(noAnim){ requestAnimationFrame(()=>track.style.transition='transform .45s ease'); }
+}
+function adNext(){ adGo(AD_IDX+1); }
+function adPrev(){ adGo(AD_IDX-1); }
+function adAutoplay(){
+  if(AD_TIMER) clearInterval(AD_TIMER);
+  AD_TIMER = setInterval(adNext, 4000);
+}
+
+// 觸控滑動
+(function(){
+  let startX=0, delta=0, touching=false;
+  const frame = document.getElementById('adHero');
+  if(!frame) return;
+  frame.addEventListener('touchstart', e=>{ touching=true; startX=e.touches[0].clientX; delta=0; if(AD_TIMER) clearInterval(AD_TIMER); },{passive:true});
+  frame.addEventListener('touchmove', e=>{ if(!touching) return; delta = e.touches[0].clientX - startX; },{passive:true});
+  frame.addEventListener('touchend', ()=>{ touching=false; if(Math.abs(delta)>40){ delta>0 ? adPrev() : adNext(); } adAutoplay(); });
+})();
+
+// 開啟/關閉 modal（共用）
+function openAdModal(){
+  const user = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!user){ alert('請先登入再投放廣告'); openLogin(); return; }
+  document.getElementById('adErr').textContent = '';
+  document.getElementById('adModal').style.display='flex';
+}
+
+// 建立廣告（上傳圖片 → 建立 Ad 物件）
+async function createAd(){
+  const user = JSON.parse(localStorage.getItem('sg_user')||'null');
+  const token = localStorage.getItem('sg_token')||'';
+  if(!user || !token){ alert('請先登入'); return; }
+
+  const title = (document.getElementById('adTitle').value||'').trim();
+const errEl = document.getElementById('adErr');
+errEl.textContent = '';
+
+const rawLink = (document.getElementById('adLink').value || '').trim();
+// 可選連結：有填才檢查 http(s)
+if (rawLink && !/^https?:\/\//i.test(rawLink)) {
+  errEl.textContent = '請輸入有效的 http(s) 連結';
+  return;
+}
+const finalLink = rawLink || '#';
+
+const f     = document.getElementById('adImage').files[0];
+const start = document.getElementById('adStart').value;
+const end   = document.getElementById('adEnd').value;
+
+if(!f){ errEl.textContent='請選擇一張廣告圖片'; return; }
+if(f.size > 3*1024*1024){ errEl.textContent='圖片請小於等於 3MB'; return; }
+
+  try{
+    // 1) 上傳圖片
+    const base64 = await fileToBase64(f);
+    const uf = await fetch(`${API}/files/${encodeURIComponent(f.name)}`,{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY },
+      body: JSON.stringify({ base64 })
+    });
+    const ud = await uf.json();
+    if(!uf.ok) throw new Error(ud.error || '圖片上傳失敗');
+
+    // 2) 建立 Ad 物件（公開可讀、擁有者可寫）
+    const payload = {
+  title,
+  linkUrl: finalLink,
+  imageUrl: ud.url,
+  owner: { "__type":"Pointer","className":"_User","objectId": user.objectId },
+  active: true,
+  ...(start ? { startAt: { "__type":"Date","iso": toISO(start) } } : {}),
+  ...(end   ? { endAt:   { "__type":"Date","iso": toISO(end) } } : {}),
+  ACL: {
+    "*": { "read": true },
+    [user.objectId]: { "read": true, "write": true }
+  }
+};
+    const cr = await fetch(`${API}/classes/Ad`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY,
+        'X-LC-Session': token
+      },
+      body: JSON.stringify(payload)
+    });
+    const cd = await cr.json();
+    if(!cr.ok) throw new Error(cd.error || '建立廣告失敗');
+
+    closeModal('adModal');
+    alert('✅ 廣告已投放！');
+    await loadAds(); // 立即刷新廣告板
+  }catch(e){
+    errEl.textContent = e.message || '投放失敗';
+  }
+}
+
+// 每 60 秒輕量輪詢新廣告（無 LiveQuery）
+setInterval(loadAds, 60000);
+
+// 啟動：載入廣告 + 你原本的商品流程照常
+loadAds();
+// Esc 關閉搜尋
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape') toggleSearch(false);
+});
+
+// 點擊頁面空白處收起（順便關閉建議清單）
+document.addEventListener('click', (e)=>{
+  const bar = document.getElementById('searchBar');
+  const btn = document.getElementById('searchBtn');
+  const sug = document.getElementById('searchSuggest');
+  if(!bar || !btn) return;
+  const within = bar.contains(e.target) || btn.contains(e.target);
+  if(!within && bar.classList.contains('show')){
+    toggleSearch(false);
+    if(sug){ sug.style.display='none'; sug.innerHTML=''; }
+  }
+});
+</script>
+<script src="im.js?v=0.1.1"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Grove · Judicial Yuan（司法院）</title>
+<style>
+  :root{
+    --brand:#6c4ef7; --uv:#8a5bff; --bg:#f6f3ea; --text:#222; --muted:#666;
+    --card:#fff; --border:#eee; --danger:#e91e63; --ok:#0aa15c;
+    --dark:#0f0f14; --darkmuted:#a9a5d1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans TC",Arial,sans-serif}
+  .wrap{max-width:1160px;margin:0 auto; padding:14px 14px 60px}
+  .btn{padding:10px 12px;border-radius:10px;border:1px solid #ddd;background:#fff;cursor:pointer;font-weight:800}
+  .btn.brand{background:var(--brand); color:#fff;border-color:transparent}
+  .btn.ok{background:var(--ok); color:#fff;border-color:transparent}
+  .btn.danger{background:var(--danger); color:#fff;border-color:transparent}
+  .btn[disabled]{opacity:.6; cursor:not-allowed}
+  .hint{color:var(--muted); font-size:13px}
+  .hr{height:1px;background:#eee;margin:10px 0}
+  .row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+
+  /* ===== 頂部：左（返回/❄️）、右（法條卡） ===== */
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:10px;
+  }
+  .leftStack{ display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+
+  /* 右上角法條區（暗色卡） */
+  .laws-dock{ text-align:right; }
+  .laws{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; max-width:420px }
+  .law{ background:#0f0f14; color:#8a5bff; border:1px solid #232236; border-radius:12px; padding:10px;
+        height:120px; overflow:auto; cursor:zoom-in }
+  .law:hover{ box-shadow:0 8px 24px rgba(108,78,247,.24) }
+  .law small{ color:#a9a5d1; display:block; margin-bottom:6px }
+
+  /* 彈窗（法條、查看申訴、選條次） */
+  .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+          background:rgba(0,0,0,.45); z-index:50; padding:14px }
+  .sheet{ border-radius:14px; border:1px solid #232236; overflow:auto }
+  .sheet.dark{ background:#0f0f14; color:var(--uv); width:min(820px,92vw); height:min(72vh,680px) }
+  .sheet.white{ background:#fff; color:var(--text); border-color:#eee; width:min(860px,92vw); max-height:92vh }
+  .modal header{ position:sticky; top:0; display:flex; justify-content:space-between; align-items:center;
+                 padding:10px 12px; background:inherit; border-bottom:1px solid rgba(0,0,0,.06) }
+  .close{ border:1px solid #333; background:#111;color:#eee; padding:6px 10px; border-radius:8px }
+  .body{ padding:12px }
+
+  /* 兩欄主區 */
+  .layout{display:grid; grid-template-columns:260px 1fr; gap:14px; margin-top:12px}
+  @media (max-width: 960px){ .layout{grid-template-columns:1fr} }
+
+  /* ❄️側欄人員 */
+  .side{position:relative}
+  .snow-btn{ width:44px;height:44px;border-radius:12px;border:1px solid #ddd;background:#fff;cursor:pointer;
+             display:flex;align-items:center;justify-content:center;font-size:20px; user-select:none;
+             box-shadow:0 6px 18px rgba(0,0,0,.06) }
+  .snow-cloud{position:absolute; top:60px; left:0; width:260px; border:1px solid var(--border);
+    background:#fff;border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.18);
+    padding:10px; display:none; z-index:20; overflow:hidden}
+  .snow-cloud.open{display:block; animation:condense .24s ease both}
+  .snow-cloud.closing{animation:evaporate .28s ease both}
+  @keyframes condense{ from{ filter:blur(6px); transform:scale(.96); opacity:.0 } to{ filter:none; transform:scale(1); opacity:1 } }
+  @keyframes evaporate{ from{ filter:none; transform:scale(1); opacity:1 } to{ filter:blur(6px); transform:scale(.96); opacity:0 } }
+  .staff-list{display:flex;flex-direction:column; gap:8px}
+  .staff-row{display:flex; gap:10px; align-items:center; padding:6px; border:1px solid #eee; border-radius:10px}
+  .avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#f3f3f3;border:1px solid #eee}
+  .name{font-weight:900;font-size:13px}
+  .gid{font-size:12px;color:#777}
+  .chip{padding:0 8px; line-height:18px; font-size:11px; font-weight:900; border-radius:999px; border:1px solid #ddd; background:#fff}
+  .chip.L{color:#2d56ff;border-color:#cfd8ff;background:#eef2ff}
+  .chip.A{color:#6c4ef7;border-color:#d8ceff;background:#f2efff}
+
+  /* 主區塊、卡片 */
+  .pageTitle{ text-align:center; font-weight:900; font-size:22px; margin:12px 0 6px; }
+  .section{background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.06); padding:12px}
+  .card{background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px}
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media (max-width: 900px){ .cols{grid-template-columns:1fr} }
+  .thumb{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#f3f3f3;border:1px solid #eee}
+  .meta{font-size:12px;color:#555}
+  .pill{display:inline-block; padding:0 8px; line-height:18px; border-radius:999px; font-size:11px; font-weight:900; border:1px solid #ddd}
+  .pill.ip{color:#b1002f; background:#ffe9f0; border-color:#ffc7d2}
+  .pill.normal{color:#106b2f; background:#e9fff0; border-color:#c8f4d7}
+  .input,.select,.textarea{width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; background:#fff; font-size:14px}
+  .textarea{min-height:120px; resize:vertical}
+  .empty{color:#777; text-align:center; padding:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="pageTitle">Grove · 司法院（Judicial Yuan）</div>
+
+  <!-- 工具列：左側返回+雪花 / 右側法條+Esc Store -->
+  <div class="topbar">
+    <div class="leftStack">
+      <button class="btn" onclick="goBack()">← 返回</button>
+      <button class="snow-btn" id="snowBtn" title="人員清單">❄️</button>
+    </div>
+
+    <div class="laws-dock">
+      <div class="hint">現行法條（點擊可放大）</div>
+      <div id="lawList" class="laws"></div>
+      <div style="margin-top:8px">
+        <button class="btn" onclick="location.href='shopping.html'">Esc Store</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 標題下方我要申訴 -->
+  <div class="row" style="margin-top:10px; justify-content:flex-end">
+    <button class="btn brand" onclick="openComplaintForm()">我要申訴</button>
+  </div>
+
+  <div class="layout">
+    <!-- 左：❄️ 人員清單 -->
+    <aside class="side">
+      <div class="snow-cloud" id="snowMenu" aria-hidden="true">
+        <div style="font-weight:900;margin-bottom:6px">人員名單</div>
+        <div class="staff-list">
+          <div class="hint" style="margin:4px 0 6px">立法院成員 <span class="chip L">L</span></div>
+          <div id="listL"></div>
+        </div>
+        <div class="hr"></div>
+        <div class="staff-list">
+          <div class="hint" style="margin:4px 0 6px">司法院成員 <span class="chip A">A</span></div>
+          <div id="listA"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 右：主內容 -->
+    <main>
+      <section class="section">
+        <div class="row" style="justify-content:space-between">
+          <h2 style="margin:0">最新申訴</h2>
+          <span class="hint">顯示最近 50 筆</span>
+        </div>
+        <div id="publicComplaints"></div>
+        <div id="publicEmpty" class="empty" style="display:none">目前沒有新的申訴</div>
+      </section>
+
+      <section id="internalBox" class="section" style="display:none; margin-top:14px">
+        <h2>待審申訴（內部）</h2>
+        <div class="hint">需先選擇至少 1 條對應法條，才能通過或不通過。不得處理自己提交的申訴。</div>
+        <div class="cols" style="margin-top:10px">
+          <div>
+            <div class="row" style="justify-content:space-between">
+              <b>普通申訴</b><span id="cntNormal" class="hint">—</span>
+            </div>
+            <div id="listNormal"></div>
+            <div id="emptyNormal" class="empty" style="display:none">目前沒有普通申訴</div>
+          </div>
+          <div>
+            <div class="row" style="justify-content:space-between">
+              <b>侵權申訴</b><span id="cntIp" class="hint">—</span>
+            </div>
+            <div id="listIp"></div>
+            <div id="emptyIp" class="empty" style="display:none">目前沒有侵權申訴</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ====== 彈窗們 ====== -->
+<!-- 法條放大 -->
+<div id="lawModal" class="modal" role="dialog" aria-modal="true">
+  <div class="sheet dark">
+    <header>
+      <div id="lawModalTitle" style="color:#ddd;font-weight:900">—</div>
+      <button class="close" onclick="closeLawModal()">×</button>
+    </header>
+    <div id="lawModalBody" class="body" style="white-space:pre-wrap; font-family:ui-monospace,monospace;"></div>
+  </div>
+</div>
+
+<!-- 我要申訴（公共彈窗） -->
+<div id="cmpModal" class="modal" role="dialog" aria-modal="true">
+  <div class="sheet white">
+    <header>
+      <div style="font-weight:900">我要申訴</div>
+      <button class="btn" onclick="closeComplaintForm()">×</button>
+    </header>
+    <div class="body">
+      <div class="row">
+        <label class="hint" style="margin:0">申訴種類</label>
+        <select class="select" id="complaintType">
+          <option value="normal">普通申訴</option>
+          <option value="ip">侵權申訴</option>
+        </select>
+      </div>
+      <div class="hr"></div>
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:1;min-width:240px">
+          <div class="hint">申訴理由</div>
+          <textarea id="cmpReason" class="textarea" placeholder="請描述具體情形…"></textarea>
+        </div>
+        <div id="ipOnlyBox" style="flex:1;min-width:240px;display:none">
+          <div class="hint">被告（侵權申訴必填）</div>
+          <select id="accusedSelect" class="select" style="margin-bottom:6px">
+            <option value="">（選擇已註冊用戶）</option>
+          </select>
+          <input id="accusedGid" class="input" placeholder="或直接輸入 GID（選填）"/>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label class="hint" style="margin:0">上傳證據圖片（可多張）</label>
+          <input type="file" id="eviFiles" accept="image/*" multiple/>
+        </div>
+        <div id="eviHint" class="hint">支援多張，會上傳到雲端</div>
+      </div>
+      <div id="cmpErr" class="hint" style="color:#b00020"></div>
+    </div>
+    <div class="body" style="display:flex; justify-content:flex-end; gap:8px">
+      <button class="btn" onclick="closeComplaintForm()">取消</button>
+      <button class="btn brand" onclick="submitComplaint()">提交申訴</button>
+    </div>
+  </div>
+</div>
+
+<!-- 檢視申訴內容 -->
+<div id="viewCmpModal" class="modal" role="dialog" aria-modal="true">
+  <div class="sheet white" style="width:min(760px,92vw)">
+    <header>
+      <div id="viewCmpTitle" style="font-weight:900">申訴內容</div>
+      <button class="btn" onclick="closeViewCmp()">×</button>
+    </header>
+    <div class="body" id="viewCmpBody" style="white-space:pre-wrap"></div>
+  </div>
+</div>
+
+<!-- 選擇對應條次 -->
+<div id="pickLawModal" class="modal" role="dialog" aria-modal="true">
+  <div class="sheet white" style="width:min(720px,92vw);max-height:80vh">
+    <header>
+      <div style="font-weight:900">選擇對應法律條文（可多條）</div>
+      <button class="btn" onclick="closePickLaw()">×</button>
+    </header>
+    <div class="body">
+      <input id="lawSearch" class="input" placeholder="搜尋法名 / 條次，例如：著作權 第 65 條" />
+      <div id="pickLawList" style="margin-top:8px; max-height:56vh; overflow:auto"></div>
+    </div>
+    <div class="body" style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn" onclick="closePickLaw()">取消</button>
+      <button class="btn ok" onclick="confirmPickLaw()">確定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== LeanCloud 設定 ===== */
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+const SUPER_GID = "68b19eeb90ed2201c4839219";
+
+const AUTH = { 'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY };
+function lcHeaders(){ const t=localStorage.getItem('sg_token'); return t?{...AUTH,'X-LC-Session':t}:AUTH; }
+function $(s){ return document.querySelector(s); }
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+async function safeJson(url, opt){ try{ const r=await fetch(url,opt); const c=r.headers.get('content-type')||''; const d=c.includes('json')?await r.json():null; return {ok:r.ok, d, status:r.status}; }catch(e){ return {ok:false, d:null, status:0}; } }
+function goBack(){ try{ const ref=document.referrer||''; const same=ref && new URL(ref).origin===location.origin; if(same){ location.href=ref; return; } }catch(_){}
+  if(history.length>1){ history.back(); return; } location.href='shopping.html'; }
+
+/* ===== 登入與身分 ===== */
+let ME=null, IS_JUDICIAL=false;
+async function requireLogin(){
+  const token=localStorage.getItem('sg_token'); const user=localStorage.getItem('sg_user');
+  if(!token || !user){ alert('請先登入'); location.replace('index.html'); return false; }
+  ME = JSON.parse(user); return true;
+}
+async function isJudicial(uid){
+  const p={ "__type":"Pointer","className":"_User","objectId": uid };
+  for(const q of [{user:p,active:true},{User:p,active:true},{"$or":[{user:p},{User:p}]}]){
+    const w=encodeURIComponent(JSON.stringify(q));
+    const r=await safeJson(`${API}/classes/JudicialStaff?where=${w}&limit=1`,{headers:lcHeaders()});
+    if(r.ok && r.d?.results?.length) return true;
+  }
+  return false;
+}
+
+/* ===== ❄️ 漢堡 ===== */
+const snowBtn = document.getElementById('snowBtn');
+const snowMenu = document.getElementById('snowMenu');
+snowBtn.addEventListener('click', ()=>{
+  snowMenu.classList.remove('closing');
+  snowMenu.classList.add('open');
+  snowMenu.setAttribute('aria-hidden','false');
+});
+document.addEventListener('click', (e)=>{
+  if(!snowMenu.classList.contains('open')) return;
+  const within = snowMenu.contains(e.target) || snowBtn.contains(e.target);
+  if(!within){
+    snowMenu.classList.remove('open'); snowMenu.classList.add('closing');
+    snowMenu.setAttribute('aria-hidden','true');
+    setTimeout(()=>snowMenu.classList.remove('closing'), 280);
+  }
+});
+
+/* ===== 法條（合併 LawArticle / JudicialLaw，並建立條次索引） ===== */
+let LAW_CACHE = [];
+let LAW_INDEX = []; // [{cls:'JudicialLaw'|'LawArticle', id:'(父)ID', no:Number, label:String}]
+
+function formatArticles(arts){
+  if(!Array.isArray(arts)||!arts.length) return '';
+  return arts.map(a=>`第 ${a.no} 條\n${a.body||''}`).join('\n\n');
+}
+async function loadLaws(){
+  const where = encodeURIComponent(JSON.stringify({ status:'active' }));
+  const [a,b] = await Promise.all([
+    safeJson(`${API}/classes/LawArticle?where=${where}&order=-publishedAt,-updatedAt&limit=200`,{headers:lcHeaders()}),
+    safeJson(`${API}/classes/JudicialLaw?where=${where}&order=-publishedAt,-updatedAt&limit=200`,{headers:lcHeaders()})
+  ]);
+
+  const rowsA = (a.d?.results||[]).map(x=>({
+    _src:'LawArticle',
+    objectId:x.objectId, code:x.code, title:x.title||`法律條文`,
+    body:x.body||'', version:x.version||'', publishedAt:x.publishedAt||x.updatedAt
+  }));
+  const rowsB = (b.d?.results||[]).map(x=>({
+    _src:'JudicialLaw',
+    objectId:x.objectId, code:x.code, title:x.title||`司法法`,
+    body: formatArticles(x.articles), _arts: x.articles||[],
+    version:x.version||'', publishedAt:x.publishedAt||x.updatedAt
+  }));
+
+  const rows = [...rowsA, ...rowsB].filter((v,i,self)=> i===self.findIndex(t=> (t.code||'')+t.title === (v.code||'')+v.title ));
+  LAW_CACHE = rows;
+
+  // 畫右上角卡
+  const list = document.getElementById('lawList'); list.innerHTML='';
+  if(!rows.length){ list.innerHTML = `<div class="hint">尚無法條</div>`; return; }
+  for(const a2 of rows){
+    const el = document.createElement('div');
+    el.className='law';
+    el.innerHTML = `<small>${escapeHTML(a2.code||'未編號')}　${escapeHTML(a2.version||'')}</small>
+      <div style="white-space:pre-wrap; font-family:ui-monospace,monospace; font-size:13px">${escapeHTML(a2.title||'（無標題）')}\n\n${escapeHTML(a2.body||'')}</div>`;
+    el.addEventListener('click',()=>openLawModal(a2));
+    list.appendChild(el);
+  }
+
+  buildLawIndex();
+}
+function buildLawIndex(){
+  const rxNo = /第\s*([0-9０-９]+)\s*條/;
+  const z2h = s=>s.replace(/[０-９]/g,d=>'０１２３４５６７８９'.indexOf(d));
+  const idx = [];
+
+  // JudicialLaw：逐條展開
+  LAW_CACHE.filter(r=>r._src==='JudicialLaw').forEach(row=>{
+    (row._arts||[]).forEach(a=>{
+      const no = Number(a.no);
+      if (Number.isFinite(no))
+        idx.push({ cls:'JudicialLaw', id:row.objectId, no, label:`${row.title||row.code||'（未命名）'} — 第 ${no} 條` });
+    });
+  });
+
+  // LawArticle：從內容或標題抓條次
+  LAW_CACHE.filter(r=>r._src==='LawArticle').forEach(row=>{
+    const m = (row.body||row.title||'').match(rxNo);
+    const no = m ? Number(z2h(m[1])) : NaN;
+    if (Number.isFinite(no))
+      idx.push({ cls:'LawArticle', id:row.objectId, no, label:`${row.title||row.code||'（未命名）'} — 第 ${no} 條` });
+  });
+
+  idx.sort((a,b)=> (a.label.localeCompare(b.label,'zh-Hant')) || (a.no-b.no));
+  LAW_INDEX = idx;
+}
+
+function openLawModal(a){
+  document.getElementById('lawModalTitle').textContent = (a.code?`${a.code} `:'') + (a.title||'—');
+  document.getElementById('lawModalBody').textContent  = a.body||'';
+  document.getElementById('lawModal').style.display = 'flex';
+}
+function closeLawModal(){ document.getElementById('lawModal').style.display='none'; }
+
+/* ===== 我要申訴（公共） ===== */
+function openComplaintForm(){ document.getElementById('cmpModal').style.display='flex'; }
+function closeComplaintForm(){ document.getElementById('cmpModal').style.display='none'; resetComplaintForm(); }
+
+const fileQueue = [];
+document.addEventListener('change', e=>{
+  if(e.target.id==='eviFiles'){ fileQueue.length=0; for(const f of e.target.files||[]) fileQueue.push(f); }
+  if(e.target.id==='complaintType'){ document.getElementById('ipOnlyBox').style.display = (e.target.value==='ip') ? '' : 'none'; }
+});
+function resetComplaintForm(){
+  document.getElementById('complaintType').value='normal';
+  document.getElementById('ipOnlyBox').style.display='none';
+  document.getElementById('cmpReason').value='';
+  document.getElementById('accusedSelect').value='';
+  document.getElementById('accusedGid').value='';
+  document.getElementById('eviFiles').value='';
+  fileQueue.length=0;
+  document.getElementById('eviHint').textContent='支援多張，會上傳到雲端';
+  document.getElementById('cmpErr').textContent='';
+}
+async function loadUserOptions(){
+  const url = `${API}/users?order=-createdAt&limit=500`;
+  const {ok,d} = await safeJson(url,{headers:lcHeaders()});
+  const sel = document.getElementById('accusedSelect'); sel.innerHTML='<option value="">（選擇已註冊用戶）</option>';
+  if(!ok || !Array.isArray(d.results)) return;
+  for(const u of d.results){
+    const name = u.nickname || u.username || '(未命名)';
+    const id   = u.objectId;
+    const opt  = document.createElement('option');
+    opt.value = id; opt.textContent = `${name}（${id}）`;
+    sel.appendChild(opt);
+  }
+}
+async function uploadFiles(){
+  const urls=[];
+  for(const f of fileQueue){
+    const r=await fetch(`${API}/files/${encodeURIComponent(f.name)}`,{method:'POST',headers:{...lcHeaders(),'Content-Type':f.type||'application/octet-stream'},body:f});
+    const d=await r.json(); if(!r.ok) throw new Error(d.error||'檔案上傳失敗'); urls.push(d.url);
+  }
+  return urls;
+}
+async function submitComplaint(){
+  const type=document.getElementById('complaintType').value;
+  const reason=(document.getElementById('cmpReason').value||'').trim();
+  const accusedId=document.getElementById('accusedSelect').value||'';
+  const accusedGid=(document.getElementById('accusedGid').value||'').trim();
+  if(!reason){ document.getElementById('cmpErr').textContent='請填寫申訴理由'; return; }
+  if(type==='ip' && !accusedId && !accusedGid){ document.getElementById('cmpErr').textContent='侵權申訴需指定被告（選單或輸入 GID）'; return; }
+  document.getElementById('cmpErr').textContent='';
+  let evid=[]; try{ if(fileQueue.length){ document.getElementById('eviHint').textContent='正在上傳證據…'; evid=await uploadFiles(); document.getElementById('eviHint').textContent='上傳完成'; } }catch(e){ document.getElementById('cmpErr').textContent=e.message||'上傳失敗'; return; }
+  const payload={ type, status:'pending', reason, evidences:evid,
+    complainant:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    decisions:[],
+    ACL:{ "*":{ "read": false }, [ME.objectId]:{ "read": true }, "role:JudicialStaff":{ "read": true, "write": true }, [SUPER_GID]:{ "read": true, "write": true } }
+  };
+  if(type==='ip'){ if(accusedId) payload.accused={ "__type":"Pointer","className":"_User","objectId":accusedId };
+                   if(accusedGid) payload.accusedGid=accusedGid; }
+  const r=await fetch(`${API}/classes/JudicialComplaint`,{method:'POST',headers:{...lcHeaders(),'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d=await r.json(); if(!r.ok){ document.getElementById('cmpErr').textContent=d.error||'提交失敗'; return; }
+  closeComplaintForm(); await Promise.all([loadPublicComplaints(), IS_JUDICIAL?loadInternalComplaints():Promise.resolve()]);
+  await notify(d.objectId, 'complaint_submitted', '你的申訴已送出，將由司法院審查。', d.objectId);
+}
+
+/* ===== 公開申訴列表 + 詳情 ===== */
+async function loadPublicComplaints(){
+  const url = `${API}/classes/JudicialComplaint?order=-createdAt&limit=50&include=complainant,accused`;
+  const {ok,d}=await safeJson(url,{headers:lcHeaders()});
+  const box=document.getElementById('publicComplaints'), empty=document.getElementById('publicEmpty'); box.innerHTML=''; empty.style.display='none';
+  if(!ok || !d.results?.length){ empty.style.display='block'; return; }
+  for(const c of d.results){
+    const u=c.complainant||{}, a=c.accused||{};
+    const av=(u.avatarUrl?u.avatarUrl.replace(/^http:/,'https:'):'')||'data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" rx="24" ry="24" fill="#f3f3f3"/></svg>');
+    const el=document.createElement('div'); el.className='card';
+    el.innerHTML=`
+      <div class="row" style="align-items:center">
+        <img class="thumb" src="${av}" alt="">
+        <div style="min-width:220px">
+          <div style="font-weight:900">${escapeHTML(u.nickname||u.username||'(未命名)')}</div>
+          <div class="meta">GID：${u.objectId||'—'}　${new Date(c.createdAt).toLocaleString()}</div>
+        </div>
+        <span class="pill ${c.type==='ip'?'ip':'normal'}">${c.type==='ip'?'侵權申訴':'普通申訴'}</span>
+        <button class="btn" style="margin-left:auto" onclick="openComplaint('${c.objectId}')">查看申訴內容</button>
+      </div>`;
+    box.appendChild(el);
+  }
+}
+async function openComplaint(id){
+  const {ok,d}=await safeJson(`${API}/classes/JudicialComplaint/${id}?include=complainant,accused`,{headers:lcHeaders()});
+  if(!ok){ alert('讀取失敗'); return; }
+  const c=d||{}, u=c.complainant||{}, a=c.accused||{};
+  const parts=[];
+  parts.push(`申訴人：${u.nickname||u.username||'（未命名）'}（${u.objectId||'—'}）`);
+  if(c.type==='ip'){ const at=a.nickname||a.username||'（未命名）', aid=a.objectId||c.accusedGid||'—'; parts.push(`被告：${at}（${aid}）`); }
+  parts.push(`申訴理由：\n${c.reason||''}`);
+  if(Array.isArray(c.evidences)&&c.evidences.length){ parts.push('\n證據：\n'+c.evidences.map(u=>`• ${u}`).join('\n')); }
+  document.getElementById('viewCmpTitle').textContent='申訴內容';
+  document.getElementById('viewCmpBody').textContent=parts.join('\n\n');
+  document.getElementById('viewCmpModal').style.display='flex';
+}
+function closeViewCmp(){ document.getElementById('viewCmpModal').style.display='none'; }
+
+/* ===== 內部審查：選條次彈窗 & 狀態 ===== */
+const CMP_LAW_PICK = {};   // { [cmpId]: Array<{cls,id,no,label}> }
+let PICKING_FOR = null;
+let PICK_TEMP = new Set();
+
+function openPickLaw(cmpId){
+  PICKING_FOR = cmpId;
+  PICK_TEMP = new Set((CMP_LAW_PICK[cmpId]||[]).map(x=>`${x.cls}:${x.id}#${x.no}`));
+  renderPickList('');
+  document.getElementById('pickLawModal').style.display = 'flex';
+  const q = document.getElementById('lawSearch');
+  q.value=''; q.oninput = (e)=>renderPickList(e.target.value.trim());
+}
+function closePickLaw(){ document.getElementById('pickLawModal').style.display='none'; PICKING_FOR=null; }
+function renderPickList(q){
+  const box = document.getElementById('pickLawList');
+  const list = LAW_INDEX.filter(x=> !q || x.label.includes(q) || (`第 ${x.no} 條`).includes(q));
+  box.innerHTML = list.map(x=>{
+    const key = `${x.cls}:${x.id}#${x.no}`;
+    const checked = PICK_TEMP.has(key) ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid #eee;border-radius:10px;margin-bottom:6px">
+      <input type="checkbox" data-key="${key}" ${checked}/>
+      <div>${escapeHTML(x.label)}</div>
+    </label>`;
+  }).join('') || '<div class="empty">沒有符合的條文</div>';
+  box.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', e=>{
+      const k = e.target.getAttribute('data-key');
+      if(e.target.checked) PICK_TEMP.add(k); else PICK_TEMP.delete(k);
+    });
+  });
+}
+function confirmPickLaw(){
+  if(!PICKING_FOR) return;
+  const chosen = Array.from(PICK_TEMP).map(k=>{
+    const [cls, rest] = k.split(':'); const [id, no] = rest.split('#');
+    const item = LAW_INDEX.find(x=>x.cls===cls && x.id===id && String(x.no)===String(no));
+    return item;
+  }).filter(Boolean);
+  CMP_LAW_PICK[PICKING_FOR] = chosen;
+  const sum = chosen.map(x=>`第${x.no}條`).join('、') || '未選';
+  const tag = document.getElementById(`sel-${PICKING_FOR}`); if(tag) tag.textContent = sum;
+  toggleActionByCmp(PICKING_FOR);
+  closePickLaw();
+}
+function buildDecisionsPayload(cmpId){
+  const picked = CMP_LAW_PICK[cmpId]||[];
+  return picked.map(x=>{
+    const ptr = { "__type":"Pointer","className": (x.cls==='LawArticle'?'LawArticle':'JudicialLaw'), "objectId": x.id };
+    return { law: ptr, no: x.no, label: x.label };
+  });
+}
+function toggleActionByCmp(cmpId){
+  const has = (CMP_LAW_PICK[cmpId]||[]).length>0;
+  const a = document.getElementById(`btn-app-${cmpId}`);
+  const r = document.getElementById(`btn-rej-${cmpId}`);
+  if(a) a.disabled = !has;
+  if(r) r.disabled = !has;
+  const v = document.getElementById(`btn-recall-${cmpId}`);
+  if(v && v.dataset.state!=='closed') v.disabled = !has;
+}
+
+/* ===== 內部清單渲染 ===== */
+async function loadInternalComplaints(){
+  const where=encodeURIComponent(JSON.stringify({ status:'pending' }));
+  const url=`${API}/classes/JudicialComplaint?where=${where}&order=-createdAt&limit=200&include=complainant,accused`;
+  const {ok,d}=await safeJson(url,{headers:lcHeaders()});
+  const listN=document.getElementById('listNormal'), listI=document.getElementById('listIp');
+  const empN=document.getElementById('emptyNormal'), empI=document.getElementById('emptyIp');
+  listN.innerHTML=''; listI.innerHTML=''; empN.style.display='none'; empI.style.display='none';
+  if(!ok){ empN.style.display=empI.style.display='block'; return; }
+  const normals=(d.results||[]).filter(x=>x.type==='normal');
+  const ips=(d.results||[]).filter(x=>x.type==='ip');
+  document.getElementById('cntNormal').textContent=normals.length; document.getElementById('cntIp').textContent=ips.length;
+
+  function oneCard(c){
+    const u=c.complainant||{}, a=c.accused||{};
+    const avatar=(u.avatarUrl?u.avatarUrl.replace(/^http:/,'https:'):'')||'data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" rx="24" ry="24" fill="#f3f3f3"/></svg>');
+    const meIsComplainant = u.objectId===ME.objectId;
+    const el=document.createElement('div'); el.className='card';
+    el.innerHTML=`
+      <div class="row" style="align-items:center">
+        <img class="thumb" src="${avatar}" alt="">
+        <div style="min-width:220px">
+          <div style="font-weight:900">${escapeHTML(u.nickname||u.username||'(未命名)')}</div>
+          <div class="meta">GID：${u.objectId||'—'}　提交：${new Date(c.createdAt).toLocaleString()}</div>
+        </div>
+        <span class="pill ${c.type==='ip'?'ip':'normal'}">${c.type==='ip'?'侵權申訴':'普通申訴'}</span>
+        <div style="margin-left:auto; display:flex; gap:8px">
+          <button class="btn" onclick="openComplaint('${c.objectId}')">查看申訴內容</button>
+          ${(ME.objectId===SUPER_GID)?`<button class="btn danger" onclick="hardDelete('${c.objectId}')">刪除</button>`:''}
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div>
+          <div class="hint" style="margin-bottom:6px">對應法律條文</div>
+          <div class="row" style="gap:8px">
+            <button class="btn" onclick="openPickLaw('${c.objectId}')">選擇條文</button>
+            <span class="pill" id="sel-${c.objectId}">未選</span>
+          </div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn" id="btn-rej-${c.objectId}" onclick="rejectComplaint('${c.objectId}')" disabled>不通過</button>
+          <button class="btn ok" id="btn-app-${c.objectId}" onclick="approveComplaint('${c.objectId}')" disabled>申訴通過</button>
+          ${c.type==='ip'?`
+            <button class="btn brand" id="btn-recall-${c.objectId}" onclick="startRecallVote('${c.objectId}')" disabled data-state="none">舉行罷免投票</button>
+            <button class="btn danger" id="btn-block-${c.objectId}" onclick="blockUser('${a.objectId||c.accusedGid||''}','${c.objectId}')" disabled>封鎖</button>
+          `:''}
+        </div>
+      </div>
+    `;
+    // 不可處理自己的案件（除了超級 GID）
+    if(meIsComplainant && ME.objectId!==SUPER_GID){
+      el.querySelectorAll('button').forEach(b=>{ if(!/查看|刪除/.test(b.textContent)) b.disabled=true; });
+    }
+    // 罷免投票按鈕狀態
+    if(c.type==='ip') refreshRecallButton(c.objectId);
+    return el;
+  }
+
+  if(!normals.length) empN.style.display='block'; normals.forEach(c=>listN.appendChild(oneCard(c)));
+  if(!ips.length) empI.style.display='block'; ips.forEach(c=>listI.appendChild(oneCard(c)));
+}
+
+/* ===== 審核：保存 decisions（含條次） ===== */
+async function approveComplaint(id){
+  const dec=buildDecisionsPayload(id); if(!dec.length){ alert('請先選擇條文'); return; }
+  const meChk = await safeJson(`${API}/classes/JudicialComplaint/${id}?include=complainant`,{headers:lcHeaders()});
+  if(!meChk.ok) return;
+  if(meChk.d.complainant?.objectId===ME.objectId && ME.objectId!==SUPER_GID){ alert('不得處理自己提交的申訴'); return; }
+  const r=await fetch(`${API}/classes/JudicialComplaint/${id}`,{
+    method:'PUT',headers:{...lcHeaders(),'Content-Type':'application/json'},
+    body:JSON.stringify({ status:'approved', decisions:dec,
+      reviewedBy:{ "__type":"Pointer","className":"_User","objectId":ME.objectId } })
+  });
+  if(!r.ok){ const x=await r.json(); alert(x.error||'操作失敗'); return; }
+  await notify(id,'complaint_approved','你的申訴已通過。', id);
+  await loadInternalComplaints();
+}
+async function rejectComplaint(id){
+  const dec=buildDecisionsPayload(id); if(!dec.length){ alert('請先選擇條文'); return; }
+  const reason=prompt('請輸入不通過理由（必填）'); if(!reason) return;
+  const meChk = await safeJson(`${API}/classes/JudicialComplaint/${id}?include=complainant`,{headers:lcHeaders()});
+  if(!meChk.ok) return;
+  if(meChk.d.complainant?.objectId===ME.objectId && ME.objectId!==SUPER_GID){ alert('不得處理自己提交的申訴'); return; }
+  const r=await fetch(`${API}/classes/JudicialComplaint/${id}`,{
+    method:'PUT',headers:{...lcHeaders(),'Content-Type':'application/json'},
+    body:JSON.stringify({ status:'rejected', rejectReason:reason, decisions:dec,
+      reviewedBy:{ "__type":"Pointer","className":"_User","objectId":ME.objectId } })
+  });
+  if(!r.ok){ const x=await r.json(); alert(x.error||'操作失敗'); return; }
+  await notify(id,'complaint_rejected','你的申訴未通過：'+reason, id);
+  await loadInternalComplaints();
+}
+
+/* ===== 侵權：罷免投票（3天後才能結束） & 封鎖 ===== */
+function plusDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+
+async function refreshRecallButton(cmpId){
+  const where = encodeURIComponent(JSON.stringify({
+    scope:'public', type:'recall',
+    sourceComplaint:{ "__type":"Pointer","className":"JudicialComplaint","objectId":cmpId }
+  }));
+  const r = await safeJson(`${API}/classes/SuggestionVote?where=${where}&limit=1`,{headers:lcHeaders()});
+  const btn = document.getElementById(`btn-recall-${cmpId}`);
+  const blk = document.getElementById(`btn-block-${cmpId}`);
+  if(!btn) return;
+
+  const chosen = (CMP_LAW_PICK[cmpId]||[]).length>0;
+  if(!r.ok || !r.d?.results?.length){
+    btn.textContent='舉行罷免投票'; btn.dataset.state='none';
+    btn.disabled = !chosen;
+    if(blk) blk.disabled = true;
+    return;
+  }
+  const v = r.d.results[0];
+  const endsAt = v.endsAt ? new Date(v.endsAt.iso||v.endsAt) : plusDays(v.createdAt,3);
+  const now = new Date();
+
+  if(v.status==='open'){
+    btn.textContent='結束投票（滿 3 天後）';
+    btn.dataset.state='open';
+    btn.title = `預計 ${endsAt.toLocaleString()} 後可結束`;
+    btn.disabled = now < endsAt;               // 未滿 3 天禁止結束
+    if(blk) blk.disabled = true;               // 未結束不可封鎖
+  }else{
+    btn.textContent='已結束投票';
+    btn.dataset.state='closed';
+    btn.disabled = true;
+    if(blk) blk.disabled = false;              // 結束後才可封鎖
+  }
+}
+
+async function startRecallVote(cmpId){
+  // 必須先有條次
+  const picked = CMP_LAW_PICK[cmpId]||[];
+  if(!picked.length){ alert('請先選擇條文'); return; }
+
+  // 有沒有已存在的投票？
+  const where = encodeURIComponent(JSON.stringify({
+    scope:'public', type:'recall',
+    sourceComplaint:{ "__type":"Pointer","className":"JudicialComplaint","objectId":cmpId }
+  }));
+  const existed = await safeJson(`${API}/classes/SuggestionVote?where=${where}&limit=1`,{headers:lcHeaders()});
+  if(existed.ok && existed.d?.results?.[0]){
+    const v = existed.d.results[0];
+    if(v.status==='open'){
+      const endsAt = v.endsAt ? new Date(v.endsAt.iso||v.endsAt) : plusDays(v.createdAt,3);
+      const now = new Date();
+      if(now < endsAt){ alert(`尚未到結束時間：${endsAt.toLocaleString()}`); return; }
+      const rr = await fetch(`${API}/classes/SuggestionVote/${v.objectId}`,{
+        method:'PUT', headers:{...lcHeaders(),'Content-Type':'application/json'},
+        body:JSON.stringify({ status:'closed', closedAt:{ "__type":"Date","iso": new Date().toISOString() } })
+      });
+      if(!rr.ok){ const x=await rr.json(); alert(x.error||'結束投票失敗'); return; }
+      alert('已結束投票');
+      await refreshRecallButton(cmpId);
+      return;
+    }else{
+      alert('此申訴的罷免投票已結束');
+      await refreshRecallButton(cmpId);
+      return;
+    }
+  }
+
+  // 新建投票（endsAt = 3 天後）
+  const cmp = await safeJson(`${API}/classes/JudicialComplaint/${cmpId}?include=accused`,{headers:lcHeaders()});
+  if(!cmp.ok){ alert('讀取被告失敗'); return; }
+  const targetId = cmp.d.accused?.objectId || cmp.d.accusedGid;
+  if(!targetId){ alert('此案件未指定被告'); return; }
+
+  const lines = picked.map(x=>`• ${x.label}`).join('\n');
+  const payload = {
+    scope:'public', type:'recall', status:'open',
+    createdBy:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    target:{ "__type":"Pointer","className":"_User","objectId":targetId },
+    sourceComplaint:{ "__type":"Pointer","className":"JudicialComplaint","objectId":cmpId },
+    title:`針對 ${targetId} 的罷免投票`,
+    body:`依據下列法律條文進行罷免表決：\n${lines}`,
+    endsAt:{ "__type":"Date","iso": plusDays(new Date(),3).toISOString() },
+    ACL:{ "*":{ "read": true }, "role:JudicialStaff":{ "read": true, "write": true }, [SUPER_GID]:{ "read": true, "write": true } }
+  };
+
+  const r=await fetch(`${API}/classes/SuggestionVote`,{
+    method:'POST', headers:{...lcHeaders(),'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+  const x=await r.json(); if(!r.ok){ alert(x.error||'建立投票失敗'); return; }
+
+  await notify(cmpId,'recall_started','此案件已發起罷免投票。', cmpId);
+  alert('已發起罷免投票（3 天後可結束）');
+  await refreshRecallButton(cmpId);
+
+  // 讓 vote.html 可以直接開
+  try{ location.href = `vote.html?v=${encodeURIComponent(x.objectId)}`; }catch(_){}
+}
+
+async function blockUser(userId, cmpId){
+  if(!userId){ alert('沒有被告 GID'); return; }
+  // 僅允許在投票結束後封鎖
+  const where = encodeURIComponent(JSON.stringify({
+    scope:'public', type:'recall', status:'closed',
+    sourceComplaint:{ "__type":"Pointer","className":"JudicialComplaint","objectId":cmpId }
+  }));
+  const chk = await safeJson(`${API}/classes/SuggestionVote?where=${where}&limit=1`,{headers:lcHeaders()});
+  if(!chk.ok || !chk.d?.results?.length){ alert('投票尚未結束，不能封鎖'); return; }
+
+  if(!confirm('確定要封鎖此使用者？')) return;
+  const payload={ user:{ "__type":"Pointer","className":"_User","objectId":userId }, reason:'Judicial IP complaint',
+    by:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    sourceComplaint:{ "__type":"Pointer","className":"JudicialComplaint","objectId":cmpId },
+    ACL:{ "*":{ "read": false }, "role:JudicialStaff":{ "read": true, "write": true }, [SUPER_GID]:{ "read": true, "write": true } } };
+  const r=await fetch(`${API}/classes/BlockedUser`,{method:'POST',headers:{...lcHeaders(),'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d=await r.json(); if(!r.ok){ alert(d.error||'封鎖失敗'); return; }
+  await notify(cmpId,'user_blocked','被告已被封鎖。', cmpId);
+  alert('已封鎖');
+}
+
+/* ===== 通知（加入 sourceComplaint 方便清除） ===== */
+async function notify(cmpId, kind, text, sourceId){
+  try{
+    const {ok,d}=await safeJson(`${API}/classes/JudicialComplaint/${cmpId}?include=complainant`,{headers:lcHeaders()});
+    const to=d?.complainant?.objectId||null; if(!to) return;
+    const payload={ to:{ "__type":"Pointer","className":"_User","objectId":to }, kind, text,
+      sourceComplaint: sourceId ? { "__type":"Pointer","className":"JudicialComplaint","objectId":sourceId } : undefined,
+      ACL:{ [to]:{ "read": true }, "role:JudicialStaff":{ "read": true }, [SUPER_GID]:{ "read": true } } };
+    await fetch(`${API}/classes/Notification`,{method:'POST',headers:{...lcHeaders(),'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  }catch(_){}
+}
+
+/* ===== 只有超級 GID 可刪除；刪除會清掉相關投票/通知/封鎖 ===== */
+async function deleteByQuery(cls, where){
+  let skip=0, total=0;
+  while(true){
+    const q = encodeURIComponent(JSON.stringify(where));
+    const {ok,d} = await safeJson(`${API}/classes/${cls}?where=${q}&limit=100&skip=${skip}`,{headers:lcHeaders()});
+    if(!ok) break;
+    const rows = d.results||[];
+    if(!rows.length) break;
+    for(const it of rows){
+      await fetch(`${API}/classes/${cls}/${it.objectId}`,{method:'DELETE',headers:lcHeaders()});
+      total++;
+    }
+    if(rows.length<100) break;
+    skip += rows.length;
+  }
+  return total;
+}
+async function hardDelete(cmpId){
+  if(ME.objectId!==SUPER_GID){ alert('只有超級 GID 可以刪除'); return; }
+  if(!confirm('⚠️ 確定要永久刪除此申訴？（相關投票、通知、封鎖紀錄都會一起刪除，且無法復原）')) return;
+
+  // 刪除與此申訴相關的投票、通知、封鎖
+  const ptr = { "__type":"Pointer","className":"JudicialComplaint","objectId":cmpId };
+  await deleteByQuery('SuggestionVote', { sourceComplaint: ptr });
+  await deleteByQuery('Notification',   { sourceComplaint: ptr });
+  await deleteByQuery('BlockedUser',    { sourceComplaint: ptr });
+
+  // 最後刪掉申訴本體
+  const r=await fetch(`${API}/classes/JudicialComplaint/${cmpId}`,{method:'DELETE',headers:lcHeaders()});
+  if(!r.ok){ const d=await r.json(); alert(d.error||'刪除失敗'); return; }
+
+  alert('已永久刪除此申訴與所有相關資料。');
+  await loadInternalComplaints(); await loadPublicComplaints();
+}
+
+/* 名單（L / A） */
+async function loadRoster(){
+  const push=(boxId,cls)=>async()=>{
+    const url=`${API}/classes/${cls}?order=-createdAt&limit=200&include=user,User`;
+    const {ok,d}=await safeJson(url,{headers:lcHeaders()});
+    const box=document.getElementById(boxId); box.innerHTML=''; if(!ok||!d.results?.length){ box.innerHTML='<div class="empty">尚無成員</div>'; return; }
+    for(const row of d.results){
+      const u=row.user||row.User||{}; if(!u.objectId) continue;
+      const el=document.createElement('div'); el.className='staff-row';
+      const av=(u.avatarUrl?u.avatarUrl.replace(/^http:/,'https:'):'')||'data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34"><rect width="100%" height="100%" rx="17" ry="17" fill="#f3f3f3"/></svg>');
+      el.innerHTML=`<img class="avatar" src="${av}" alt=""><div><div class="name">${escapeHTML(u.nickname||u.username||'(未命名)')}</div><div class="gid">GID：${u.objectId}</div></div><div class="chip ${cls==='LegislativeStaff'?'L':'A'}" style="margin-left:auto">${cls==='LegislativeStaff'?'L':'A'}</div>`;
+      box.appendChild(el);
+    }
+  };
+  await Promise.all([push('listL','LegislativeStaff')(), push('listA','JudicialStaff')()]);
+}
+
+/* ===== 啟動 ===== */
+(async()=>{
+  if(!await requireLogin()) return;
+  IS_JUDICIAL = (await isJudicial(ME.objectId)) || (ME.objectId===SUPER_GID);
+  if(IS_JUDICIAL) document.getElementById('internalBox').style.display='block';
+
+  await Promise.all([loadLaws(), loadUserOptions(), loadRoster(), loadPublicComplaints()]);
+  if(IS_JUDICIAL) await loadInternalComplaints();
+
+  // 每 30 秒更新（包含刷新投票按鈕）
+  setInterval(async()=>{ if(document.visibilityState!=='visible') return;
+    await loadLaws(); await loadPublicComplaints(); if(IS_JUDICIAL){ await loadInternalComplaints(); }
+  },30000);
+})();
+</script>
+</body>
+</html>

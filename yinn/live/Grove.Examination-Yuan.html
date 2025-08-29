@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Grove Examination Yuan</title>
+<style>
+  :root{ --brand:#6c4ef7; --pink:#e91e63; --muted:#000000; --card:#ffffff; --border:#eee; --bg:#c7bd96; --text:#222; }
+  *{ box-sizing:border-box }
+  body{
+    margin:0;
+    font-family:"DFKai-SB","KaiTi","標楷體","BiauKai",serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  .app{ display:flex; min-height:100vh; }
+
+  .aside{
+    position:fixed; inset:0 auto 0 0;
+    width:min(320px,92vw); max-width:420px;
+    background:#fff; border-right:1px solid #eee;
+    transform:translateX(-100%); transition:transform .22s ease;
+    z-index:1000; overflow:auto;
+  }
+  .aside.open{ transform:translateX(0); }
+  .main{ flex:1; min-width:0; padding:18px; }
+
+  .topbar{ display:flex; align-items:center; gap:10px; }
+  .topbar.sidebar{
+    position:sticky; top:0; z-index:5;
+    background:linear-gradient(#fff,#fffefc);
+    border-bottom:1px solid #eee; padding:10px 14px;
+  }
+  .topbar.mainbar{ position:sticky; top:0; padding:0 0 8px; background:transparent; }
+
+  .tablink{
+    font-size:20px; font-weight:900; letter-spacing:1px;
+    font-family:"DFKai-SB","KaiTi","標楷體","BiauKai",serif;
+    color:var(--muted); text-decoration:none; padding:8px 4px; cursor:pointer;
+    background-image: linear-gradient(var(--brand), var(--brand));
+    background-size: 0% 2px; background-repeat:no-repeat; background-position: 0 100%;
+    transition: background-size .18s ease, color .18s ease;
+  }
+  .tablink:hover{ background-size:100% 2px; color:var(--text); }
+  .tablink.active{ background-size:100% 2px; color:var(--brand); }
+
+  .title{ font-size:18px; font-weight:900; }
+  .sub{ color:var(--muted); font-size:12px; margin-left:auto; }
+
+  .hamb-open{
+    position:fixed; left:12px; top:12px; z-index:1100;
+    width:38px; height:38px; border-radius:50%;
+    border:1px solid #ddd; background:#fff; font-weight:900; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; line-height:1;
+    box-shadow:0 4px 12px rgba(0,0,0,.06);
+  }
+  .hamb-close{
+    margin-left:auto; width:34px; height:34px; border-radius:8px;
+    border:1px solid #ddd; background:#fff; font-weight:900; cursor:pointer;
+  }
+
+  .aside-mask{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:900; }
+
+  .center-block{ text-align:center; width:100%; }
+  .center-block h1{ margin:0 0 6px; font-size:22px; }
+  .center-block .hint{ margin-bottom:12px; color:var(--muted); font-size:13px; }
+
+  .side-h1{ padding:12px 14px; margin:0; font-size:16px; font-weight:900; border-bottom:1px solid #eee; }
+  .roster{ padding:10px; display:flex; flex-direction:column; gap:10px; }
+  .item{ display:flex; gap:10px; padding:8px; border:1px solid var(--border); border-radius:12px; background:#fff; }
+  .avatar{ width:40px; height:40px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .name{ font-weight:900; font-size:14px; }
+  .gid{ font-size:12px; color:var(--muted); }
+  .badges{ display:flex; gap:4px; margin-top:4px; }
+  .badge{ font-size:11px; font-weight:900; padding:0 6px; border-radius:6px; line-height:18px; display:inline-block; }
+  .badge.c{ background:var(--brand); color:#fff; }
+  .badge.e{ background:var(--pink); color:#fff; }
+  .badge.i{ background: var(--pink); color:#fff; }
+  /* A（司法院） */
+  .badge.a{ background:#ffe267; color:#5c4400; }
+
+  .tabs{ display:flex; gap:8px; margin-top:8px; justify-content:center; }
+  .tab{ padding:8px 12px; border-radius:999px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:800; }
+  .tab.active{ background:#1612220e; border-color:#cfc3ff; color:#6c4ef7; }
+
+  .card{ background:#fff; border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.06); padding:12px; }
+  .panel{ margin-top:12px; display:grid; grid-template-columns:1fr; gap:12px; }
+  .row{ display:flex; align-items:center; gap:12px; }
+  .big-avatar{ width:56px; height:56px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .row-meta{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px; margin-top:6px; font-size:13px; color:#555; }
+  .empty{ color:#999; text-align:center; padding:16px; }
+
+  .btn{ padding:10px 12px; border-radius:10px; border:1px solid #ddd; background:#fff; font-weight:800; cursor:pointer; }
+  .btn.brand{ background:var(--brand); color:#fff; border-color:transparent; }
+  .btn.pink{ background:var(--pink); color:#fff; border-color:transparent; }
+  .btn.ghost{ background:#fff; color:var(--text); }
+
+  .cta-under-title{
+    display:inline-flex; align-items:center; gap:6px;
+    margin-top:8px; padding:6px 12px; border-radius:999px;
+    font-size:13px; line-height:18px;
+  }
+  .label{ font-size:12px; color:#777; margin:10px 0 6px; display:block; }
+  .input, .textarea, .select{ width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; outline:none; background:#fff; font-size:14px; }
+  .textarea{ min-height:120px; resize:vertical; }
+  .err{ color:#b00020; font-size:13px; margin-top:6px; }
+
+  .backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); z-index:50; padding:16px; }
+  .modal{ width:min(640px,92vw); max-height:92vh; overflow:auto; background:#fff; border:1px solid #eee; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.18); }
+  .modal header{ position:sticky; top:0; background:#fff; padding:12px 14px; border-bottom:1px solid #eee; font-weight:900; display:flex; justify-content:space-between; align-items:center; }
+  .modal .body{ padding:14px; }
+  .modal .actions{ padding:10px 14px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end; }
+
+  .tablink.small{ font-size:20px; opacity:.9; }
+
+  .history-item{ display:flex; gap:12px; align-items:flex-start; }
+  .history-avatar{ width:48px; height:48px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .history-meta{ display:grid; gap:4px; font-size:14px; }
+  .history-meta .row{ display:flex; gap:10px; align-items:center; }
+  .role-chip{
+    display:inline-block; padding:0 8px; line-height:20px; border-radius:999px;
+    font-size:12px; font-weight:900; border:1px solid #ddd; background:#fff;
+  }
+  .role-chip.dual{ color:#6c4ef7; border-color:#cfc3ff; }
+
+  .scroll-area{ max-height:420px; overflow:auto; padding:6px; border:1px solid var(--border); border-radius:12px; background:#fff; }
+
+  .glass-inset{
+    border-radius:18px;
+    background:linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.18));
+    backdrop-filter: blur(10px) saturate(130%); -webkit-backdrop-filter: blur(10px) saturate(130%);
+    border:1px solid rgba(255,255,255,.55);
+    box-shadow: inset 10px 10px 18px rgba(0,0,0,.08), inset -8px -8px 16px rgba(255,255,255,.70);
+  }
+  .history-wrap{ width: clamp(320px, 76vw, 880px); margin: 16px auto 0; padding: 12px; }
+  .glass-inset{
+    border-radius: 18px; background: rgba(255,255,255,.22); border: 1px solid rgba(0,0,0,.06);
+    box-shadow: inset 10px 10px 18px rgba(0,0,0,.10), inset -10px -10px 18px rgba(255,255,255,.65);
+    position: static; z-index: auto; backdrop-filter: blur(6px) saturate(120%); -webkit-backdrop-filter: blur(6px) saturate(120%); background-clip: padding-box;
+  }
+  .history-title{ text-align:center; font-weight:900; margin: 6px 0 8px; font-size: 18px; }
+  .history-scroll{ height: clamp(200px, 40vh, 480px); overflow: auto; padding: 8px 6px 10px; border-radius: 12px; }
+  .history-item-card{ background: rgba(255,255,255,.55); border: 1px solid rgba(0,0,0,.05); border-radius: 12px; padding: 10px; }
+
+  .topbar.mainbar{
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 16px;
+    position: sticky; top: 0; padding-bottom: 8px; background: transparent;
+  }
+  .center-block{ grid-column: 1 / -1; text-align: center; }
+  .right-links{
+    grid-column: 3; justify-self: end; position: sticky; top: 90px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  }
+  @media (max-width: 900px){
+    .topbar.mainbar{ grid-template-columns: 1fr; }
+    .center-block{ grid-column: 1; }
+    .right-links{ grid-column: 1; position: static; margin-top: 8px; justify-self: end; align-items: flex-end; }
+  }
+  .tablink.back { opacity:.9; font-size:18px; }
+  .tablink.back::before{ content:"← "; }
+
+  .right-links{
+    grid-column: 3; justify-self: end; position: sticky; top: 90px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  }
+  .vnav{
+    display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 10px; padding-right: 2px;
+  }
+  .tablink.vcol{
+    writing-mode: vertical-rl; text-orientation: mixed; display: inline-block;
+    font-size: 20px; font-weight: 900; letter-spacing: 1px; line-height: 1.25; padding: 6px 4px; text-align: center;
+    color: var(--muted); text-decoration: none; border-right: 2px solid transparent;
+    transition: border-color .18s ease, color .18s ease;
+  }
+  .tablink.vcol:hover, .tablink.vcol.active{ border-right-color: var(--brand); color: var(--brand); }
+  .tablink.vcol.small{ font-size: 18px; opacity:.95; }
+
+  @media (max-width: 900px){
+    .right-links{ grid-column: 1; position: static; align-items:flex-end; }
+  }
+  .right-links{
+    position: fixed !important;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    right: calc(env(safe-area-inset-right, 0px) + 8px);
+    z-index: 1200;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  }
+  .vnav{ display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 10px; padding-right: 0; margin-top: 2px; }
+  @media (max-width: 900px){
+    .right-links{ top: calc(env(safe-area-inset-top, 0px) + 6px); right: calc(env(safe-area-inset-right, 0px) + 6px); gap: 6px; }
+    .vnav{ gap: 8px; }
+  }
+
+  /* 歷史狀態籤 */
+  .state-chip{
+    display:inline-block; padding:0 8px; line-height:18px; border-radius:999px;
+    font-size:12px; font-weight:900; border:1px solid #ddd; background:#fff;
+  }
+  .state-chip.ok{ background:#e9fff0; border-color:#c8f4d7; color:#106b2f; }
+  .state-chip.no{ background:#ffe9f0; border-color:#ffc7d2; color:#b1002f; }
+</style>
+</head>
+<body>
+
+<button id="openBtn" class="hamb-open" aria-label="開啟側欄" onclick="openAside()">O</button>
+
+<div class="app">
+  <aside id="aside" class="aside" aria-hidden="true">
+    <div class="topbar sidebar">
+      <div class="title">考試院人員名單</div>
+      <button id="closeBtn" class="hamb-close" aria-label="收起側欄" onclick="closeAside()">@</button>
+      <div class="sub" id="meMini"></div>
+    </div>
+    <h3 class="side-h1">名單</h3>
+    <div id="roster" class="roster"></div>
+    <div id="rosterEmpty" class="empty">目前尚無人員</div>
+  </aside>
+
+  <div id="asideMask" class="aside-mask" onclick="closeAside()" hidden></div>
+
+  <main class="main">
+    <div class="topbar mainbar">
+      <div class="center-block">
+        <h1>Grove Examination Yuan</h1>
+        <div class="hint">E=考試院、C=監察院、I=行政院、A=司法院（本頁為考試院）。</div>
+        <button id="btnApplyC" class="btn brand cta-under-title" style="display:none;" onclick="openJoinControl()">申請監察院人員（C）</button>
+        <button id="btnApplyI" class="btn brand cta-under-title" style="display:none;" onclick="openJoinExecutive()">申請行政院人員（I）</button>
+        <button id="btnApplyLInternal" class="btn brand cta-under-title" style="display:none;" onclick="openApplyLegInternal()">參加立法院（L）</button>
+        <button id="btnApplyAInternal" class="btn brand cta-under-title" style="display:none;" onclick="openApplyJudicialInternal()">參加司法院（A）</button>
+        <button id="btnApplyAPublic" class="btn brand cta-under-title" style="display:none;" onclick="openJoinJudicialPublic()">加入司法院（A）</button>
+      </div>
+
+      <nav class="right-links" aria-label="審查切換">
+        <a id="lnkBack" class="tablink back" onclick="goBack()" title="返回上一頁">返回</a>
+        <a class="tablink back" href="shopping.html">Esc Store</a>
+        <div class="vnav">
+          <a id="lnkAll" class="tablink vcol small" onclick="switchTab('all')">顯示全部</a>
+          <a id="lnkHistory" class="tablink vcol small" onclick="switchTab('history')">查看歷史審查</a>
+          <a id="lnkCtrl"    class="tablink vcol" onclick="switchTab('ctrl')">監察院人員審查</a>
+          <a id="lnkExam"    class="tablink vcol" onclick="switchTab('exam')">考試院人員審查</a>
+          <a id="lnkExec"    class="tablink vcol" onclick="switchTab('exec')">行政院人員審查</a>
+          <a id="lnkLeg"     class="tablink vcol" onclick="switchTab('leg')">立法院申請審查</a>
+          <a id="lnkJud"     class="tablink vcol" onclick="switchTab('jud')">司法院人員審查</a>
+        </div>
+      </nav>
+    </div>
+
+    <div id="applyBox" class="card" style="display:none;">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-weight:900">加入申請</div>
+        <div class="hint" id="meChip" style="margin:0"></div>
+      </div>
+      <div class="row" style="gap:8px; margin-top:10px; justify-content:center;">
+        <button class="btn pink"  onclick="openJoinExam()">我要加入考試院（E）</button>
+        <button class="btn brand" onclick="openJoinControl()">我要加入監察院（C）</button>
+        <button class="btn brand" onclick="openJoinExecutive()">我要加入行政院（I）</button>
+        <button class="btn brand" onclick="openJoinLegPublic()">申請立法院（L）</button>
+        <button class="btn brand" onclick="openJoinJudicialPublic()">我要加入司法院（A）</button>
+      </div>
+
+      <div id="joinExamSimple" style="display:none; margin-top:12px;">
+        <label class="label">論述題：為什麼想加入？願意遵守本站規則嗎？可以做到中立、尊重多元嗎？</label>
+        <textarea id="examEssay" class="textarea" placeholder="請輸入你的想法…"></textarea>
+        <div class="row" style="justify-content:flex-end; gap:8px; margin-top:8px;">
+          <button class="btn" onclick="closeJoinExam()">取消</button>
+          <button class="btn pink" onclick="submitJoinExam()">提交申請（送審）</button>
+        </div>
+        <div id="examEssayErr" class="err"></div>
+      </div>
+    </div>
+
+    <div id="joinLegPublic" style="display:none; margin-top:12px;">
+      <label class="label">是否尊重多元？</label>
+      <select id="legRespect" class="select"><option value="">請選擇</option><option>是</option><option>否</option></select>
+      <label class="label">請簡述您對「多元」的觀點（論述題）</label>
+      <textarea id="legView" class="textarea" placeholder="請輸入您的想法…"></textarea>
+      <div class="row" style="justify-content:flex-end; gap:8px; margin-top:8px;">
+        <button class="btn" onclick="closeJoinLegPublic()">取消</button>
+        <button class="btn brand" onclick="submitJoinLegPublic()">提交申請（送審）</button>
+      </div>
+      <div id="legPublicErr" class="err"></div>
+    </div>
+
+    <div id="reviewBox" style="display:none;">
+      <div id="reviewHint" class="empty">請點擊右上角審查項目以查看各部分</div>
+
+      <div id="listCtrl" class="panel" style="display:none;"></div>
+      <div id="emptyCtrl" class="empty" style="display:none;">目前沒有待審的監察院申請</div>
+
+      <div id="listExam" class="panel" style="display:none;"></div>
+      <div id="emptyExam" class="empty" style="display:none;">目前沒有待審的考試院申請</div>
+
+      <div id="listExec" class="panel" style="display:none;"></div>
+      <div id="emptyExec" class="empty" style="display:none;">目前沒有待審的行政院申請</div>
+
+      <div id="listLeg" class="panel" style="display:none;"></div>
+      <div id="emptyLeg" class="empty" style="display:none;">目前沒有待審的立法院申請</div>
+
+      <div id="listJud" class="panel" style="display:none;"></div>
+      <div id="emptyJud" class="empty" style="display:none;">目前沒有待審的司法院申請</div>
+    </div>
+
+    <div id="historyBox" class="history-wrap glass-inset" style="display:none;">
+      <div class="history-title">歷史審查</div>
+      <div class="history-scroll">
+        <div id="historyList" class="panel"></div>
+        <div id="historyEmpty" class="empty" style="display:none;">暫無歷史審查可顯示</div>
+      </div>
+    </div>
+
+    <!-- 行政院申請 -->
+    <div id="execModal" class="backdrop" role="dialog" aria-modal="true">
+      <div class="modal">
+        <header>
+          <div>加入行政院（I）申請表</div>
+          <button class="btn" onclick="closeExecModal()">×</button>
+        </header>
+        <div class="body">
+          <label class="label">申請人 GID</label>
+          <input id="execGid" class="input" type="text" readonly>
+          <label class="label">申請人暱稱</label>
+          <input id="execName" class="input" type="text" readonly>
+
+          <label class="label">是否願意公正公平做事？</label>
+          <select id="execFair" class="select"><option value="">請選擇</option><option>是</option><option>否</option></select>
+
+          <label class="label">論述題：請說說您加入的理由</label>
+          <textarea id="execEssay" class="textarea" placeholder="請輸入您的理由…"></textarea>
+          <div id="execErr" class="err"></div>
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="closeExecModal()">取消</button>
+          <button class="btn brand" onclick="submitJoinExecutive()">提交申請（送審）</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 立法院內部 -->
+    <div id="legInternalModal" class="backdrop" role="dialog" aria-modal="true" style="display:none;">
+      <div class="modal">
+        <header>
+          <div>參加立法院（L）申請表（內部）</div>
+          <button class="btn" onclick="closeApplyLegInternal()">×</button>
+        </header>
+        <div class="body">
+          <label class="label">申請人 GID</label>
+          <input id="legIntGid" class="input" type="text" readonly>
+          <label class="label">申請人暱稱</label>
+          <input id="legIntName" class="input" type="text" readonly>
+
+          <label class="label">論述題：請寫出參加立法院的理由</label>
+          <textarea id="legIntEssay" class="textarea" placeholder="請輸入您的理由…"></textarea>
+          <div id="legIntErr" class="err"></div>
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="closeApplyLegInternal()">取消</button>
+          <button class="btn brand" onclick="submitApplyLegInternal()">提交申請（送審）</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 申請詳情 -->
+    <div id="answerModal" class="backdrop" role="dialog" aria-modal="true" style="display:none;">
+      <div class="modal">
+        <header>
+          <div>申請內容檢查</div>
+          <button class="btn" onclick="closeAnswerModal()">×</button>
+        </header>
+        <div class="body" id="ansContent"></div>
+        <div class="actions">
+          <button class="btn" onclick="closeAnswerModal()">關閉</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 司法院 外部 -->
+    <div id="judPublicModal" class="backdrop" role="dialog" aria-modal="true" style="display:none;">
+      <div class="modal">
+        <header>
+          <div>加入司法院（A）申請表（外部）</div>
+          <button class="btn" onclick="closeJoinJudicialPublic()">×</button>
+        </header>
+        <div class="body">
+          <label class="label">申請人 GID</label>
+          <input id="judPubGid" class="input" type="text" readonly>
+          <label class="label">申請人暱稱</label>
+          <input id="judPubName" class="input" type="text" readonly>
+
+          <label class="label">請描述對多元看法與參與理由（論述題）</label>
+          <textarea id="judPubEssay" class="textarea" placeholder="請輸入您的想法…"></textarea>
+          <div id="judPubErr" class="err"></div>
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="closeJoinJudicialPublic()">取消</button>
+          <button class="btn brand" onclick="submitJoinJudicialPublic()">提交申請（送審）</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 司法院 內部 -->
+    <div id="judInternalModal" class="backdrop" role="dialog" aria-modal="true" style="display:none;">
+      <div class="modal">
+        <header>
+          <div>參加司法院（A）申請表（內部）</div>
+          <button class="btn" onclick="closeApplyJudicialInternal()">×</button>
+        </header>
+        <div class="body">
+          <label class="label">申請人 GID</label>
+          <input id="judIntGid" class="input" type="text" readonly>
+          <label class="label">申請人暱稱</label>
+          <input id="judIntName" class="input" type="text" readonly>
+
+          <label class="label">請描述對多元看法與參與理由（論述題）</label>
+          <textarea id="judIntEssay" class="textarea" placeholder="請輸入您的想法…"></textarea>
+          <div id="judIntErr" class="err"></div>
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="closeApplyJudicialInternal()">取消</button>
+          <button class="btn brand" onclick="submitApplyJudicialInternal()">提交申請（送審）</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 監察院申請 -->
+    <div id="ctrlModal" class="backdrop" role="dialog" aria-modal="true">
+      <div class="modal">
+        <header>
+          <div>加入監察院（C）申請表</div>
+          <button class="btn" onclick="closeCtrlModal()">×</button>
+        </header>
+        <div class="body">
+          <label class="label">申請人 GID</label>
+          <input  id="ctrlGid" class="input" type="text" readonly>
+          <label class="label">申請人暱稱</label>
+          <input  id="ctrlName" class="input" type="text" readonly>
+
+          <label class="label">是否願意遵守本站規則？</label>
+          <select id="ctrlRule" class="select"><option value="">請選擇</option><option>是</option><option>否</option></select>
+
+          <label class="label">是否願意尊重多元？</label>
+          <select id="ctrlRespect" class="select"><option value="">請選擇</option><option>是</option><option>否</option></select>
+
+          <label class="label">請寫下你對多元性別（LGBTQIA+）的看法（論述題）</label>
+          <textarea id="ctrlEssay" class="textarea" placeholder="請輸入你的想法…"></textarea>
+          <div id="ctrlErr" class="err"></div>
+        </div>
+        <div class="actions">
+          <button class="btn"       onclick="closeCtrlModal()">取消</button>
+          <button class="btn brand" onclick="submitJoinControl()">提交申請（送審）</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* ================= LeanCloud 設定 ================= */
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+const SUPER_EXAM_UID = "68b19eeb90ed2201c4839219";
+const REVIEW_READ = {
+  "role:ExamStaff": { read: true, write: true },
+  "role:Admin":     { read: true, write: true },
+  [SUPER_EXAM_UID]: { read: true, write: true }
+};
+
+/* ================= 小工具 ================= */
+const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="100%" height="100%" rx="20" ry="20" fill="#f3f3f3"/><text x="50%" y="60%" text-anchor="middle" font-size="16">🙂</text></svg>`);
+const BIG_AVATAR     = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><rect width="100%" height="100%" rx="28" ry="28" fill="#f3f3f3"/><text x="50%" y="58%" text-anchor="middle" font-size="20">🙂</text></svg>`);
+const $ = s => document.querySelector(s);
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+function lcHeaders(withSession=true){ const h={ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY }; const t=localStorage.getItem('sg_token'); if(withSession&&t) h['X-LC-Session']=t; return h; }
+async function safeFetchJson(url, options){
+  try{
+    const r = await fetch(url, options);
+    const ct = r.headers.get('content-type')||'';
+    const data = ct.includes('application/json') ? await r.json() : null;
+    if(!r.ok){ console.warn('[API not ok]', r.status, url, data||'(no json)'); return { ok:false, status:r.status, data }; }
+    return { ok:true, status:r.status, data };
+  }catch(err){ console.error('[API error]', url, err); return { ok:false, status:0, data:null, err }; }
+}
+
+/* ====== 返回 ====== */
+function goBack(){
+  try{
+    const ref = document.referrer || '';
+    const sameOrigin = ref && new URL(ref).origin === location.origin;
+    if (sameOrigin) { location.href = ref; return; }
+  }catch(e){}
+  if (history.length > 1) { history.back(); return; }
+  location.href = 'shopping.html';
+}
+
+/* ================= 狀態 ================= */
+let ME=null, TOKEN=null;
+let IS_EXAM=false, IS_CTRL=false, IS_EXEC=false, IS_JUD=false, IS_STAFF=false;
+let ctrlStartAt=0, pollTimer=null;
+let ACTIVE_TAB = null;
+const TOUCHED = { ctrl:false, exam:false, exec:false, leg:false, jud:false, history:false };
+
+/* ====== 側欄開關 ====== */
+const aside     = document.getElementById('aside');
+const asideMask = document.getElementById('asideMask');
+const openBtn   = document.getElementById('openBtn');
+const closeBtn  = document.getElementById('closeBtn');
+function openAside(){ aside.classList.add('open'); aside.setAttribute('aria-hidden','false'); asideMask.hidden = window.innerWidth > 1024 ? true : false; openBtn.style.display = 'none'; closeBtn.focus(); }
+function closeAside(){ aside.classList.remove('open'); aside.setAttribute('aria-hidden','true'); asideMask.hidden = true; openBtn.style.display = ''; openBtn.textContent = 'O'; openBtn.focus(); }
+function toggleAside(){ aside.classList.contains('open') ? closeAside() : openAside(); }
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && aside.classList.contains('open')) closeAside(); });
+window.addEventListener('resize', ()=>{ if(aside.classList.contains('open')) asideMask.hidden = window.innerWidth > 1024; });
+
+/* ====== 登入 / 身份 ====== */
+async function requireLogin(){
+  TOKEN = localStorage.getItem('sg_token')||'';
+  ME    = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!TOKEN || !ME){ alert('請先登入'); location.replace('index.html'); return false; }
+  return true;
+}
+async function isExamStaff(){
+  if (ME.objectId === SUPER_EXAM_UID) return true;
+  const p = { "__type":"Pointer","className":"_User","objectId": ME.objectId };
+  const try1 = encodeURIComponent(JSON.stringify({ user: p, active: true }));
+  const r1 = await fetch(`${API}/classes/ExamStaff?where=${try1}&limit=1`, { headers: lcHeaders(true) });
+  const d1 = await r1.json(); if (r1.ok && d1.results && d1.results.length) return true;
+  const try2 = encodeURIComponent(JSON.stringify({ User: p, active: true }));
+  const r2 = await fetch(`${API}/classes/ExamStaff?where=${try2}&limit=1`, { headers: lcHeaders(true) });
+  const d2 = await r2.json(); if (r2.ok && d2.results && d2.results.length) return true;
+  const try3 = encodeURIComponent(JSON.stringify({ "$or": [ { user: p }, { User: p } ] }));
+  const r3 = await fetch(`${API}/classes/ExamStaff?where=${try3}&limit=5`, { headers: lcHeaders(true) });
+  const d3 = await r3.json();
+  return r3.ok && Array.isArray(d3.results) && d3.results.some(x => x.active !== false);
+}
+async function isControlStaff(uid){
+  const p = { "__type":"Pointer","className":"_User","objectId": uid };
+  const try1 = encodeURIComponent(JSON.stringify({ user: p, active: true }));
+  const r1 = await fetch(`${API}/classes/Admin?where=${try1}&limit=1`, { headers: lcHeaders(true) });
+  const d1 = await r1.json(); if (r1.ok && d1.results && d1.results.length) return true;
+  const try2 = encodeURIComponent(JSON.stringify({ User: p, active: true }));
+  const r2 = await fetch(`${API}/classes/Admin?where=${try2}&limit=1`, { headers: lcHeaders(true) });
+  const d2 = await r2.json(); if (r2.ok && d2.results && d2.results.length) return true;
+  const try3 = encodeURIComponent(JSON.stringify({ "$or": [ { user: p }, { User: p } ] }));
+  const r3 = await fetch(`${API}/classes/Admin?where=${try3}&limit=5`, { headers: lcHeaders(true) });
+  const d3 = await r3.json();
+  return r3.ok && Array.isArray(d3.results) && d3.results.some(x => x.active !== false);
+}
+async function isExecutiveStaff(uid){
+  const p = { "__type":"Pointer","className":"_User","objectId": uid };
+  const try1 = encodeURIComponent(JSON.stringify({ user: p, active: true }));
+  const r1 = await fetch(`${API}/classes/ExecutiveStaff?where=${try1}&limit=1`, { headers: lcHeaders(true) });
+  const d1 = await r1.json(); if (r1.ok && d1.results && d1.results.length) return true;
+  const try2 = encodeURIComponent(JSON.stringify({ User: p, active: true }));
+  const r2 = await fetch(`${API}/classes/ExecutiveStaff?where=${try2}&limit=1`, { headers: lcHeaders(true) });
+  const d2 = await r2.json(); if (r2.ok && d2.results && d2.results.length) return true;
+  const try3 = encodeURIComponent(JSON.stringify({ "$or": [ { user: p }, { User: p } ] }));
+  const r3 = await fetch(`${API}/classes/ExecutiveStaff?where=${try3}&limit=5`, { headers: lcHeaders(true) });
+  const d3 = await r3.json();
+  return r3.ok && Array.isArray(d3.results) && d3.results.some(x => x.active !== false);
+}
+async function isJudicialStaff(uid){
+  const p = { "__type":"Pointer","className":"_User","objectId": uid };
+  const try1 = encodeURIComponent(JSON.stringify({ user:p, active:true }));
+  const r1 = await fetch(`${API}/classes/JudicialStaff?where=${try1}&limit=1`, { headers: lcHeaders(true) });
+  const d1 = await r1.json(); if (r1.ok && d1.results?.length) return true;
+  const try2 = encodeURIComponent(JSON.stringify({ User:p, active:true }));
+  const r2 = await fetch(`${API}/classes/JudicialStaff?where=${try2}&limit=1`, { headers: lcHeaders(true) });
+  const d2 = await r2.json(); if (r2.ok && d2.results?.length) return true;
+  const try3 = encodeURIComponent(JSON.stringify({ "$or":[{user:p},{User:p}] }));
+  const r3 = await fetch(`${API}/classes/JudicialStaff?where=${try3}&limit=5`, { headers: lcHeaders(true) });
+  const d3 = await r3.json();
+  return r3.ok && Array.isArray(d3.results) && d3.results.some(x=>x.active!==false);
+}
+
+/* ====== 側欄名單 ====== */
+async function loadRoster(){
+  const box = document.getElementById('roster');
+  const empty = document.getElementById('rosterEmpty');
+  box.innerHTML = '';
+
+  const urlE = `${API}/classes/ExamStaff?order=-createdAt&limit=200&include=user,User`;
+  const urlC = `${API}/classes/Admin?order=-createdAt&limit=200&include=user,User`;
+  const urlI = `${API}/classes/ExecutiveStaff?order=-createdAt&limit=200&include=user,User`;
+  const urlA = `${API}/classes/JudicialStaff?order=-createdAt&limit=200&include=user,User`;
+
+  const [eRes, cRes, iRes, aRes] = await Promise.all([
+    safeFetchJson(urlE,{headers:lcHeaders(true)}),
+    safeFetchJson(urlC,{headers:lcHeaders(true)}),
+    safeFetchJson(urlI,{headers:lcHeaders(true)}),
+    safeFetchJson(urlA,{headers:lcHeaders(true)}),
+  ]);
+
+  if (!eRes.ok && !cRes.ok) {
+    empty.style.display = 'block';
+    empty.textContent = '（名單載入失敗，請稍後重試）';
+    return;
+  }
+
+  const map = new Map();
+  const push = (row, tag)=>{
+    const u=row.user||row.User||{}; if(!u.objectId) return;
+    const it = map.get(u.objectId) || { user:u, E:false, C:false, I:false, A:false };
+    it[tag]=true; map.set(u.objectId,it);
+  };
+
+  (eRes.data?.results||[]).forEach(r => push(r, 'E'));
+  (cRes.data?.results||[]).forEach(r => push(r, 'C'));
+  (iRes.data?.results||[]).forEach(r => push(r, 'I'));
+  (aRes.data?.results||[]).forEach(r => push(r, 'A'));
+
+  const list = Array.from(map.values());
+  if (!list.length){
+    empty.style.display='block';
+    empty.textContent='目前尚無人員';
+    return;
+  }
+  empty.style.display='none';
+
+  for (const it of list){
+    const u = it.user;
+    const avatar = (u.avatarUrl ? u.avatarUrl.replace(/^http:\/\//,'https://') : '') || DEFAULT_AVATAR;
+    const name   = u.nickname || u.username || '(未命名)';
+    const gid    = u.objectId || '(未知)';
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `
+      <img class="avatar" src="${avatar}" alt="">
+      <div style="min-width:0;">
+        <div class="name">${escapeHTML(name)}</div>
+        <div class="gid">GID：${gid}</div>
+        <div class="badges">
+          ${it.E?'<span class="badge e">E</span>':''}
+          ${it.C?'<span class="badge c">C</span>':''}
+          ${it.I?'<span class="badge i">I</span>':''}
+          ${it.A?'<span class="badge a">A</span>':''}
+        </div>
+      </div>`;
+    box.appendChild(el);
+  }
+}
+
+/* ====== 申請入口 ====== */
+function openJoinExam(){ $('#joinExamSimple').style.display='block'; }
+function closeJoinExam(){ $('#joinExamSimple').style.display='none'; $('#examEssay').value=''; $('#examEssayErr').textContent=''; }
+
+function openJoinControl(){
+  $('#ctrlModal').style.display='flex'; $('#ctrlErr').textContent='';
+  $('#ctrlGid').value=ME.objectId; $('#ctrlName').value=ME.nickname||ME.username||'';
+  $('#ctrlRule').value=''; $('#ctrlRespect').value=''; $('#ctrlEssay').value='';
+  ctrlStartAt=Date.now();
+}
+function closeCtrlModal(){ $('#ctrlModal').style.display='none'; }
+
+async function submitJoinExam(){
+  const essay=($('#examEssay').value||'').trim();
+  if(!essay){ $('#examEssayErr').textContent='請填寫論述內容'; return; }
+  const payload={
+    type:'join-exam', status:'pending',
+    applicant:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    essay, durationSec:0,
+    ACL:{ "*":{ "read":false }, [ME.objectId]:{ "read":true,"write":false }, ...REVIEW_READ }
+  };
+  const r=await fetch(`${API}/classes/ExamSubmission`,{
+    method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'}, body:JSON.stringify(payload)
+  });
+  const d=await r.json(); if(!r.ok){ $('#examEssayErr').textContent=d.error||'提交失敗'; return; }
+  closeJoinExam(); alert('已送出考試院申請，待審核。');
+}
+async function submitJoinControl(){
+  const rule=($('#ctrlRule').value||'').trim(), respect=($('#ctrlRespect').value||'').trim(), essay=($('#ctrlEssay').value||'').trim();
+  if(!rule||!respect){ $('#ctrlErr').textContent='請選擇「是否遵守規則／是否尊重多元」'; return; }
+  if(!essay){ $('#ctrlErr').textContent='請填寫論述內容'; return; }
+  const durationSec=Math.max(1,Math.floor((Date.now()-ctrlStartAt)/1000));
+  const payload={
+    type:'join-control', status:'pending',
+    applicant:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    answers:{rule,respect}, essay, durationSec,
+    ACL:{ "*":{ "read":false }, [ME.objectId]:{ "read":true,"write":false }, ...REVIEW_READ }
+  };
+  const r=await fetch(`${API}/classes/ExamSubmission`,{
+    method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'}, body:JSON.stringify(payload)
+  });
+  const d=await r.json(); if(!r.ok){ $('#ctrlErr').textContent=d.error||'提交失敗'; return; }
+  closeCtrlModal(); alert('已送出監察院申請，待審核。');
+}
+
+function openJoinExecutive(){
+  $('#execModal').style.display='flex'; $('#execErr').textContent='';
+  $('#execGid').value = ME.objectId;
+  $('#execName').value = ME.nickname||ME.username||'';
+  $('#execFair').value=''; $('#execEssay').value='';
+}
+function closeExecModal(){ $('#execModal').style.display='none'; }
+
+function openJoinLegPublic(){
+  $('#joinLegPublic').style.display='block';
+  $('#legPublicErr').textContent='';
+  $('#legRespect').value='';
+  $('#legView').value='';
+}
+function closeJoinLegPublic(){
+  $('#joinLegPublic').style.display='none';
+  $('#legPublicErr').textContent='';
+  $('#legRespect').value='';
+  $('#legView').value='';
+}
+async function submitJoinLegPublic(){
+  const respect = ($('#legRespect').value||'').trim();
+  const essay   = ($('#legView').value||'').trim();
+  if(!respect){ $('#legPublicErr').textContent='請選擇是否尊重多元'; return; }
+  if(!essay){ $('#legPublicErr').textContent='請填寫您的觀點'; return; }
+
+  const payload = {
+    type:'apply-legislative-public', status:'pending',
+    applicant:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    answers:{ respect }, essay,
+    ACL:{ "*":{ "read":false }, [ME.objectId]:{ "read":true,"write":false }, ...REVIEW_READ }
+  };
+  const r = await fetch(`${API}/classes/ExamSubmission`,{
+    method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if(!r.ok){ $('#legPublicErr').textContent=d.error||'提交失敗'; return; }
+  closeJoinLegPublic();
+  alert('已送出立法院（L）申請，待審核。');
+}
+
+/* 司法院 外部 */
+function openJoinJudicialPublic(){
+  $('#judPublicModal').style.display='flex'; $('#judPubErr').textContent='';
+  $('#judPubGid').value = ME.objectId;
+  $('#judPubName').value= ME.nickname||ME.username||'';
+  $('#judPubEssay').value='';
+}
+function closeJoinJudicialPublic(){ $('#judPublicModal').style.display='none'; }
+async function submitJoinJudicialPublic(){
+  const essay=($('#judPubEssay').value||'').trim();
+  if(!essay){ $('#judPubErr').textContent='請填寫論述內容'; return; }
+  const payload={
+    type:'apply-judicial-public', status:'pending',
+    applicant:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    answers:{}, essay,
+    ACL:{ "*":{ "read":false }, [ME.objectId]:{ "read":true,"write":false }, ...REVIEW_READ }
+  };
+  const r=await fetch(`${API}/classes/ExamSubmission`,{
+    method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'}, body:JSON.stringify(payload)
+  });
+  const d=await r.json(); if(!r.ok){ $('#judPubErr').textContent=d.error||'提交失敗'; return; }
+  closeJoinJudicialPublic(); alert('已送出司法院（A）申請（外部），待審核。');
+}
+
+/* 立法院 內部 */
+function openApplyLegInternal(){
+  $('#legInternalModal').style.display='flex';
+  $('#legIntErr').textContent='';
+  $('#legIntGid').value = ME.objectId;
+  $('#legIntName').value = ME.nickname||ME.username||'';
+  $('#legIntEssay').value = '';
+}
+function closeApplyLegInternal(){ $('#legInternalModal').style.display='none'; }
+async function submitApplyLegInternal(){
+  const essay = ($('#legIntEssay').value||'').trim();
+  if(!essay){ $('#legIntErr').textContent='請填寫參加理由'; return; }
+
+  const payload = {
+    type:'apply-legislative-internal', status:'pending',
+    applicant:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    answers:{}, essay,
+    ACL:{ "*":{ "read":false }, [ME.objectId]:{ "read":true,"write":false }, ...REVIEW_READ }
+  };
+  const r = await fetch(`${API}/classes/ExamSubmission`,{
+    method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if(!r.ok){ $('#legIntErr').textContent=d.error||'提交失敗'; return; }
+  closeApplyLegInternal();
+  alert('已送出（內部）立法院申請，待審核。');
+}
+
+/* 司法院 內部 */
+function openApplyJudicialInternal(){
+  $('#judInternalModal').style.display='flex'; $('#judIntErr').textContent='';
+  $('#judIntGid').value = ME.objectId;
+  $('#judIntName').value= ME.nickname||ME.username||'';
+  $('#judIntEssay').value='';
+}
+function closeApplyJudicialInternal(){ $('#judInternalModal').style.display='none'; }
+async function submitApplyJudicialInternal(){
+  const essay=($('#judIntEssay').value||'').trim();
+  if(!essay){ $('#judIntErr').textContent='請填寫論述內容'; return; }
+  const payload={
+    type:'apply-judicial-internal', status:'pending',
+    applicant:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    answers:{}, essay,
+    ACL:{ "*":{ "read":false }, [ME.objectId]:{ "read":true,"write":false }, ...REVIEW_READ }
+  };
+  const r=await fetch(`${API}/classes/ExamSubmission`,{
+    method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'}, body:JSON.stringify(payload)
+  });
+  const d=await r.json(); if(!r.ok){ $('#judIntErr').textContent=d.error||'提交失敗'; return; }
+  closeApplyJudicialInternal(); alert('已送出司法院（A）申請（內部），待審核。');
+}
+
+async function submitJoinExecutive(){
+  const fair = ($('#execFair').value||'').trim();
+  const essay = ($('#execEssay').value||'').trim();
+  if(!fair){ $('#execErr').textContent='請選擇是否願意公正公平做事'; return; }
+  if(!essay){ $('#execErr').textContent='請填寫論述內容'; return; }
+
+  const payload = {
+    type:'join-executive', status:'pending',
+    applicant:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    answers:{ fair }, essay,
+    ACL:{ "*":{ "read":false }, [ME.objectId]:{ "read":true,"write":false }, ...REVIEW_READ }
+  };
+  const r = await fetch(`${API}/classes/ExamSubmission`,{
+    method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'}, body:JSON.stringify(payload)
+  });
+  const d = await r.json(); if(!r.ok){ $('#execErr').textContent=d.error||'提交失敗'; return; }
+  closeExecModal(); alert('已送出行政院申請，待審核。');
+}
+
+/* ====== 審查清單 ====== */
+function switchTab(which){
+  ACTIVE_TAB = which;
+  TOUCHED[which] = true;
+
+  $('#lnkCtrl')   && $('#lnkCtrl').classList.toggle('active', which==='ctrl');
+  $('#lnkExam')   && $('#lnkExam').classList.toggle('active', which==='exam');
+  $('#lnkExec')   && $('#lnkExec').classList.toggle('active', which==='exec');
+  $('#lnkLeg')    && $('#lnkLeg').classList.toggle('active',  which==='leg');
+  $('#lnkJud')    && $('#lnkJud').classList.toggle('active',  which==='jud');
+  $('#lnkHistory')&& $('#lnkHistory').classList.toggle('active', which==='history');
+  const lnkAll = $('#lnkAll'); if (lnkAll) lnkAll.classList.toggle('active', which==='all');
+
+  // 全部收起
+  ['Ctrl','Exam','Exec','Leg','Jud'].forEach(k=>{
+    const list = document.getElementById('list'+k), emp = document.getElementById('empty'+k);
+    if(list) list.style.display='none'; if(emp) emp.style.display='none';
+  });
+  $('#historyBox').style.display = 'none';
+  const hint = $('#reviewHint'); if (hint) hint.style.display = 'none';
+
+  if (which === 'history'){ loadHistory(); return; }
+  if (which === 'all'){ ['ctrl','exam','exec','leg','jud'].forEach(loadPending); return; }
+  loadPending(which);
+}
+
+async function getRoleSummary(uid){
+  const p = { "__type":"Pointer","className":"_User","objectId": uid };
+  const w = encodeURIComponent(JSON.stringify({ "$or":[ {user:p},{User:p} ], active:true }));
+
+  const [e, c, i, a] = await Promise.all([
+    safeFetchJson(`${API}/classes/ExamStaff?where=${w}&limit=1`, { headers: lcHeaders(true) }),
+    safeFetchJson(`${API}/classes/Admin?where=${w}&limit=1`,     { headers: lcHeaders(true) }),
+    safeFetchJson(`${API}/classes/ExecutiveStaff?where=${w}&limit=1`, { headers: lcHeaders(true) }),
+    safeFetchJson(`${API}/classes/JudicialStaff?where=${w}&limit=1`,  { headers: lcHeaders(true) }),
+  ]);
+
+  const hasE = !!(e.ok && e.data?.results?.length);
+  const hasC = !!(c.ok && c.data?.results?.length);
+  const hasI = !!(i.ok && i.data?.results?.length);
+  const hasA = !!(a.ok && a.data?.results?.length);
+
+  const parts=[]; if(hasE)parts.push('E'); if(hasC)parts.push('C'); if(hasI)parts.push('I'); if(hasA)parts.push('A');
+  return parts.length ? { text:parts.join('/'), cls: parts.length>=2 ? 'dual':'' } : { text:'—', cls:'' };
+}
+
+async function loadHistory(){
+  if (ACTIVE_TAB !== 'history') return;
+
+  const wrap  = $('#historyBox');
+  const list  = $('#historyList');
+  const empty = $('#historyEmpty');
+
+  list.innerHTML = '';
+  empty.style.display = 'none';
+  wrap.style.display = 'block';
+
+  const where = encodeURIComponent(JSON.stringify({ status:{ "$in":["approved","rejected"] } }));
+  const url   = `${API}/classes/ExamSubmission?where=${where}&order=-updatedAt&include=applicant,reviewedBy`;
+  const { ok, data } = await safeFetchJson(url, { headers: lcHeaders(true) });
+
+  if (!ok || !data.results || !data.results.length){
+    if (TOUCHED.history && ACTIVE_TAB==='history') empty.style.display = 'block';
+    return;
+  }
+
+  for (const row of data.results){
+    const u  = row.applicant  || {};
+    const rv = row.reviewedBy || {};
+    const avatar = (u.avatarUrl ? u.avatarUrl.replace(/^http:/,'https:') : '') || BIG_AVATAR;
+    const name   = u.nickname || u.username || '(未命名)';
+    const gid    = u.objectId || '—';
+    const rname  = rv.nickname || rv.username || '(無)';
+    const rgid   = rv.objectId || '—';
+    const when   = row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '';
+    const role   = await getRoleSummary(gid);
+    const st     = row.status==='approved' ? '<span class="state-chip ok">已通過</span>' : '<span class="state-chip no">未通過</span>';
+
+    const el = document.createElement('div');
+    el.className = 'history-item-card';
+    el.innerHTML = `
+      <div class="history-item">
+        <img class="history-avatar" src="${avatar}" alt="">
+        <div class="history-meta">
+          <div class="row"><strong>${escapeHTML(name)}</strong>（GID：${gid}） <span class="role-chip ${role.cls}">${role.text}</span> ${st}</div>
+          <div class="row">審核者：${escapeHTML(rname)}（GID：${rgid}）</div>
+          <div class="row">日期：${when}</div>
+        </div>
+      </div>`;
+    list.appendChild(el);
+  }
+}
+
+function closeAnswerModal(){ document.getElementById('answerModal').style.display='none'; }
+
+async function openSubmissionDetail(id, type){
+  const { ok, data } = await safeFetchJson(
+    `${API}/classes/ExamSubmission/${id}?include=applicant,reviewedBy`,
+    { headers: lcHeaders(true) }
+  );
+  if(!ok){ alert('讀取申請內容失敗'); return; }
+
+  const s  = data || {};
+  const u  = s.applicant || {};
+  const rv = s.reviewedBy || {};
+  const avatar = (u.avatarUrl ? u.avatarUrl.replace(/^http:/,'https:') : '') || BIG_AVATAR;
+  const name   = u.nickname || u.username || '(未命名)';
+  const gid    = u.objectId || '—';
+  const when   = s.createdAt ? new Date(s.createdAt).toLocaleString() : '';
+  const dur    = s.durationSec ? `${s.durationSec}s` : '—';
+  const answers= s.answers || {};
+
+  let ansHtml = '';
+  if (type==='join-control'){
+    ansHtml = `<div class="label">回答</div><div>遵守規則：${escapeHTML(answers.rule||'')}</div><div>尊重多元：${escapeHTML(answers.respect||'')}</div>`;
+  } else if (type==='join-executive'){
+    ansHtml = `<div class="label">回答</div><div>公正公平：${escapeHTML(answers.fair||'')}</div>`;
+  } else if (type==='apply-legislative-public'){
+    ansHtml = `<div class="label">回答</div><div>尊重多元：${escapeHTML(answers.respect||'')}</div>`;
+  } else {
+    ansHtml = ''; // 其它（E / A / 立院內部）只有論述
+  }
+
+  const essayBlock = `
+    <div class="label" style="margin-top:10px">論述內容</div>
+    <div class="card" style="background:#fafafa;">${escapeHTML(s.essay||'')}</div>`;
+
+  const typeLabel =
+    type==='join-control'   ? '監察院申請（C）' :
+    type==='join-executive' ? '行政院申請（I）' :
+    (type==='apply-judicial-public' || type==='apply-judicial-internal') ? '司法院申請（A）' :
+    type==='apply-legislative-public'   ? '立法院申請（外部 L）' :
+    type==='apply-legislative-internal' ? '立法院申請（內部 L）' : '考試院申請（E）';
+
+  document.getElementById('ansContent').innerHTML = `
+    <div class="row history-item" style="margin-bottom:8px;">
+      <img class="history-avatar" src="${avatar}" alt="">
+      <div>
+        <div style="font-weight:900">${escapeHTML(name)}</div>
+        <div class="gid">GID：${gid}</div>
+        <div class="row-meta">
+          <div>類型：${typeLabel}</div>
+          <div>提交時間：${when}</div>
+          <div>作答時長：${dur}</div>
+        </div>
+      </div>
+    </div>
+    ${ansHtml}
+    ${essayBlock}
+  `;
+  document.getElementById('answerModal').style.display='flex';
+}
+
+/* 取待審清單 */
+async function loadPending(kind){
+  const typeMap = { ctrl:'join-control', exam:'join-exam', exec:'join-executive' };
+
+  let whereStr = '';
+  if (kind === 'leg'){
+    whereStr = encodeURIComponent(JSON.stringify({
+      "$or":[
+        { type:'apply-legislative-public',   status:'pending' },
+        { type:'apply-legislative-internal', status:'pending' }
+      ]
+    }));
+  } else if (kind === 'jud'){
+    whereStr = encodeURIComponent(JSON.stringify({
+      "$or":[
+        { type:'apply-judicial-public',   status:'pending' },
+        { type:'apply-judicial-internal', status:'pending' }
+      ]
+    }));
+  } else {
+    const type = typeMap[kind]; if(!type) return;
+    whereStr = encodeURIComponent(JSON.stringify({ type, status:'pending' }));
+  }
+
+  const url = `${API}/classes/ExamSubmission?where=${whereStr}&order=-createdAt&include=applicant`;
+  const { ok, data } = await safeFetchJson(url, { headers: lcHeaders(true) });
+
+  const box   = kind==='ctrl'?$('#listCtrl'): kind==='exam'?$('#listExam'):
+                kind==='exec'?$('#listExec'): kind==='leg'?$('#listLeg'): $('#listJud');
+  const empty = kind==='ctrl'?$('#emptyCtrl'): kind==='exam'?$('#emptyExam'):
+                kind==='exec'?$('#emptyExec'): kind==='leg'?$('#emptyLeg'): $('#emptyJud');
+
+  box.innerHTML = ''; box.style.display='none'; empty.style.display='none';
+
+  if(!ok){
+    if (TOUCHED[kind] && (ACTIVE_TAB===kind || ACTIVE_TAB==='all')){
+      empty.textContent = (kind==='leg'?'立法院': kind==='jud'?'司法院':'此') + '清單載入失敗，請稍後重試';
+      empty.style.display='block';
+    }
+    return;
+  }
+
+  const rows = data?.results || [];
+  if(!rows.length){
+    if (TOUCHED[kind] && (ACTIVE_TAB===kind || ACTIVE_TAB==='all')) empty.style.display='block';
+    return;
+  }
+
+  for(const s of rows){
+    const u   = s.applicant || {};
+    const typ = s.type || '';
+    const avatar = (u.avatarUrl ? u.avatarUrl.replace(/^http:/,'https:') : '') || BIG_AVATAR;
+    const name   = u.nickname || u.username || '(未命名)';
+    const gid    = u.objectId || '(未知)';
+    const when   = s.createdAt ? new Date(s.createdAt).toLocaleString() : '';
+    const dur    = s.durationSec ? `${s.durationSec}s` : '—';
+    const ans    = s.answers || {};
+
+    const typeLabelByTyp = (t)=>
+      t==='apply-judicial-public'      ? '司法院申請（外部 A）' :
+      t==='apply-judicial-internal'    ? '司法院申請（內部 A）' :
+      t==='apply-legislative-public'   ? '立法院申請（外部 L）' :
+      t==='apply-legislative-internal' ? '立法院申請（內部 L）' :
+      kind==='ctrl' ? '監察院申請（C）' : kind==='exec' ? '行政院申請（I）' : '考試院申請（E）';
+
+    let answersBlock = '';
+    if (typ==='apply-legislative-public'){
+      answersBlock = `
+        <div class="label" style="margin-top:8px">回答</div>
+        <div style="font-size:13px;color:#555;">尊重多元：${escapeHTML(ans.respect||'')}</div>`;
+    }
+
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = `
+      <div class="row history-item">
+        <img class="history-avatar" src="${avatar}" alt="">
+        <div>
+          <div style="font-weight:900">${escapeHTML(name)}</div>
+          <div class="gid">GID：${gid}</div>
+          <div class="row-meta">
+            <div>類型：${typeLabelByTyp(typ)}</div>
+            <div>提交時間：${when}</div>
+            <div>作答時長：${dur}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:space-between; gap:8px; margin-top:10px;">
+        <div>
+          <button class="btn" onclick="openSubmissionDetail('${s.objectId}', '${typ||typeMap[kind]}')">檢查此作答</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          ${
+            (gid === ME.objectId && ME.objectId !== SUPER_EXAM_UID)
+            ? `<span class="hint">（你不能審核自己的申請，請交由其他同僚或超級審核）</span>`
+            : `
+              <button class="btn ghost" onclick="rejectSubmission('${s.objectId}', '${typ||typeMap[kind]}', '${gid}', true)">不同意加入（通知）</button>
+              <button class="btn ghost" onclick="rejectSubmission('${s.objectId}', '${typ||typeMap[kind]}', '${gid}', false)">退回</button>
+              <button class="btn brand" onclick="approveSubmission('${s.objectId}','${typ||typeMap[kind]}','${gid}')">同意加入</button>
+            `
+          }
+        </div>
+      </div>
+
+      ${answersBlock}
+    `;
+    box.appendChild(el);
+  }
+  if (ACTIVE_TAB===kind || ACTIVE_TAB==='all') box.style.display='grid';
+}
+
+async function rejectSubmission(id, type, applicantId, notify=false){
+  if(!confirm('確定不同意／退回此申請？')) return;
+  const r = await fetch(`${API}/classes/ExamSubmission/${id}`,{
+    method:'PUT', headers:{...lcHeaders(true),'Content-Type':'application/json'},
+    body: JSON.stringify({ status:'rejected' })
+  });
+  if(!r.ok){ alert('操作失敗'); return; }
+
+  if(notify && applicantId){
+    const label =
+      type==='join-control' ? '監察院（C）' :
+      type==='join-executive' ? '行政院（I）' :
+      (type==='apply-judicial-public' || type==='apply-judicial-internal') ? '司法院（A）' :
+      (type==='apply-legislative-public' || type==='apply-legislative-internal') ? '立法院（L）' : '申請';
+    await sendSystemMessage(applicantId, `【未通過】你申請參加 ${label} 的申請未通過。如需協助可再來信。`);
+  }
+
+  await Promise.all(['ctrl','exec','exam','leg','jud'].map(loadPending));
+}
+
+async function approveSubmission(id, type, uid){
+  const { ok, data } = await safeFetchJson(`${API}/classes/ExamSubmission/${id}?include=applicant`, {
+    headers: lcHeaders(true)
+  });
+  if (!ok) { alert('讀取申請失敗'); return; }
+
+  const applicantId = data?.applicant?.objectId || '';
+  const isMine = applicantId && applicantId === ME.objectId;
+  if (isMine && ME.objectId !== SUPER_EXAM_UID) {
+    alert('你不能審核自己的申請，請交由其他同僚或超級審核。');
+    return;
+  }
+
+  if (!confirm('確定通過此申請？')) return;
+
+  if (type === 'join-control') {
+    const payload = {
+      user:   { "__type":"Pointer","className":"_User","objectId": applicantId },
+      active: true,
+      ACL: {
+        "*":{ "read": false },
+        "role:Admin":{ "read": true,  "write": true },
+        "role:ExamStaff":{ "read": true },
+        [applicantId]:{ "read": true },
+        [SUPER_EXAM_UID]:{ "read": true,  "write": true }
+      }
+    };
+    const r = await fetch(`${API}/classes/Admin`, { method: 'POST', headers: { ...lcHeaders(true), 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+    if (!r.ok) { alert('建立監察院身份失敗'); return; }
+
+  } else if (type === 'join-exam') {
+    const payload = {
+      user:   { "__type":"Pointer","className":"_User","objectId": applicantId },
+      active: true, role: 'member',
+      ACL: {
+        "*":{ "read": false },
+        "role:ExamStaff":{ "read": true,  "write": true },
+        "role:Admin":{ "read": true },
+        [applicantId]:{ "read": true },
+        [SUPER_EXAM_UID]:{ "read": true,  "write": true }
+      }
+    };
+    const r = await fetch(`${API}/classes/ExamStaff`, { method: 'POST', headers: { ...lcHeaders(true), 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+    if (!r.ok) { alert('建立考試院身份失敗'); return; }
+
+  } else if (type === 'join-executive') {
+    const payload = {
+      user:   { "__type":"Pointer","className":"_User","objectId": applicantId },
+      active: true, role:'member',
+      ACL: {
+        "*":{ "read": false },
+        "role:ExamStaff":{ "read": true },
+        "role:Admin":{ "read": true },
+        [applicantId]:{ "read": true },
+        [SUPER_EXAM_UID]:{ "read": true, "write": true }
+      }
+    };
+    const r = await fetch(`${API}/classes/ExecutiveStaff`, { method:'POST', headers:{ ...lcHeaders(true), 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+    if(!r.ok){ alert('建立行政院身份失敗'); return; }
+
+  } else if (type === 'apply-judicial-public' || type === 'apply-judicial-internal') {
+    const payload = {
+      user:{ "__type":"Pointer","className":"_User","objectId": applicantId },
+      active:true, role:'member',
+      ACL:{
+        "*":{ "read":false },
+        "role:ExamStaff":{ "read": true },
+        "role:Admin":    { "read": true },
+        [applicantId]:   { "read": true },
+        [SUPER_EXAM_UID]:{ "read": true, "write": true }
+      }
+    };
+    const r = await fetch(`${API}/classes/JudicialStaff`,{ method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if(!r.ok){ alert('建立司法院身份失敗'); return; }
+
+  } else if (type === 'apply-legislative-public' || type === 'apply-legislative-internal') {
+    // 目前 L 只記錄通過，不落身份表
+  } else {
+    alert('未知的申請類型');
+    return;
+  }
+
+  await fetch(`${API}/classes/ExamSubmission/${id}`, {
+    method: 'PUT',
+    headers: { ...lcHeaders(true), 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      status: 'approved',
+      reviewedBy: { "__type":"Pointer","className":"_User","objectId": ME.objectId }
+    })
+  });
+
+  await sendSystemMessage(
+    applicantId,
+    type==='join-control' ? '【恭喜通過】你已通過監察院（C）審核，權限已開通。' :
+    type==='join-executive' ? '【恭喜通過】你已通過行政院（I）審核，權限已開通。' :
+    (type==='apply-judicial-public' || type==='apply-judicial-internal')
+      ? '【恭喜通過】你已通過司法院（A）審核，權限已開通。'
+      : '【恭喜通過】你已通過考試院（E）審核，身份已生效。'
+  );
+
+  alert('已通過並通知。');
+  await loadRoster();
+  await Promise.all(['ctrl','exam','exec','leg','jud'].map(loadPending));
+}
+
+async function sendSystemMessage(toId, text){
+  const payload={ kind:'system', text, body:text, read:"false",
+    from:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    to:{   "__type":"Pointer","className":"_User","objectId":toId },
+    ACL:{ "*":{ "read":false }, [ME.objectId]:{ "read":true,"write":true }, [toId]:{ "read":true,"write":false } }
+  };
+  await fetch(`${API}/classes/Message`,{ method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+}
+
+/* ====== 輪詢 ====== */
+async function refreshAll(){
+  await loadRoster();
+  if (!IS_STAFF) return;
+
+  if (ACTIVE_TAB === 'all'){
+    await Promise.all(['ctrl','exam','exec','leg','jud'].map(loadPending));
+    if (TOUCHED.history) await loadHistory();
+    return;
+  }
+  if (ACTIVE_TAB === 'jud'    && TOUCHED.jud)     await loadPending('jud');
+  if (ACTIVE_TAB === 'ctrl'   && TOUCHED.ctrl)    await loadPending('ctrl');
+  if (ACTIVE_TAB === 'exam'   && TOUCHED.exam)    await loadPending('exam');
+  if (ACTIVE_TAB === 'exec'   && TOUCHED.exec)    await loadPending('exec');
+  if (ACTIVE_TAB === 'leg'    && TOUCHED.leg)     await loadPending('leg');
+  if (ACTIVE_TAB === 'history'&& TOUCHED.history) await loadHistory();
+}
+function startPolling(){ stopPolling(); pollTimer=setInterval(()=>{ if(document.visibilityState==='visible'){ refreshAll(); } }, 30000); }
+function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ refreshAll(); startPolling(); } else{ stopPolling(); } });
+
+/* ====== 啟動 ====== */
+(async()=>{
+  const ok=await requireLogin(); if(!ok) return;
+  $('#meMini').textContent = (JSON.parse(localStorage.getItem('sg_user'))?.nickname || '—') + ' 已登入';
+
+  IS_EXAM = await isExamStaff();
+  IS_CTRL = await isControlStaff(ME.objectId);
+  IS_EXEC = await isExecutiveStaff(ME.objectId);
+  IS_JUD  = await isJudicialStaff(ME.objectId);
+  IS_STAFF = IS_EXAM || IS_CTRL || IS_EXEC || IS_JUD;
+
+  // CTA 顯示
+  document.getElementById('btnApplyAInternal').style.display = IS_EXAM ? 'inline-flex' : 'none';
+  document.getElementById('btnApplyAPublic').style.display   = !IS_JUD ? 'inline-flex' : 'none';
+  document.getElementById('btnApplyC').style.display         = (IS_EXAM && !IS_CTRL) ? 'inline-flex' : 'none';
+  document.getElementById('btnApplyI').style.display         = (IS_EXAM && !IS_EXEC) ? 'inline-flex' : 'none';
+  document.getElementById('btnApplyLInternal').style.display = IS_EXAM ? 'inline-flex' : 'none';
+
+  await refreshAll();
+  startPolling();
+
+  if (window.innerWidth >= 1200) openAside(); else closeAside();
+
+  if (IS_STAFF) {
+    document.getElementById('reviewBox').style.display='block';
+  } else {
+    document.getElementById('applyBox').style.display='block';
+    const me = JSON.parse(localStorage.getItem('sg_user'));
+    document.getElementById('meChip').textContent = `${me?.nickname||me?.username||'我'}（${me?.objectId||'—'}）`;
+  }
+})();
+
+/* 對外掛在 window 方便調試 */
+window.Grove = {
+  nav:   { goBack },
+  apply: { openJoinControl, openJoinExecutive, openJoinExam, submitJoinControl, submitJoinExecutive, submitJoinExam },
+  review:{ loadPending, approveSubmission, rejectSubmission, loadHistory, switchTab },
+  roster:{ loadRoster },
+  auth:  { requireLogin, isExamStaff, isControlStaff, isExecutiveStaff, isJudicialStaff },
+  util:  { safeFetchJson, lcHeaders, escapeHTML }
+};
+</script>
+</body>
+</html>

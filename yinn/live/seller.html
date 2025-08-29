@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>賣家主頁</title>
+<style>
+  :root{ --brand:#6c4ef7; --muted:#777; }
+  *{box-sizing:border-box}
+  body{ margin:0; font-family: system-ui,-apple-system,"Noto Sans TC",Arial,sans-serif; background:#fafafa; color:#222; }
+  .wrap{ max-width:960px; margin:0 auto; padding:20px 14px 40px; }
+  .card{ background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(0,0,0,.06); }
+  .profile{ display:flex; gap:14px; align-items:center; }
+  .avatar{ width:88px; height:88px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .name{ font-size:20px; font-weight:800; }
+  .muted{ color:var(--muted); font-size:13px; }
+  .grid{ display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); margin-top:14px;}
+  .pcard{ border:1px solid #eee; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 6px 16px rgba(0,0,0,.06); }
+  .pthumb{ width:100%; height:120px; object-fit:cover; background:#f3f3f3; display:block; }
+  .pbody{ padding:10px; }
+  .ptitle{ font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:6px; }
+  .pprice{ color:#e91e63; font-weight:800; }
+  a.back{ color:var(--brand); text-decoration:none; font-weight:700; display:inline-block; margin:10px 0 6px; }
+  /* =========================
+   主題變數（與詳情頁一致）
+   ========================= */
+:root{
+  --brand:#6c4ef7;
+  --muted:#777;
+  --accent:#e91e63;
+
+  /* 白天彈匡（淡粉） */
+  --dropdown-bg:#fdeaff;
+  --dropdown-border:#f5ccff;
+  --dropdown-text:#4a3a6a;
+}
+
+html[data-theme="dark"]{
+  --text:#cfc3ff;
+  --muted:#9a8fd1;
+  --brand:#a48cff;
+  --accent:#bf66ff;
+
+  --card-bg:#161222;
+  --card-border:#2b2440;
+  --page-bg:#0f0b1a;
+
+  --btn-bg:#1b1629;
+  --btn-border:#2b2440;
+  --btn-text:#cfc3ff;
+
+  --chip-bg:#1b1629;
+  --chip-border:#2b2440;
+
+  --shadow:0 10px 28px rgba(0,0,0,.45);
+}
+
+/* =========================
+   基本色系（夜間總開關）
+   ========================= */
+html[data-theme="dark"] body{ background:var(--page-bg); color:var(--text); }
+html[data-theme="dark"] .muted{ color:var(--muted); }
+html[data-theme="dark"] .name{ color:var(--text); }
+
+/* 卡片/清單 */
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .pcard{
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  box-shadow:var(--shadow);
+  color:var(--text);
+}
+
+/* 縮圖底色、頭貼邊框 */
+html[data-theme="dark"] .pthumb{ background:#1e1930; }
+html[data-theme="dark"] .avatar{ border-color:var(--card-border); }
+
+/* 價格顏色一致 */
+html[data-theme="dark"] .pprice{ color:var(--accent); }
+
+/* 返回連結 */
+a.back{ text-decoration:none; }
+html[data-theme="dark"] a.back{ color:var(--brand); }
+
+/* 分隔線 */
+html[data-theme="dark"] hr{ border-top:1px solid var(--card-border) !important; }
+
+/* =========================
+   右上角：圓球按鈕 & 下拉彈匡
+   ========================= */
+
+/* 放一起好對齊 */
+.menu-wrap{ position:relative; display:inline-flex; gap:8px; align-items:center; }
+
+/* 圓球按鈕（和前一頁一致；可自行調大小） */
+.menu-btn{
+  width:30px; height:30px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700; line-height:1;
+  background:var(--brand); color:#fff; border:none;
+  cursor:pointer; transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
+  box-shadow:0 4px 12px rgba(108,78,247,.22);
+}
+.menu-btn:hover{ transform:scale(1.08); }
+.menu-btn:active{ transform:scale(.96); }
+
+/* 夜間版圓球 */
+html[data-theme="dark"] .menu-btn{
+  background:var(--btn-bg);
+  border:1px solid var(--btn-border);
+  color:var(--btn-text);
+  box-shadow:none;
+}
+
+/* 下拉：預設關閉（貼著按鈕正下並略向右） */
+.dropdown{
+  position:absolute;
+  left:0; top:calc(100% + 8px);
+  transform:translateX(8px) translateY(-6px) scale(.98);
+  opacity:0; visibility:hidden; pointer-events:none;
+  min-width:220px; max-width:min(320px, 80vw);
+  border-radius:14px; padding:8px; z-index:999;
+  transition:opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+  background:var(--dropdown-bg); color:var(--dropdown-text);
+  border:1px solid var(--dropdown-border);
+  box-shadow:0 16px 32px rgba(0,0,0,.18);
+}
+/* 顯示 */
+.dropdown.show{
+  transform:translateX(8px) translateY(0) scale(1);
+  opacity:1; visibility:visible; pointer-events:auto;
+}
+
+/* 小箭頭移除（避免「突起」） */
+.dropdown::after{ content:none; }
+
+/* 選單項目 & 懸浮靈動感 */
+.dropdown .item{
+  width:100%; text-align:left; padding:10px 12px; border:0;
+  background:transparent; color:inherit; border-radius:8px; cursor:pointer;
+  transition:transform .12s ease, background .12s ease;
+}
+.dropdown .item:hover{ transform:translateY(-1px); background:rgba(108,78,247,.10); }
+
+/* 夜間版下拉 */
+html[data-theme="dark"] .dropdown{
+  background:var(--card-bg);
+  color:var(--text);
+  border:1px solid var(--card-border);
+  box-shadow:var(--shadow);
+}
+
+/* 小螢幕時靠左避免出框 */
+@media (max-width:560px){
+  .dropdown, .dropdown.show{ left:0; transform:translateX(0) translateY(0) scale(1); }
+}
+
+/* =========================
+   細節微調
+   ========================= */
+.wrap{ max-width:960px; margin:0 auto; padding:20px 14px 40px; }
+.pcard{ transition:transform .16s ease, box-shadow .16s ease; }
+.pcard:hover{ transform:translateY(-2px); box-shadow:0 10px 24px rgba(0,0,0,.10); }
+/* 聊天按鈕容器 */
+.seller-actions{ margin-top:10px; display:flex; gap:8px; }
+
+/* 💬 聊天按鈕 */
+.chat-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 12px; border-radius:10px;
+  background:var(--brand); color:#fff; font-weight:800;
+  border:1px solid transparent; text-decoration:none; cursor:pointer;
+  box-shadow:0 6px 16px rgba(108,78,247,.25);
+  transition:transform .15s ease, box-shadow .18s ease, background .18s ease;
+}
+.chat-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 24px rgba(108,78,247,.35); }
+.chat-btn:active{ transform:translateY(0); }
+
+/* 夜間：用按鈕變數顏色（你已定義過） */
+html[data-theme="dark"] .chat-btn{
+  background:var(--brand);
+  color:#161222;
+  box-shadow:none;
+}
+/* 檢舉按鈕（紅） */
+.report-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 12px; border-radius:10px;
+  background:#e91e63; color:#fff; font-weight:800;
+  border:1px solid transparent; cursor:pointer;
+  box-shadow:0 6px 16px rgba(233,30,99,.25);
+  transition:transform .15s ease, box-shadow .18s ease, background .18s ease;
+}
+.report-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 24px rgba(233,30,99,.35); }
+.report-btn:active{ transform:translateY(0); }
+
+/* 夜間也清楚 */
+html[data-theme="dark"] .report-btn{ background:#bf3b6e; color:#161222; box-shadow:none; }
+
+/* 檢舉彈窗 */
+.backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.35);
+  display:none; align-items:center; justify-content:center; padding:16px; z-index:3000; }
+.modal{
+  width:min(640px,92vw); max-height:92vh; overflow:auto;
+  background:#fff; border:1px solid #eee; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.22);
+}
+.modal header{ position:sticky; top:0; background:#fff; padding:12px 14px;
+  font-weight:800; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
+.modal .body{ padding:12px 14px; }
+.modal .actions{ position:sticky; bottom:0; background:#fff; border-top:1px solid #eee;
+  padding:10px 14px; display:flex; gap:10px; justify-content:flex-end; }
+.modal .field{ margin:10px 0; }
+.modal label{ display:block; font-size:12px; color:#777; margin-bottom:6px; }
+.modal .input, .modal .textarea, .modal .file{
+  width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; outline:none; background:#fff;
+}
+.modal .textarea{ min-height:120px; resize:vertical; }
+.modal .err{ color:#b00020; font-size:13px; margin-top:4px; }
+
+html[data-theme="dark"] .modal{
+  background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); box-shadow:var(--shadow);
+}
+html[data-theme="dark"] .modal header,
+html[data-theme="dark"] .modal .actions{ background:var(--card-bg); border-color:var(--card-border); }
+html[data-theme="dark"] .modal .input,
+html[data-theme="dark"] .modal .textarea,
+html[data-theme="dark"] .modal .file{ 
+  background:transparent; 
+  color:var(--text); 
+  border:1px solid var(--card-border); 
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+     <div class="menu-wrap">
+      <a href="shopping.html" class="back">←Esc Store</a>
+  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+  <div id="menuDrop" class="dropdown" role="menu">
+    <!-- 第一個選項：切換模式 -->
+    <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+     <button class="item" onclick="location.href='../index.html'">主頁</button>
+    <button class="item" onclick="location.href='Grove.Examination-Yuan.html'">參加管理員</button>
+    <button class="item" onclick="location.href='Grove. Control-Yuan.html'">Control</button>
+    <button class="item" onclick="location.href='Grove.Executive-Yuan.html'">Executive</button>
+    <button class="item" onclick="location.href='Grove.Judicial-Yuan.html'">申訴</button>
+    <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
+    <button class="item" onclick="location.href='vote.html'">投票專區</button>
+    <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+  </div>
+</div>
+    <div class="card">
+  <div class="profile">
+    <img id="sAvatar" class="avatar" src="" alt="賣家頭貼">
+    <div>
+      <div id="sName" class="name">—</div>
+      <div id="sGid" class="muted">GID：—</div>
+      <div id="sellerActions" class="seller-actions">💬</div>  <!-- 按鈕會塞在這 -->
+    </div>
+  </div>
+</div>
+
+    <div class="card" style="margin-top:14px">
+      <div style="font-weight:800;margin-bottom:8px">賣家的所有商品</div>
+      <div id="sProducts" class="grid"></div>
+    </div>
+  </div>
+<!-- 檢舉彈窗 -->
+<div id="reportDlg" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="rptTitle">
+  <div class="modal">
+    <header>
+      <div id="rptTitle">檢舉此用戶</div>
+      <div class="closex" style="cursor:pointer;font-size:20px;color:#888" onclick="closeReport()">×</div>
+    </header>
+    <div class="body">
+      <div class="field">
+        <label>被檢舉者 GID</label>
+        <input id="rptGid" class="input" type="text" readonly>
+      </div>
+      <div class="field">
+        <label>檢舉理由（必填）</label>
+        <textarea id="rptReason" class="textarea" placeholder="請詳述情況、時間、對話節錄…"></textarea>
+      </div>
+      <div class="field">
+        <label>圖片證據（可選，最多 1 張）</label>
+        <input id="rptImg" class="file" type="file" accept="image/*">
+        <div class="muted">若有對話截圖、轉帳憑證等，可附上更好。</div>
+      </div>
+      <div id="rptErr" class="err"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeReport()">取消</button>
+      <button class="btn primary" onclick="submitReport()">送出檢舉</button>
+    </div>
+  </div>
+</div>
+<script>
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+const CURRENCY_SIGN = '¥';
+const money = n => Number(n||0).toLocaleString('zh-TW');
+// …原本常數後面
+//管理員
+const REPORT_ADMIN_UID = "68b19eeb90ed2201c4839219";
+//管理員
+/* 上傳圖片 → LeanCloud /files，回傳 URL */
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const fr = new FileReader();
+    fr.onload = ()=> resolve(fr.result.split(',')[1]);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+async function uploadOne(file){
+  const base64 = await fileToBase64(file);
+  const r = await fetch(`${API}/files/${encodeURIComponent(file.name)}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-LC-Id':APP_ID,'X-LC-Key':APP_KEY},
+    body: JSON.stringify({ base64 })
+  });
+  const data = await r.json();
+  if(!r.ok) throw new Error(data.error || '檔案上傳失敗');
+  return data.url;
+}
+let __reportTargetUid = "";   // 被檢舉者
+function openReport(targetUid){
+  __reportTargetUid = targetUid || "";
+  document.getElementById('rptGid').value = __reportTargetUid;
+  document.getElementById('rptReason').value = '';
+  document.getElementById('rptImg').value = '';
+  document.getElementById('rptErr').textContent = '';
+  document.getElementById('reportDlg').style.display = 'flex';
+}
+function closeReport(){
+  document.getElementById('reportDlg').style.display = 'none';
+}
+async function submitReport(){
+  const me   = JSON.parse(localStorage.getItem('sg_user')||'null');
+  const token= localStorage.getItem('sg_token');
+  if(!me || !token){ alert('請先登入後再檢舉'); return; }
+
+  const target = __reportTargetUid;
+  const reason = (document.getElementById('rptReason').value || '').trim();
+  const file   = document.getElementById('rptImg').files[0];
+  const errEl  = document.getElementById('rptErr');
+  errEl.textContent = '';
+
+  if(!target){ errEl.textContent = '缺少被檢舉者 GID'; return; }
+  if(!reason){ errEl.textContent = '請填寫檢舉理由'; return; }
+
+  try{
+    // 可選圖片
+    let proofUrl = '';
+    if(file){ proofUrl = await uploadOne(file); }
+
+    // 只在 Report 類別建立案件，讓監察院主頁去讀取
+    const payload = {
+      target:   { "__type":"Pointer","className":"_User","objectId": target },
+      targetGid: target,                              // 方便查詢
+      reporter: { "__type":"Pointer","className":"_User","objectId": me.objectId },
+      reason,
+      images: proofUrl ? [proofUrl] : [],
+      status: "new",                                  // 監察院主頁顯示用
+      source: "seller",                               // 從賣家頁送出
+      ACL:{
+        "*":               { "read": false },         // 不公開
+        [me.objectId]:     { "read": true, "write": false },
+        "role:Admin":      { "read": true, "write": true }   // ✅ 監察院可讀寫
+      }
+    };
+
+    const res = await fetch(`${API}/classes/Report`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'X-LC-Id': APP_ID,
+        'X-LC-Key': APP_KEY,
+        'X-LC-Session': token
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || '送出失敗');
+
+    closeReport();
+    alert('✅ 檢舉已建立，將由監察院處理。');
+  }catch(e){
+    errEl.textContent = e.message || '送出失敗';
+  }
+}
+function q(k){ return new URLSearchParams(location.search).get(k); }
+function displayPrice(p){
+  if(p.samePrice && typeof p.price === 'number') return p.price;
+  if(Array.isArray(p.variants) && p.variants.length && typeof p.variants[0].price === 'number') return p.variants[0].price;
+  return 0;
+}
+
+async function fetchUser(uid){
+  const headers = { 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY };
+  // 若使用者已登入，夾帶 Session 可避開某些 ACL 限制
+  const token = localStorage.getItem('sg_token');
+  if(token) headers['X-LC-Session'] = token;
+
+  const where = encodeURIComponent(JSON.stringify({ objectId: uid }));
+  const res = await fetch(`${API}/users?where=${where}&limit=1`, { headers });
+  const data = await res.json();
+  if(!res.ok || !data.results || !data.results.length){
+    throw new Error('找不到此賣家');
+  }
+  return data.results[0];
+}
+
+async function fetchProductsBySeller(uid){
+  const where = encodeURIComponent(JSON.stringify({
+    seller: { "__type":"Pointer","className":"_User","objectId": uid }
+  }));
+  const res = await fetch(`${API}/classes/Product?where=${where}&order=-createdAt`, {
+    headers:{ 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY }
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error || '商品讀取失敗');
+  return data.results || [];
+}
+function renderSeller(u){
+  const raw = u.avatarUrl || '';
+  const avatar = raw ? raw.replace(/^http:\/\//, 'https://')
+                     : 'data:image/svg+xml;utf8,'+encodeURIComponent(
+                         `<svg xmlns="http://www.w3.org/2000/svg" width="88" height="88">
+                            <rect width="100%" height="100%" rx="44" ry="44" fill="#f3f3f3"/>
+                            <text x="50%" y="55%" text-anchor="middle" font-size="32">🙂</text>
+                          </svg>`
+                       );
+  document.getElementById('sAvatar').src = avatar;
+  document.getElementById('sAvatar').alt = `${u.nickname || u.username || '賣家'} 的頭貼`;
+  document.getElementById('sName').textContent = u.nickname || u.username || '—';
+  document.getElementById('sGid').textContent  = `GID：${u.objectId || ''}`;
+
+  const me = JSON.parse(localStorage.getItem('sg_user')||'null');
+  const box = document.getElementById('sellerActions');
+  if (!box) return;
+
+  if (me && me.objectId === u.objectId) {
+    box.innerHTML = '';   // 自己看自己，不顯示按鈕
+    return;
+  }
+
+  const toHref = `messages.html?to=${encodeURIComponent(u.objectId)}&name=${encodeURIComponent(u.nickname||u.username||'')}&avatar=${encodeURIComponent(u.avatarUrl||'')}`;
+
+  box.innerHTML = `
+    <a class="chat-btn" href="${toHref}" title="和她聊天">💬 開聊</a>
+    <button class="report-btn" type="button" onclick="openReport('${u.objectId}')">⚠️檢舉</button>
+  `;
+}
+// 如果當前頁面就是 messages.html，可讀取 auto=1 自動開啟
+// 建立(或取得)與對方的會話，再跳到 messages.html
+let _chatStarting = false;
+
+function renderProducts(list){
+  const box = document.getElementById('sProducts');
+  box.innerHTML = '';
+  if(!list.length){
+    box.innerHTML = '<div class="muted">尚未發佈任何商品</div>';
+    return;
+  }
+  for(const p of list){
+    const img = p.imageUrl || (p.images && p.images[0]) || 'https://via.placeholder.com/320x240?text=%F0%9F%8C%9E';
+    const price = displayPrice(p);
+    const card = document.createElement('div');
+    card.className = 'pcard';
+    card.innerHTML = `
+      <img class="pthumb" src="${img}" alt="">
+      <div class="pbody">
+        <div class="ptitle" title="${p.title || ''}">${p.title || '未命名商品'}</div>
+        <div class="pprice">${CURRENCY_SIGN}${money(price)}</div>
+      </div>
+    `;
+    card.onclick = ()=> location.href = `shuser.html?id=${p.objectId}`;
+    box.appendChild(card);
+  }
+}
+
+(async ()=>{
+  // ✅ 這裡改了：同時接受 uid 或 id
+  // 同時支援 ?uid= 與 ?id=（前頁可能傳 id）
+const uid = q('uid') || q('id');
+if(!uid){
+  alert('缺少賣家 uid');
+  // 不中斷整頁，僅顯示空資料
+  document.getElementById('sName').textContent = '—';
+  document.getElementById('sGid').textContent  = 'GID：—';
+  document.getElementById('sProducts').innerHTML = '<div class="muted">尚未載入賣家</div>';
+  return;
+}
+
+  try{
+    const u = await fetchUser(uid);
+    renderSeller(u);
+
+    const me = JSON.parse(localStorage.getItem('sg_user')||'null');
+    if(me && me.objectId === uid){
+      // 如果本人進來，可直接導去 user.html
+      // location.replace('user.html'); return;
+    }
+
+    const items = await fetchProductsBySeller(uid);
+    renderProducts(items);
+  }catch(e){
+    alert(e.message || '讀取失敗');
+  }
+})();
+
+</script>
+<script src="im.js"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

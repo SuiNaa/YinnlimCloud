@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>管理我的廣告</title>
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,"Noto Sans TC",Arial,sans-serif;background:#fafafa;color:#222;}
+  .wrap{max-width:960px;margin:24px auto;padding:0 16px;}
+  .top{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px;}
+  .btn{padding:8px 12px;border-radius:10px;
+    border:1px solid #ddd;
+    background:#fff;
+    cursor:pointer;
+    font-weight:600;
+    text-decoration:none;
+    color:#c278ff;}
+  .btn.danger{color:#fff;background:#e53935;border-color:#e53935;}
+  .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+  .card{background:#fff;border:1px solid #eee;border-radius:12px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.06);}
+  .thumb{width:100%;aspect-ratio:16/9;object-fit:cover;background:#f0f0f0;}
+  .body{padding:10px}
+  .title{font-weight:700;margin:4px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .meta{font-size:12px;color:#666;line-height:1.4}
+  .row{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  /* ========== 夜間模式變數 ========== */
+html[data-theme="dark"]{
+  --text:#cfc3ff;
+  --muted:#9a8fd1;
+  --brand:#a48cff;
+  --accent:#bf66ff;
+
+  --card-bg:#161222;
+  --card-border:#2b2440;
+  --page-bg:#0f0b1a;
+
+  --btn-bg:#1b1629;
+  --btn-border:#2b2440;
+  --btn-text:#cfc3ff;
+
+  --shadow:0 10px 28px rgba(0,0,0,.45);
+}
+
+/* ========== 全局色系（夜間） ========== */
+html[data-theme="dark"] body{ background:var(--page-bg); color:var(--text); }
+html[data-theme="dark"] .meta,
+html[data-theme="dark"] label{ color:var(--muted); }
+html[data-theme="dark"] .card{ background:var(--card-bg); border-color:var(--card-border); color:var(--text); box-shadow:var(--shadow);}
+html[data-theme="dark"] .btn{ background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--btn-text); }
+html[data-theme="dark"] .btn.danger{ background:#b91c1c; border-color:#b91c1c; color:#fff; }
+html[data-theme="dark"] input[type="date"]{ background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); }
+
+/* ========== 圓球按鈕 + 下拉選單 ========== */
+.menu-wrap{ position:relative; display:inline-flex; gap:8px; align-items:center; margin-left:8px; }
+
+/* 圓球按鈕 */
+.menu-btn{
+  width:34px; height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700; line-height:1;
+  background:var(--brand); color:#fff; border:none;
+  cursor:pointer; transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
+  box-shadow:0 4px 12px rgba(108,78,247,.22);
+}
+.menu-btn:hover{ transform:scale(1.08); }
+.menu-btn:active{ transform:scale(.95); }
+html[data-theme="dark"] .menu-btn{
+  background:var(--btn-bg);
+  border:1px solid var(--btn-border);
+  color:var(--btn-text);
+  box-shadow:none;
+}
+
+/* 下拉 */
+.dropdown{
+  position:absolute; top:calc(100% + 8px); right:0;
+  transform:translateY(-6px) scale(.98);
+  opacity:0; visibility:hidden; pointer-events:none;
+  min-width:200px; border-radius:14px; padding:8px; z-index:999;
+  transition:opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+  background:#fdeaff; color:#4a3a6a; border:1px solid #f5ccff;
+  box-shadow:0 16px 32px rgba(0,0,0,.18);
+}
+.dropdown.show{ transform:translateY(0) scale(1); opacity:1; visibility:visible; pointer-events:auto; }
+.dropdown .item{ width:100%; text-align:left; padding:10px 12px; border:0; background:transparent; color:inherit; border-radius:8px; cursor:pointer; transition:.12s; }
+.dropdown .item:hover{ background:rgba(108,78,247,.10); transform:translateY(-1px); }
+html[data-theme="dark"] .dropdown{ background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); box-shadow:var(--shadow); }
+
+/* 小螢幕鋪滿 */
+@media (max-width:560px){
+  .dropdown, .dropdown.show{ left:0 !important; right:auto !important; width:92vw; }
+}
+.t{
+  text-decoration: none;
+  color: rgb(158, 88, 255);
+}
+.top > div{
+  display:flex;
+  align-items:center;
+  gap:6px;            /* ← 控制按鈕之間的距離（縮小一點） */
+  margin-right:-80px;   /* ← 靠右縮小外距 */
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+  <h2 style="margin:0">我的投放廣告</h2>
+  <div>
+    <a class="btn" href="shopping.html">← 回Store</a>
+    <a class="btn" href="shopping.html#adHero" title="點擊發佈廣告">＋</a>
+    <div class="menu-wrap">
+      <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+      <div id="menuDrop" class="dropdown" role="menu">
+        <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+        <button class="item"><a href="../index.html" class="t">回Sunlit Grove主頁</a></button>
+    <button class="item" onclick="location.href='Grove.Examination-Yuan.html'">參加管理員</button>
+    <button class="item" onclick="location.href='Grove. Control-Yuan.html'">Control</button>
+    <button class="item" onclick="location.href='Grove.Executive-Yuan.html'">Executive</button>
+    <button class="item" onclick="location.href='Grove.Judicial-Yuan.html'">申訴</button>
+    <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
+    <button class="item" onclick="location.href='vote.html'">投票專區</button>
+    <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+      </div>
+    </div>
+  </div>
+</div>
+  
+  <!-- 日期篩選：只選年月日 -->
+<div class="row" style="gap:8px; align-items:center; margin:4px 0 10px;">
+  <label for="fltDate" style="font-size:14px;color:#555;">依日期搜尋：</label>
+  <input id="fltDate" type="date" class="input" style="padding:8px 10px;border:1px solid #ddd;border-radius:10px;">
+  <button class="btn" id="btnSearchDate" onclick="searchByDate()">搜尋</button>
+  <button class="btn" id="btnClearDate" onclick="clearDate()">清除</button>
+</div>
+  <div id="tip" style="margin:8px 0; color:#666;"></div>
+  <div id="list" class="list"></div>
+</div>
+
+<script>
+/** LeanCloud 設定（和首頁保持一致） */
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+
+/** 小工具 */
+const $ = s => document.querySelector(s);
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
+
+/** 檢查登入 */
+const user  = JSON.parse(localStorage.getItem('sg_user')||'null');
+const token = localStorage.getItem('sg_token')||'';
+if(!user || !token){
+  $('#tip').innerHTML = '請先登入後再管理廣告。<a href="index.html" class="btn">回首頁登入</a>';
+} else {
+  loadMyAds();
+}
+
+/** 讀取我的廣告（owner 指向我） */
+/** 讀取我的廣告（owner 指向我）+ 可選日期過濾 */
+async function loadMyAds(dateStr){
+  $('#tip').textContent = '載入中…';
+
+  // 基本條件：owner = 我
+  const where = {
+    owner: { "__type":"Pointer", "className":"_User", "objectId": user.objectId }
+  };
+
+  // 若有選日期，組成 00:00:00 ~ 23:59:59.999 的區間（本地時區 -> ISO）
+  if (dateStr) {
+    const { startISO, endISO } = toDayRange(dateStr);
+    where.createdAt = {
+      "$gte": { "__type":"Date", "iso": startISO },
+      "$lt" : { "__type":"Date", "iso": endISO  }
+    };
+  }
+
+  const url = `${API}/classes/Ad?where=${encodeURIComponent(JSON.stringify(where))}&order=-createdAt&limit=100`;
+
+  try{
+    const r = await fetch(url, {
+      headers:{'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session':token}
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'載入失敗');
+    const list = d.results||[];
+    renderList(list);
+    const extra = dateStr ? `（${dateStr}）` : '';
+    $('#tip').textContent = list.length ? `共 ${list.length} 則${extra}` : `沒有符合的廣告${extra ? extra : ''}。`;
+  }catch(e){
+    $('#tip').textContent = e.message || '載入失敗';
+  }
+}
+
+/** 把 input[type=date] 的 yyyy-mm-dd 轉為當日起訖 ISO（本地 -> ISO） */
+function toDayRange(dateStr){
+  // dateStr 形如 "2025-03-08"
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const start = new Date(y, (m-1), d, 0,0,0,0);           // 當地 00:00
+  const end   = new Date(y, (m-1), d, 23,59,59,999);      // 當地 23:59:59.999
+  return { startISO: start.toISOString(), endISO: end.toISOString() };
+}
+
+/** 點「搜尋」按鈕：用日期去載入 */
+function searchByDate(){
+  const dateStr = (document.getElementById('fltDate').value || '').trim();
+  if(!dateStr){
+    alert('請先選擇日期');
+    return;
+  }
+  loadMyAds(dateStr);
+}
+
+/** 點「清除」按鈕：清空日期並載入全部 */
+function clearDate(){
+  const inp = document.getElementById('fltDate');
+  if (inp) inp.value = '';
+  loadMyAds(); // 不傳 dateStr -> 取全部
+}
+
+/** 繪製卡片 */
+function renderList(list){
+  const box = $('#list'); 
+  box.innerHTML = '';
+  list.forEach(ad=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <img class="thumb" src="${ad.imageUrl || ''}" alt="">
+      <div class="body">
+        <div class="title" title="${escapeHTML(ad.title||'')}">
+          ${escapeHTML(ad.title||'(未填標題)')}
+        </div>
+        <div class="meta">
+          連結：${ad.linkUrl ? escapeHTML(ad.linkUrl) : '（無）'}<br>
+          建立：${new Date(ad.createdAt).toLocaleString()}<br>
+          ${ad.startAt ? ('開始：'+new Date(ad.startAt.iso||ad.startAt).toLocaleString()+'<br>') : ''}
+          ${ad.endAt   ? ('結束：'+new Date(ad.endAt.iso||ad.endAt).toLocaleString()) : ''}
+        </div>
+        <div class="row">
+          <button class="btn danger" onclick="deleteAd('${ad.objectId}', this)">刪除</button>
+        </div>
+      </div>
+    `;
+    box.appendChild(card);
+  });
+}
+
+/** 刪除廣告（後端徹底移除） */
+async function deleteAd(id, btn){
+  if(!confirm('確定要刪除這則廣告嗎？刪除後無法復原。')) return;
+  btn.disabled = true; btn.textContent = '刪除中…';
+  try{
+    const r = await fetch(`${API}/classes/Ad/${id}`,{
+      method:'DELETE',
+      headers:{
+        'X-LC-Id':APP_ID,
+        'X-LC-Key':APP_KEY,
+        'X-LC-Session': localStorage.getItem('sg_token')||''
+      }
+    });
+    if(!r.ok){
+      const d = await r.json().catch(()=>({}));
+      throw new Error(d.error || '刪除失敗');
+    }
+    // 從畫面移除
+    const card = btn.closest('.card');
+    if(card) card.remove();
+  }catch(e){
+    alert(e.message || '刪除失敗');
+    btn.disabled = false; btn.textContent = '刪除';
+  }
+}
+</script>
+<script src="im.js"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

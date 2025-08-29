@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>我的發貨</title>
+<style>
+  :root{ --brand:#6c4ef7; --muted:#777; --accent:#e91e63; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Noto Sans TC",Arial,sans-serif;background:#fafafa;color:#222;}
+  .topbar{position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid #eee; padding:10px 14px; display:flex; align-items:center; gap:10px;}
+  .topbar a{ color:var(--brand); text-decoration:none; font-weight:800; }
+  .wrap{ max-width:980px; margin:0 auto; padding:18px 14px 48px; }
+
+  .list{ display:grid; gap:12px; }
+  .card{
+    background:#fff; border:1px solid #eee; border-radius:14px; padding:12px;
+    box-shadow:0 6px 16px rgba(0,0,0,.06); display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap;
+  }
+  .thumb{ width:64px; height:64px; border-radius:10px; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .meta{ flex:1 1 360px; min-width:260px; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .muted{ color:var(--muted); }
+  .price{ color:#e91e63; font-weight:900; }
+  .actions{ display:flex; gap:8px; margin-left:auto; }
+
+  .btn{ padding:8px 12px; border-radius:10px; border:1px solid #ddd; background:#fff; font-weight:800; cursor:pointer; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+  .btn.ghost{ background:#fff; }
+  .btn.done{ background:#6c4ef7; color:#fff; border-color:transparent; box-shadow:0 0 0 3px rgba(108,78,247,.15), 0 8px 18px rgba(108,78,247,.25); }
+
+  /* 共用彈窗 */
+  .backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:16px; z-index:1000; }
+  .dlg{ width:min(560px, 94vw); background:#fff; border:1px solid #eee; border-radius:16px; overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,.18); }
+  .dlg header{ position:sticky; top:0; background:#fff; padding:12px 14px; font-weight:900; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;}
+  .dlg .body{ padding:14px; max-height:70vh; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .field{ margin:10px 0; }
+  .label{ font-size:12px; color:#777; margin-bottom:6px; }
+  .input, .file, textarea{ width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; outline:none; }
+  textarea{ min-height:110px; resize:vertical; }
+  .dlg .actions{ position:sticky; bottom:0; background:#fff; display:flex; gap:10px; justify-content:flex-end; padding:10px 14px; border-top:1px solid #eee; }
+  .hint{ color:#777; font-size:12px; }
+  .err{ color:#b00020; font-size:13px; margin-top:6px; }
+  .closex{ cursor:pointer; font-size:22px; color:#888; line-height:1; }
+
+  /* 審查視窗樣式 */
+  .review-grid{ display:grid; grid-template-columns: 110px 1fr; gap:10px 12px; align-items:center; }
+  .addr{ line-height:1.7; }
+  .proof{ max-width:220px; border:1px solid #eee; border-radius:10px; background:#fff; }
+  .btn.disabled{ opacity:.45; pointer-events:none; filter:grayscale(1); }
+  /* === 主題變數（含白天淡粉選單） === */
+:root{
+  --brand:#6c4ef7; --muted:#777; --accent:#e91e63;
+  --dropdown-bg:#fdeaff;        /* 淡粉 */
+  --dropdown-border:#f5ccff;
+  --dropdown-text:#4a3a6a;
+}
+html[data-theme="dark"]{
+  --text:#cfc3ff; --muted:#9a8fd1; --brand:#a48cff; --accent:#bf66ff;
+  --card-bg:#161222; --card-border:#2b2440; --page-bg:#0f0b1a;
+  --btn-bg:#1b1629; --btn-border:#2b2440; --btn-text:#cfc3ff;
+  --shadow:0 10px 28px rgba(0,0,0,.45);
+}
+
+/* === 圓球按鈕 === */
+.menu-wrap{ position:relative; display:inline-flex; gap:8px; align-items:center; }
+.menu-btn{
+  width:34px; height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:800; line-height:1;
+  background:var(--brand); color:#fff; border:none; cursor:pointer;
+  transition:transform .18s ease, box-shadow .18s ease;
+  box-shadow:0 6px 14px rgba(108,78,247,.22);
+}
+.menu-btn:hover{ transform:scale(1.08); }
+.menu-btn:active{ transform:scale(.95); }
+html[data-theme="dark"] .menu-btn{
+  background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--btn-text); box-shadow:none;
+}
+
+/* === 下拉選單（白天淡粉；夜間暗色；無突起） === */
+.dropdown{
+  position:absolute; top:calc(100% + 8px); left:0;
+  transform:translateX(8px) translateY(-6px) scale(.98);
+  opacity:0; visibility:hidden; pointer-events:none;
+  min-width:220px; max-width:min(320px,80vw);
+  background:var(--dropdown-bg); color:var(--dropdown-text);
+  border:1px solid var(--dropdown-border);
+  border-radius:14px; padding:8px; z-index:1200;
+  box-shadow:0 16px 32px rgba(0,0,0,.18);
+  transition:opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+}
+.dropdown.show{ transform:translateX(8px) translateY(0) scale(1); opacity:1; visibility:visible; pointer-events:auto; }
+.dropdown::after{ content:none; }           /* ← 去掉突起 */
+.dropdown .item{ width:100%; text-align:left; padding:10px 12px; border:0; background:transparent; color:inherit; border-radius:8px; cursor:pointer; transition:.12s; }
+.dropdown .item:hover{ background:rgba(108,78,247,.10); transform:translateY(-1px); }
+@media (max-width:560px){
+  .dropdown, .dropdown.show{ left:0 !important; transform:translateX(0) translateY(0) scale(1); }
+}
+html[data-theme="dark"] .dropdown{
+  background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); box-shadow:var(--shadow);
+}
+
+/* === 夜間整頁 === */
+html[data-theme="dark"] body{ background:var(--page-bg); color:var(--text); }
+html[data-theme="dark"] .topbar{ background:var(--card-bg); border-color:var(--card-border); }
+html[data-theme="dark"] .wrap{ color:var(--text); }
+
+/* 卡片、列表、按鈕、文字色 */
+html[data-theme="dark"] .card{ background:var(--card-bg); border:1px solid var(--card-border); box-shadow:var(--shadow); }
+html[data-theme="dark"] .muted{ color:var(--muted); }
+html[data-theme="dark"] .btn{ background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--btn-text); }
+html[data-theme="dark"] .btn.primary{ background:var(--brand); color:#161222; border-color:transparent; }
+
+/* 彈窗與遮罩 */
+html[data-theme="dark"] .backdrop{ background:rgba(0,0,0,.45); }
+html[data-theme="dark"] .dlg{ background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); box-shadow:var(--shadow); }
+html[data-theme="dark"] .dlg header{ background:var(--card-bg); border-bottom:1px solid var(--card-border); }
+html[data-theme="dark"] .dlg .actions{ background:var(--card-bg); border-top:1px solid var(--card-border); }
+
+/* 輸入框 / 檔案 / 多行 */
+html[data-theme="dark"] .input,
+html[data-theme="dark"] .file,
+html[data-theme="dark"] textarea{
+  background:transparent; color:var(--text); border:1px solid var(--card-border);
+}
+
+/* 小縮圖邊框在暗色 */
+html[data-theme="dark"] .thumb{ background:#1e1930; border:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="menu-wrap">
+       <a href="user.html">← 返回個人主頁</a>
+  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+  <div id="menuDrop" class="dropdown" role="menu">
+    <!-- 第一個選項：切換模式 -->
+    <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+     <button class="item" onclick="location.href='../index.html'">主頁</button>
+    <button class="item" onclick="location.href='Grove.Examination-Yuan.html'">參加管理員</button>
+    <button class="item" onclick="location.href='Grove. Control-Yuan.html'">Control</button>
+    <button class="item" onclick="location.href='Grove.Executive-Yuan.html'">Executive</button>
+    <button class="item" onclick="location.href='Grove.Judicial-Yuan.html'">申訴</button>
+    <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
+    <button class="item" onclick="location.href='vote.html'">投票專區</button>
+    <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+  </div>
+</div>
+    <a href="messages.html" style="margin-left:auto">我的訊息</a>
+  </div>
+
+  <div class="wrap">
+    <h2 style="margin:0 0 12px">我的發貨</h2>
+    <div id="orderList" class="list"></div>
+  </div>
+
+  <!-- 審查訂單 Modal -->
+  <div id="reviewDlg" class="backdrop">
+    <div class="dlg">
+      <header>
+        <div>審查訂單</div>
+        <div class="closex" onclick="closeReview()">×</div>
+      </header>
+      <div class="body">
+        <div class="review-grid">
+        <div class="label">IO</div>
+        <div id="rvIo">—</div>
+          <div class="label">買家</div>
+          <div id="rvBuyer">—</div>
+
+          <div class="label">下單時間</div>
+          <div id="rvTime">—</div>
+
+          <div class="label">商品</div>
+          <div id="rvTitle">—</div>
+
+          <div class="label">規格</div>
+          <div id="rvSpec">—</div>
+
+          <div class="label">單價 / 數量</div>
+          <div id="rvUnitQty">—</div>
+
+          <div class="label">總額</div>
+          <div id="rvTotal" class="price">—</div>
+
+          <div class="label">收件地址</div>
+          <div id="rvAddr" class="addr">—</div>
+
+          <div class="label">付款截圖</div>
+          <div><img id="rvProof" class="proof" alt="付款截圖"></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="closeReview()">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 發貨 Modal -->
+  <div id="shipDlg" class="backdrop">
+    <div class="dlg">
+      <header>
+        <div>確認發貨</div>
+        <div class="closex" onclick="closeShip()">×</div>
+      </header>
+      <div class="body">
+        <div class="field">
+          <div class="label">收貨方暱稱</div>
+          <input id="shipRecv" class="input" type="text" placeholder="客戶暱稱（預填）">
+        </div>
+        <div class="field">
+          <div class="label">快遞單號</div>
+          <input id="shipTrack" class="input" type="text" placeholder="請輸入物流/快遞單號">
+        </div>
+        <div class="hint">送出後會以訊息通知客戶，並將訂單狀態改為「已發貨」。</div>
+        <div id="shipErr" class="err"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="closeShip()">取消</button>
+        <button class="btn primary" onclick="submitShip()">傳送給客戶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 駁回 Modal -->
+  <div id="rejectDlg" class="backdrop">
+    <div class="dlg">
+      <header>
+        <div>審查不通過／駁回</div>
+        <div class="closex" onclick="closeReject()">×</div>
+      </header>
+      <div class="body">
+        <div class="field">
+          <div class="label">駁回理由</div>
+          <textarea id="rejReason" class="input" placeholder="請簡述原因…"></textarea>
+        </div>
+        <div class="field">
+          <div class="label">圖片證明（可選）</div>
+          <input id="rejProof" class="file" type="file" accept="image/*">
+        </div>
+        <div class="hint">送出後會以訊息通知客戶，並將訂單狀態改為「已駁回」。</div>
+        <div id="rejErr" class="err"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="closeReject()">取消</button>
+        <button class="btn primary" onclick="submitReject()">傳送給客戶</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+const CURRENCY_SIGN = '¥';
+(function guard(){
+  const t = localStorage.getItem('sg_token');
+  const u = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!t || !u){ location.replace('index.html?redirect=ipuser'); }
+})();
+const me    = JSON.parse(localStorage.getItem('sg_user')||'null');
+const token = localStorage.getItem('sg_token');
+const AUTH  = { 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY, 'X-LC-Session': token };
+
+const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="100%" height="100%" rx="40" ry="40" fill="#f3f3f3"/><text x="50%" y="55%" text-anchor="middle" font-size="28">🙂</text></svg>`);
+const money = n => Number(n||0).toLocaleString('zh-TW');
+
+let ORDERS = [];
+let CURRENT_ORDER = null;
+
+/* ===== 讀單 ===== */
+async function fetchMyOrders(){
+  const where = encodeURIComponent(JSON.stringify({
+    seller: { "__type":"Pointer","className":"_User","objectId": me.objectId }
+  }));
+  const url = `${API}/classes/Order?where=${where}&order=-createdAt&limit=200&include=buyer,product`;
+  const res = await fetch(url, { headers: AUTH });
+  const data = await res.json();
+  if(!res.ok){ console.warn('fetchMyOrders error', data); return []; }
+  const list = data.results || [];
+
+  await hydrateBuyers(list);
+  await fillBuyerByMessages(list);
+
+  return list;
+}
+
+// 批次把缺暱稱/頭貼的 buyer 補齊；失敗時逐筆 GET /users/{id}
+async function hydrateBuyers(list){
+  const needIds = Array.from(new Set(
+    (list||[]).map(o => o?.buyer?.objectId).filter(Boolean)
+  ));
+  if(!needIds.length) return;
+
+  const got = new Map();
+  try{
+    const where = encodeURIComponent(JSON.stringify({ objectId: { "$in": needIds } }));
+    const url = `${API}/users?where=${where}&limit=${needIds.length}`;
+    const res = await fetch(url, { headers: { ...AUTH } });
+    const data = await res.json();
+    if(res.ok){ (data.results||[]).forEach(u => got.set(u.objectId, u)); }
+  }catch(e){}
+
+  const still = needIds.filter(id => !got.has(id));
+  for(const id of still){
+    try{
+      const r = await fetch(`${API}/users/${id}`, { headers: { ...AUTH } });
+      const u = await r.json();
+      if(r.ok && u && u.objectId) got.set(id, u);
+    }catch(e){}
+  }
+
+  list.forEach(o=>{
+    const id = o?.buyer?.objectId;
+    const u  = id && got.get(id);
+    if(u){
+      o.buyer.nickname = u.nickname || u.username || '';
+      o.buyer.username = u.username || o.buyer?.username || '';
+      o.buyer.avatarUrl = (u.avatarUrl || '').replace(/^http:\/\//, 'https://');
+    }
+  });
+}
+
+// 若 buyer 缺失，透過 Message(kind='order') 找到下單者（from）
+async function fillBuyerByMessages(list){
+  const tasks = [];
+  for(const o of (list||[])){
+    if(o.buyer && o.buyer.objectId) continue;
+    tasks.push((async ()=>{
+      try{
+        const where = encodeURIComponent(JSON.stringify({
+          kind:'order',
+          order:{ "__type":"Pointer","className":"Order","objectId": o.objectId }
+        }));
+        const url = `${API}/classes/Message?where=${where}&order=createdAt&limit=1&include=from`;
+        const res = await fetch(url, { headers: AUTH });
+        const data = await res.json();
+        if(!res.ok) return;
+        const m = (data.results||[])[0];
+        const u = m && m.from;
+        if(u && u.objectId){
+          // 若沒有暱稱，再補 GET /users/{id}
+          if(!u.nickname && !u.username){
+            try{
+              const r = await fetch(`${API}/users/${u.objectId}`, { headers: { ...AUTH }});
+              const full = await r.json();
+              if(r.ok && full){ u.nickname = full.nickname || full.username || ''; u.username = full.username || ''; u.avatarUrl = full.avatarUrl || ''; }
+            }catch(e){}
+          }
+          o.buyer = {
+            "__type":"Pointer","className":"_User","objectId": u.objectId,
+            nickname: u.nickname || u.username || '',
+            username: u.username || '',
+            avatarUrl: (u.avatarUrl || '').replace(/^http:\/\//,'https://')
+          };
+        }
+      }catch(e){}
+    })());
+  }
+  await Promise.all(tasks);
+}
+
+/* ===== UI ===== */
+function renderList(list){
+  const box = document.getElementById('orderList');
+  list = (list || []).filter(o => !o.archivedBySeller); // ← 新增
+  box.innerHTML = '';
+  if(!list.length){
+    box.innerHTML = `<div class="muted">目前尚無訂單。</div>`;
+    return;
+  }
+  list.forEach(o=>{
+    const buyer = o.buyer || {};
+    const p = o.product || {};
+    const dt = new Date(o.createdAt);
+    const thumb = p.imageUrl || (Array.isArray(p.images)&&p.images[0]) || DEFAULT_AVATAR;
+    const unitPrice = (o.unitPrice ?? o.price) || 0;
+    const qty = (o.quantity ?? 1);
+    const total = (o.totalPrice ?? (unitPrice*qty)) || unitPrice;
+
+    const buyerName =
+      (buyer && (buyer.nickname || buyer.username)) ||
+      (buyer && buyer.objectId === me.objectId ? (me.nickname || me.username || '') : '') ||
+      (buyer && buyer.objectId ? ('#' + buyer.objectId.slice(-6)) : '—');
+    const io = o.io || '';
+    const card = document.createElement('div');
+    card.className='card';
+    card.id = `order_${o.objectId}`;
+    card.innerHTML = `
+      <img class="thumb" src="${thumb}" alt="">
+      <div class="meta">
+        <div class="row">
+          <div style="font-weight:900">${escapeHTML(p.title || o.productTitle || '未命名商品')}</div>
+          <div class="muted">（規格：${escapeHTML(o.variantName || '')}）</div>
+        </div>
+        ${io ? `<div class="row"><div class="muted">IO：<code style="font-family:ui-monospace,monospace">${escapeHTML(io)}</code></div></div>` : ''}
+        <div class="row">
+          <div>買家：<b>${escapeHTML(buyerName)}</b></div>
+          <div class="muted">｜ 購買日期：${dt.toLocaleString()}</div>
+        </div>
+        <div class="row" style="margin-top:4px">
+           <div>單價：<span class="price">${CURRENCY_SIGN}${money(unitPrice)}</span></div>
+          ${qty?`<div>｜ 數量：${qty}</div>`:''}
+          <div>｜ 總額：<span class="price">${CURRENCY_SIGN}${money(total)}</span></div>
+          <div class="muted">｜ 狀態：${escapeHTML(o.status || 'submitted')}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="openReview('${o.objectId}')">審查訂單</button>
+        <button class="btn ghost ${o.status==='shipped'?'done':''}" onclick="openShip('${o.objectId}')">確認發貨</button>
+        <button class="btn ghost ${o.status==='rejected'?'done':''}" onclick="openReject('${o.objectId}')">審查不通過駁回</button>
+      </div>
+    `;
+    // 若已簽收：把按鈕整組換成「已簽收 + 刪除訂單」
+if (o.status === 'received') {
+  const acts = card.querySelector('.actions');
+  acts.innerHTML = `
+    <button class="btn disabled" disabled>已簽收</button>
+    <button class="btn ghost" onclick="sellerDelete('${o.objectId}')">刪除訂單</button>
+  `;
+}
+    // 已簽收：整組換成「已簽收 + 刪除訂單」（你原本就有，保留）
+if (o.status === 'received') {
+  const acts = card.querySelector('.actions');
+  acts.innerHTML = `
+    <button class="btn disabled" disabled>已簽收</button>
+    <button class="btn ghost" onclick="sellerDelete('${o.objectId}')">刪除訂單</button>
+  `;
+}
+
+// === 互斥邏輯 ===
+// 若已發貨：發貨鍵灰掉，駁回鍵也灰掉
+if (o.status === 'shipped') {
+  const btns = card.querySelectorAll('.actions .btn');
+  const shipBtn = btns[1];  // 0:審查訂單 1:確認發貨 2:駁回
+  const rejBtn  = btns[2];
+  if (shipBtn) {
+    shipBtn.textContent = '已發貨';
+    shipBtn.classList.remove('ghost','done');
+    shipBtn.classList.add('disabled');
+    shipBtn.setAttribute('disabled','disabled');
+  }
+  if (rejBtn) {
+    rejBtn.classList.remove('ghost','done');
+    rejBtn.classList.add('disabled');
+    rejBtn.setAttribute('disabled','disabled');
+  }
+}
+
+// 若已駁回：駁回鍵灰掉，發貨鍵也灰掉
+if (o.status === 'rejected') {
+  const btns = card.querySelectorAll('.actions .btn');
+  const shipBtn = btns[1];
+  const rejBtn  = btns[2];
+  if (rejBtn) {
+    rejBtn.textContent = '已駁回';
+    rejBtn.classList.remove('ghost','done');
+    rejBtn.classList.add('disabled');
+    rejBtn.setAttribute('disabled','disabled');
+  }
+  if (shipBtn) {
+    shipBtn.classList.remove('ghost','done');
+    shipBtn.classList.add('disabled');
+    shipBtn.setAttribute('disabled','disabled');
+  }
+}
+    box.appendChild(card);
+  });
+}
+async function sellerDelete(oid){
+  if(!confirm('確定從清單移除此訂單？（僅商家端軟刪除，不影響買家資料）')) return;
+  try{
+    // 後端標記軟刪除
+    const r = await fetch(`${API}/classes/Order/${oid}`,{
+      method:'PUT',
+      headers:{ ...AUTH, 'Content-Type':'application/json' },
+      body: JSON.stringify({ archivedBySeller: true })
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || '刪除失敗');
+
+    // 前端立即移除
+    const idx = ORDERS.findIndex(x=>x.objectId===oid);
+    if(idx>=0) ORDERS.splice(idx,1);
+    const el = document.getElementById(`order_${oid}`);
+    if(el) el.remove();
+
+    // 若列表已空，重繪提示
+    if((ORDERS.filter(o=>!o.archivedBySeller)).length === 0){
+      renderList(ORDERS);
+    }
+
+    alert('✅ 已刪除訂單（商家端）');
+  }catch(e){
+    alert(e.message || '操作失敗');
+  }
+}
+function markButtons(orderId, which){
+  const card = document.getElementById(`order_${orderId}`);
+  if(!card) return;
+  const btns = card.querySelectorAll('.actions .btn');
+  if(which==='ship') btns[1].classList.add('done');
+  if(which==='reject') btns[2].classList.add('done');
+}
+
+/* ===== 審查訂單 ===== */
+function openReview(oid){
+  document.getElementById('rvIo').textContent = o.io || '—';  
+  const o = ORDERS.find(x=>x.objectId===oid);
+  if(!o) return;
+  const buyerName =
+    (o.buyer && (o.buyer.nickname || o.buyer.username)) ||
+    (o.buyer && o.buyer.objectId===me.objectId ? (me.nickname||me.username||'') : '') || '—';
+  const dt = new Date(o.createdAt).toLocaleString();
+  const unitPrice = (o.unitPrice ?? o.price) || 0;
+  const qty = (o.quantity ?? 1);
+  const total = (o.totalPrice ?? (unitPrice*qty)) || unitPrice;
+
+  const addr = o.address || {};
+  const addrText = [
+    addr.countryCode?`(${addr.countryCode})`: '',
+    addr.province || '', addr.city || '', addr.district || '', addr.detail || ''
+  ].filter(Boolean).join(' / ');
+
+  document.getElementById('rvBuyer').textContent = buyerName;
+  document.getElementById('rvTime').textContent  = dt;
+  document.getElementById('rvTitle').textContent = o.productTitle || o.product?.title || '—';
+  document.getElementById('rvSpec').textContent  = o.variantName || '—';
+  document.getElementById('rvUnitQty').textContent = `${CURRENCY_SIGN}${money(unitPrice)} × ${qty}`;
+  document.getElementById('rvTotal').textContent = `${CURRENCY_SIGN}${money(total)}`;
+  document.getElementById('rvAddr').textContent  = addrText || '—';
+
+  const proof = (o.payProofUrl||'').replace(/^http:\/\//,'https://');
+  const im = document.getElementById('rvProof');
+  if(proof){ im.src = proof; im.style.display='block'; } else { im.removeAttribute('src'); im.style.display='none'; }
+
+  document.getElementById('reviewDlg').style.display='flex';
+}
+function closeReview(){ document.getElementById('reviewDlg').style.display='none'; }
+//=================
+// 開啟「確認發貨」視窗
+function openShip(oid){
+  CURRENT_ORDER = ORDERS.find(o=>o.objectId===oid) || null;
+  if(!CURRENT_ORDER) return;
+  document.getElementById('shipRecv').value  = (CURRENT_ORDER.buyer?.nickname || CURRENT_ORDER.buyer?.username || '');
+  document.getElementById('shipTrack').value = CURRENT_ORDER.trackingNumber || '';
+  document.getElementById('shipErr').textContent = '';
+  document.getElementById('shipDlg').style.display = 'flex';
+}
+function closeShip(){ document.getElementById('shipDlg').style.display='none'; }
+
+// 開啟「審查不通過／駁回」視窗
+function openReject(oid){
+  CURRENT_ORDER = ORDERS.find(o=>o.objectId===oid) || null;
+  if(!CURRENT_ORDER) return;
+  document.getElementById('rejReason').value = '';
+  document.getElementById('rejProof').value = '';
+  document.getElementById('rejErr').textContent = '';
+  document.getElementById('rejectDlg').style.display = 'flex';
+}
+function closeReject(){ document.getElementById('rejectDlg').style.display='none'; }
+
+// 檔案上傳工具（submitReject 會用到）
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload = ()=> resolve(fr.result.split(',')[1]);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+async function uploadOne(file){
+  const base64 = await fileToBase64(file);
+  const r = await fetch(`${API}/files/${encodeURIComponent(file.name)}`,{
+    method:'POST',
+    headers:{...AUTH,'Content-Type':'application/json'},
+    body: JSON.stringify({ base64 })
+  });
+  const data = await r.json();
+  if(!r.ok) throw new Error(data.error || '檔案上傳失敗');
+  return data.url;
+}
+// ===== 發貨 =====
+async function submitShip(){
+  if(!CURRENT_ORDER) return;
+  const buyer = CURRENT_ORDER.buyer || {};
+  const recv  = document.getElementById('shipRecv').value.trim();
+  const track = document.getElementById('shipTrack').value.trim();
+  if(!track){ document.getElementById('shipErr').textContent='請輸入快遞單號'; return; }
+  if(!buyer.objectId){ document.getElementById('shipErr').textContent='找不到買家 ID，無法通知'; return; }
+
+  try{
+    // 更新訂單為已發貨
+    const put = await fetch(`${API}/classes/Order/${CURRENT_ORDER.objectId}`,{
+      method:'PUT',
+      headers:{ ...AUTH, 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        status:'shipped',
+        trackingNumber: track,
+        shippedAt: { "__type":"Date","iso": new Date().toISOString() }
+      })
+    });
+    const putData = await put.json();
+    if(!put.ok) throw new Error(putData.error || '更新訂單失敗');
+
+    // 送訊息（一定要有 body）
+    const io = CURRENT_ORDER.io || '';
+const msgText = `您的訂單已發貨：${CURRENT_ORDER.productTitle || CURRENT_ORDER.product?.title || ''}（單號：${track}）${io ? `｜IO：${io}` : ''}`;
+const payload = {
+  kind: 'ship',
+  text: msgText,
+  body: msgText, // ★ 必填
+  from:{ "__type":"Pointer","className":"_User","objectId": me.objectId },
+  to:  { "__type":"Pointer","className":"_User","objectId": buyer.objectId },
+  order:{ "__type":"Pointer","className":"Order","objectId": CURRENT_ORDER.objectId },
+  product: CURRENT_ORDER.product ? { "__type":"Pointer","className":"Product","objectId": CURRENT_ORDER.product.objectId } : undefined,
+  data:{ trackingNumber: track, receiverNickname: recv, io }
+};
+    const res = await fetch(`${API}/classes/Message`,{
+      method:'POST',
+      headers:{ ...AUTH, 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || '訊息送出失敗');
+
+    // 成功送出訊息之後 …
+// 成功送出訊息之後 …
+closeShip();
+CURRENT_ORDER.status = 'shipped'; // 記住本地狀態
+
+const card = document.getElementById(`order_${CURRENT_ORDER.objectId}`);
+if (card) {
+  const btns = card.querySelectorAll('.actions .btn');
+  const shipBtn = btns[1];
+  const rejBtn  = btns[2];
+
+  if (shipBtn) {
+    shipBtn.textContent = '已發貨';
+    shipBtn.classList.remove('ghost','done');
+    shipBtn.classList.add('disabled');
+    shipBtn.setAttribute('disabled','disabled');
+  }
+  if (rejBtn) {
+    rejBtn.classList.remove('ghost','done');
+    rejBtn.classList.add('disabled');
+    rejBtn.setAttribute('disabled','disabled');
+  }
+}
+
+alert('✅ 已發貨並通知客戶');
+  }catch(e){
+    document.getElementById('shipErr').textContent = e.message || '送出失敗';
+  }
+}
+
+// ===== 駁回 =====
+async function submitReject(){
+  if(!CURRENT_ORDER) return;
+  const buyer = CURRENT_ORDER.buyer || {};
+  const reason = document.getElementById('rejReason').value.trim();
+  const pf = document.getElementById('rejProof').files[0];
+  if(!reason){ document.getElementById('rejErr').textContent='請填寫駁回理由'; return; }
+  if(!buyer.objectId){ document.getElementById('rejErr').textContent='找不到買家 ID，無法通知'; return; }
+
+  try{
+    let proofUrl = '';
+    if(pf) proofUrl = await uploadOne(pf);
+
+    // 更新訂單為已駁回
+    const put = await fetch(`${API}/classes/Order/${CURRENT_ORDER.objectId}`,{
+      method:'PUT',
+      headers:{ ...AUTH, 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        status:'rejected',
+        rejectReason: reason,
+        rejectProofUrl: proofUrl
+      })
+    });
+    const putData = await put.json();
+    if(!put.ok) throw new Error(putData.error || '更新訂單失敗');
+
+    // 送訊息（一定要有 body）
+    const io = CURRENT_ORDER.io || '';
+const msgText = `訂單審查未通過：${reason}${io ? `｜IO：${io}` : ''}`;
+const payload = {
+  kind: 'reject',
+  text: msgText,
+  body: msgText, // ★ 必填
+  from:{ "__type":"Pointer","className":"_User","objectId": me.objectId },
+  to:  { "__type":"Pointer","className":"_User","objectId": buyer.objectId },
+  order:{ "__type":"Pointer","className":"Order","objectId": CURRENT_ORDER.objectId },
+  product: CURRENT_ORDER.product ? { "__type":"Pointer","className":"Product","objectId": CURRENT_ORDER.product.objectId } : undefined,
+  data:{ reason, proofUrl, io }
+};
+    const res = await fetch(`${API}/classes/Message`,{
+      method:'POST',
+      headers:{ ...AUTH, 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || '訊息送出失敗');
+
+    // 關掉視窗
+closeReject();
+
+// 記住本地狀態
+CURRENT_ORDER.status = 'rejected';
+
+// 直接把卡片上的兩個按鈕灰掉
+const card = document.getElementById(`order_${CURRENT_ORDER.objectId}`);
+if (card) {
+  const btns   = card.querySelectorAll('.actions .btn'); // 0: 審查訂單 1: 確認發貨 2: 駁回
+  const shipBtn= btns[1];
+  const rejBtn = btns[2];
+
+  if (rejBtn) {
+    rejBtn.textContent = '已駁回';
+    rejBtn.classList.remove('ghost','done');
+    rejBtn.classList.add('disabled');
+    rejBtn.setAttribute('disabled','disabled');
+  }
+  if (shipBtn) {
+    shipBtn.classList.remove('ghost','done');
+    shipBtn.classList.add('disabled');
+    shipBtn.setAttribute('disabled','disabled');
+  }
+}
+
+// 提示
+alert('✅ 已駁回並通知客戶');
+  }catch(e){
+    document.getElementById('rejErr').textContent = e.message || '送出失敗';
+  }
+}
+
+/* ===== 啟動：載入列表 & 輪詢 ===== */
+(async function start(){
+  ORDERS = await fetchMyOrders();
+  renderList(ORDERS);
+})();
+setInterval(async ()=>{
+  ORDERS = await fetchMyOrders();
+  renderList(ORDERS);
+}, 12000);
+
+/* utils */
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
+</script>
+<script src="im.js"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

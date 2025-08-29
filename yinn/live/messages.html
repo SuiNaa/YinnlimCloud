@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>message</title>
+<style>
+  :root{ --brand:#6c4ef7; --muted:#777; --accent:#e91e63; }
+  *{box-sizing:border-box}
+
+  html, body{ height:100%; margin:0; }
+  body{
+    font-family:system-ui, -apple-system, "Noto Sans TC", Arial, sans-serif;
+    background:#fafafa; color:#222;
+    overflow:hidden; overscroll-behavior:contain;
+  }
+
+  .topbar{ position:sticky; top:0; background:#fff; border-bottom:1px solid #eee; padding:10px 14px; display:flex; align-items:center; gap:12px; z-index:10; }
+  .topbar a{ color:var(--brand); text-decoration:none; font-weight:800; }
+
+  .wrap{ height:calc(100dvh - 52px); display:grid; grid-template-columns: 320px 1fr; overflow:hidden; }
+
+  .left{ border-right:1px solid #eee; background:#fff; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .right{ display:flex; flex-direction:column; min-height:0; }
+  .empty{ display:flex; align-items:center; justify-content:center; color:#999; }
+
+  .thread{ display:flex; gap:10px; padding:12px 12px; border-bottom:1px solid #f3f3f3; cursor:pointer; align-items:center; }
+  .thread:hover{ background:#fafafa; }
+  .thread.active{ background:#f0edff; }
+  .avatar{ width:44px; height:44px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .t-main{ flex:1; min-width:0; }
+  .t-name{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .t-last{ color:#777; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .t-meta{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .badge{ min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#e91e63; color:#fff; font-size:12px; line-height:18px; text-align:center; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.2); }
+  .time{ color:#999; font-size:12px; }
+
+  .chat-head{ background:#fff; border-bottom:1px solid #eee; padding:10px 14px; display:flex; align-items:center; gap:10px; }
+  .chat-name{ font-weight:900; }
+
+  .chat-body{ flex:1 1 auto; overflow:auto; -webkit-overflow-scrolling:touch; padding:14px; background:#fafafa; }
+
+  .chat-foot{ position:sticky; bottom:0; z-index:5; border-top:1px solid #eee; background:#fff; padding:10px; display:flex; gap:8px; flex-shrink:0; }
+/*刪除---------------------*/
+.msg-tools{ margin-top:4px; text-align:right; }
+.msg-tools .link{
+  font-size:12px;
+  color:#e91e63;
+  background:none;
+  border:none;
+  cursor:pointer;
+}
+.msg-tools .link:hover{ text-decoration:underline; }
+
+
+/*-------------------------*/
+  .msg{ display:flex; gap:10px; margin:8px 0; align-items:flex-end; }
+  .msg.them{ flex-direction:row; }
+  .msg.me{ flex-direction:row-reverse; }
+/* 唯一、正確版：讓內容區有可用寬度，泡泡才不會被擠成直條 */
+.msg .content{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;   /* 對方在左 */
+  flex:1 1 auto;            /* ← 關鍵：給它可用寬度 */
+  min-width:0;
+  max-width:68%;
+}
+.msg.me .content{ align-items:flex-end; } /* 我方在右 */
+
+/* 泡泡維持這樣即可（你原本就有） */
+.bubble{
+  display:inline-block;     /* 依內容收縮 */
+  max-width:68%;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#fff;
+  border:1px solid #eee;
+  line-height:1.45;
+  word-break:break-word;
+  white-space:pre-wrap;     /* 保留你真的輸入的換行 */
+}
+  .msg.me .bubble{ background:#6c4ef7; color:#fff; border-color:transparent; }
+
+  .input{ 
+    min-height: 30px;
+    flex:1; padding:10px 12px; 
+    border-radius:12px; 
+    border:1px solid #ddd; 
+    outline:none;
+    resize:none;              /* 禁止拖拉大小 */
+  line-height:1.45;
+  max-height:30dvh;         /* 最多長到畫面 30% 高 */
+  overflow:auto; 
+  }
+  .btn{ padding:10px 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-weight:700; cursor:pointer; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+
+  @media (max-width:900px){
+    .wrap{ grid-template-columns: 1fr; }
+    .left{ height:42dvh; }
+    .right{ height:calc(100dvh - 52px - 42dvh); min-height:0; }
+  }
+  .msg.pending{ opacity:.7 }
+  /* ========== 主題變數 ========== */
+:root{
+  --brand:#6c4ef7;
+  --muted:#777;
+  --accent:#e91e63;
+
+  /* 白天下拉：淡粉 */
+  --dropdown-bg:#fdeaff;
+  --dropdown-border:#f5ccff;
+  --dropdown-text:#4a3a6a;
+}
+
+html[data-theme="dark"]{
+  --text:#cfc3ff;
+  --muted:#9a8fd1;
+  --brand:#a48cff;
+  --accent:#bf66ff;
+
+  --card-bg:#161222;
+  --card-border:#2b2440;
+  --page-bg:#0f0b1a;
+
+  --btn-bg:#1b1629;
+  --btn-border:#2b2440;
+  --btn-text:#cfc3ff;
+
+  --shadow:0 10px 28px rgba(0,0,0,.45);
+}
+
+/* ========== 全局色系 ========== */
+html[data-theme="dark"] body{ background:var(--page-bg); color:var(--text); }
+html[data-theme="dark"] .muted{ color:var(--muted); }
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .left,
+html[data-theme="dark"] .right,
+html[data-theme="dark"] .chat-head,
+html[data-theme="dark"] .chat-foot{
+  background:var(--card-bg);
+  border-color:var(--card-border);
+  color:var(--text);
+}
+html[data-theme="dark"] .bubble{ background:var(--card-bg); border:1px solid var(--card-border); color:var(--text); }
+html[data-theme="dark"] .msg.me .bubble{ background:var(--brand); color:#161222; border-color:transparent; }
+html[data-theme="dark"] .thread.active{ background:rgba(164,140,255,.15); }
+
+/* ========== 右上角圓球按鈕 + 下拉選單 ========== */
+.menu-wrap{ position:relative; display:inline-flex; gap:8px; align-items:center; }
+
+/* 圓球按鈕 */
+.menu-btn{
+  width:34px; height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700; line-height:1;
+  background:var(--brand); color:#fff; border:none;
+  cursor:pointer; transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
+  box-shadow:0 4px 12px rgba(108,78,247,.22);
+}
+.menu-btn:hover{ transform:scale(1.08); }
+.menu-btn:active{ transform:scale(.95); }
+html[data-theme="dark"] .menu-btn{
+  background:var(--btn-bg);
+  border:1px solid var(--btn-border);
+  color:var(--btn-text);
+  box-shadow:none;
+}
+
+/* 下拉選單 */
+.dropdown{
+  position:absolute; top:calc(100% + 8px); left:0;
+  transform:translateX(8px) translateY(-6px) scale(.98);
+  opacity:0; visibility:hidden; pointer-events:none;
+  min-width:220px; max-width:min(320px,80vw);
+  border-radius:14px; padding:8px; z-index:999;
+  transition:opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+  background:var(--dropdown-bg); color:var(--dropdown-text);
+  border:1px solid var(--dropdown-border);
+  box-shadow:0 16px 32px rgba(0,0,0,.18);
+}
+.dropdown.show{
+  transform:translateX(8px) translateY(0) scale(1);
+  opacity:1; visibility:visible; pointer-events:auto;
+}
+/* 去掉突起箭頭 */
+.dropdown::after{ content:none; }
+.dropdown .item{ width:100%; text-align:left; padding:10px 12px; border:0; background:transparent; color:inherit; border-radius:8px; cursor:pointer; transition:.12s; }
+.dropdown .item:hover{ background:rgba(108,78,247,.10); transform:translateY(-1px); }
+html[data-theme="dark"] .dropdown{ background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); box-shadow:var(--shadow); }
+
+/* 小螢幕自動靠左 */
+@media(max-width:560px){
+  .dropdown, .dropdown.show{ left:0 !important; transform:translateX(0) translateY(0) scale(1); }
+}
+/* 夜間模式：整體 */
+html[data-theme="dark"] body{
+  background: var(--page-bg);
+  color: var(--text);
+}
+
+/* 夜間模式：列表/頭/聊天區/輸入區 */
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .left,
+html[data-theme="dark"] .chat-head,
+html[data-theme="dark"] .chat-foot{
+  background: var(--card-bg);
+  border-color: var(--card-border);
+  color: var(--text);
+}
+
+/* ← 這行是你漏掉的，所以看起來整片白 */
+html[data-theme="dark"] .chat-body{
+  background: var(--page-bg);
+}
+
+/* 泡泡、我方泡泡 */
+html[data-theme="dark"] .bubble{
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+}
+html[data-theme="dark"] .msg.me .bubble{
+  background: var(--brand);
+  color: #161222;
+  border-color: transparent;
+}
+
+/* 輸入框與按鈕 */
+html[data-theme="dark"] .input{
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text);
+}
+html[data-theme="dark"] .btn{
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--btn-text);
+}
+html[data-theme="dark"] .btn.primary{
+  background: var(--brand);
+  color: #161222;
+  border-color: transparent;
+}
+
+/* 左側列表 hover 與選中態（可選） */
+html[data-theme="dark"] .thread:hover{ background: #1b1629; }
+html[data-theme="dark"] .thread.active{ background: rgba(164,140,255,.15); }
+/*BUg*/
+/* 小小刪除徽章：貼著頭貼，不推擠版面 */
+.msg{ position:relative; }               /* 讓子元素可以絕對定位 */
+.delbtn{
+  position:absolute;
+  bottom:-4px;                           /* 靠氣泡底緣一點點 */
+  font-size:12px;
+  padding:2px 6px;
+  border-radius:8px;
+  border:1px solid #f0cddd;
+  background:#fff0f3;
+  color:#d23a5b;
+  line-height:1;
+  cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.06);
+}
+.delbtn:hover{ background:#ffe6ec; }
+
+/* 左右兩邊定位：頭貼寬 44px + 間距 10px = 54px */
+.msg.them .delbtn{ left:54px; }          /* 對方訊息：貼左邊頭貼 */
+.msg.me   .delbtn{ right:54px; }         /* 我方訊息：貼右邊頭貼 */
+
+</style>
+</head>
+<body>
+  <div class="topbar">
+<div class="menu-wrap">
+  <a href="javascript:goBack()">← 返回</a>
+  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+  <div id="menuDrop" class="dropdown" role="menu">
+    <!-- 第一個選項：切換模式 -->
+    <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+     <button class="item" onclick="location.href='../index.html'">主頁</button>
+    <button class="item" onclick="location.href='Grove.Examination-Yuan.html'">參加管理員</button>
+    <button class="item" onclick="location.href='Grove. Control-Yuan.html'">Control</button>
+    <button class="item" onclick="location.href='Grove.Executive-Yuan.html'">Executive</button>
+    <button class="item" onclick="location.href='Grove.Judicial-Yuan.html'">申訴</button>
+    <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
+    <button class="item" onclick="location.href='vote.html'">投票專區</button>
+    <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+  </div>
+</div>
+    <div style="margin-left:auto"><a href="shopping.html">商城首頁</a></div>
+  </div>
+
+  <div class="wrap">
+    <div class="left" id="threadList"></div>
+    <div class="right">
+      <div class="chat-head" id="chatHead" style="display:none">
+        <img id="chatAvatar" class="avatar" alt="">
+        <div class="chat-name" id="chatName">—</div>
+      </div>
+      <div class="chat-body" id="chatBody">
+        <div class="empty" id="emptyHint">選一個聊天看看收到的訊息吧～</div>
+      </div>
+      <div class="chat-foot" id="chatFoot" style="display:none">
+        <textarea id="msgInput" class="input" rows="1" placeholder="Enter 換行，Ctrl/⌘+Enter 送出"></textarea>
+        <button class="btn primary" onclick="sendMessage()">傳送</button>
+      </div>
+    </div>
+  </div>
+<audio id="ding" preload="auto">
+  <source src="data:audio/mp3;base64,//uQZAAAAAAAA..." type="audio/mpeg">
+</audio>
+<script>
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+const CURRENCY_SIGN = '¥';
+const money = n => Number(n||0).toLocaleString('zh-TW');
+
+function getDismissedMap(){
+  try{ return JSON.parse(localStorage.getItem('sg_dismissed_threads')||'{}'); }
+  catch(e){ return {}; }
+}
+function setDismissedMap(mp){
+  localStorage.setItem('sg_dismissed_threads', JSON.stringify(mp||{}));
+}
+// 認證保護
+(function guard(){
+  const token = localStorage.getItem('sg_token');
+  const user  = JSON.parse(localStorage.getItem('sg_user') || 'null');
+  if(!token || !user){ location.replace('index.html?redirect=messages'); }
+})();
+
+const me = JSON.parse(localStorage.getItem('sg_user')||'null');
+const mePtr = { "__type":"Pointer","className":"_User","objectId": me.objectId };
+const token = localStorage.getItem('sg_token');
+const AUTH  = { 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY, 'X-LC-Session': token };
+
+const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="100%" height="100%" rx="40" ry="40" fill="#f3f3f3"/><text x="50%" y="55%" text-anchor="middle" font-size="28">🙂</text></svg>`);
+
+let CURRENT_PARTNER = null;
+let THREADS = [];
+
+/* === 全域導向函式（關鍵） === */
+function goProfile(uid){
+  if(!uid) return;
+  if(uid === me.objectId){ location.href = 'user.html'; }
+  else{ location.href = 'seller.html?uid=' + encodeURIComponent(uid); }
+}
+window.goProfile = goProfile;
+
+/* 讀「含我」的訊息，前端聚合成會話 */
+async function fetchConversations(){
+  const orWhere = { "$or":[ { to: mePtr }, { from: mePtr } ] };
+  const where = encodeURIComponent(JSON.stringify(orWhere));
+  const url = `${API}/classes/Message?where=${where}&order=-createdAt&limit=100&include=from,to`;
+
+  const res = await fetch(url, { headers: AUTH });
+  const data = await res.json();
+  if(!res.ok){ console.warn('fetchConversations error:', data); return []; }
+
+  const map = new Map();
+  data.results.forEach(m=>{
+    const from = m.from, to = m.to;
+    const fromId = from && from.objectId;
+    const toId   = to   && to.objectId;
+    if(!fromId || !toId) return;
+
+    const partnerId   = (fromId === me.objectId) ? toId : fromId;
+    const plusUnread = (toId === me.objectId && m.read === false) ? 1 : 0;
+    const partnerObj  = (fromId === me.objectId ? to : from) || {};
+    if(!map.get(partnerId)){
+      map.set(partnerId, {
+        partnerId,
+        lastMsg: m,
+        unread: plusUnread,
+        user: {
+          objectId: partnerId,
+          nickname: partnerObj.nickname || partnerObj.username || '',
+          avatarUrl: partnerObj.avatarUrl || ''
+        }
+      });
+    }else{
+      map.get(partnerId).unread += plusUnread;
+    }
+  });
+
+  const list = Array.from(map.values());
+  const needIds = list.filter(t => !(t.user.nickname && t.user.avatarUrl)).map(t => t.partnerId);
+  if(needIds.length){ await hydrateUsers(list, needIds); }
+  return list;
+}
+
+async function hydrateUsers(list, ids){
+  const where = encodeURIComponent(JSON.stringify({ objectId: { "$in": ids } }));
+  const url = `${API}/users?where=${where}&limit=${ids.length}`;
+  try{
+    const res = await fetch(url, { headers: AUTH });
+    const data = await res.json();
+    if(!res.ok) return;
+    const dict = new Map();
+    (data.results||[]).forEach(u=>dict.set(u.objectId, u));
+    list.forEach(t=>{
+      const u = dict.get(t.partnerId);
+      if(u){
+        t.user.nickname = u.nickname || u.username || t.user.nickname || '';
+        t.user.avatarUrl = u.avatarUrl || t.user.avatarUrl || '';
+      }
+    });
+  }catch(e){}
+}
+
+/* 左側清單 */
+function renderThreads(){
+  const box = document.getElementById('threadList');
+  box.innerHTML = '';
+
+  const dismissed = getDismissedMap();
+  const visible = (THREADS||[]).filter(t=>{
+    const last = t.lastMsg;
+    if(!last) return false; // 沒任何訊息就不顯示
+    const lastTime = new Date(last.updatedAt || last.createdAt || 0).getTime();
+    const cut = dismissed[t.partnerId] ? new Date(dismissed[t.partnerId]).getTime() : 0;
+    // 只有「最後訊息沒有比我移除時更新」才隱藏；有新訊息就會回來
+    return lastTime > cut;
+  });
+
+  if(!visible.length){
+    box.innerHTML = `<div class="empty" style="height:100%">目前沒有任何訊息</div>`;
+    return;
+  }
+
+  visible.forEach(t=>{
+    const a = document.createElement('div');
+    a.className = 'thread' + (t.partnerId===CURRENT_PARTNER?' active':'');
+    a.onclick = ()=> openThread(t.partnerId);
+
+    const u=t.user||{}, ava=u.avatarUrl||DEFAULT_AVATAR, name=u.nickname||'用戶';
+    const last = t.lastMsg ? (t.lastMsg.kind==='order' ? '🧾 訂單已提交' : (t.lastMsg.text || '（圖片／內容）')) : '';
+    const time = t.lastMsg ? timeAgo(t.lastMsg.createdAt) : '';
+
+    a.innerHTML = `
+      <img class="avatar" src="${ava}" alt="">
+      <div class="t-main">
+        <div class="t-name">${escapeHTML(name)}</div>
+        <div class="t-last">${escapeHTML(last)}</div>
+      </div>
+      <div class="t-meta">
+        <div class="time">${time}</div>
+        ${t.unread>0 ? `<div class="badge">${t.unread>99?'99+':t.unread}</div>` : ''}
+        <button class="link" onclick="dismissThread('${t.partnerId}', event)">移除</button>
+      </div>`;
+    box.appendChild(a);
+  });
+}
+function dismissThread(pid, ev){
+  if(ev){ ev.stopPropagation(); ev.preventDefault(); } // 不要觸發 openThread
+
+  const mp = getDismissedMap();
+  // 用「目前螢幕上這個會話的最後訊息時間」或現在時間做記錄
+  const th = (THREADS||[]).find(t=>t.partnerId===pid);
+  const lastISO = (th && th.lastMsg && (th.lastMsg.updatedAt || th.lastMsg.createdAt)) || new Date().toISOString();
+  mp[pid] = lastISO;
+  setDismissedMap(mp);
+
+  // 立即重畫
+  renderThreads();
+
+  // 若正在看這個會話，右側也收起
+  if(CURRENT_PARTNER === pid){
+    CURRENT_PARTNER = null;
+    stopThreadPolling && stopThreadPolling();
+    document.getElementById('chatHead').style.display='none';
+    document.getElementById('chatBody').innerHTML = '<div class="empty">已移除此聊天</div>';
+    document.getElementById('chatFoot').style.display='none';
+  }
+}
+/* 打開會話 */
+/* 打開會話（完整覆蓋版） */
+async function openThread(partnerId){
+  CURRENT_PARTNER = partnerId;
+  renderThreads();
+
+  const t = THREADS.find(x=>x.partnerId===partnerId);
+
+  // ---- 安全顯示/隱藏 ----
+  const head  = document.getElementById('chatHead');
+  const foot  = document.getElementById('chatFoot');
+  const empty = document.getElementById('emptyHint');
+  if (empty) empty.style.display = 'none';
+  if (head)  head.style.display  = 'flex';
+  if (foot)  foot.style.display  = 'flex';
+
+  // ---- 設定抬頭（有就設，沒有就跳過，避免 null 報錯）----
+  const chatAva  = document.getElementById('chatAvatar');
+  const chatName = document.getElementById('chatName');
+  if (chatAva)  {
+    chatAva.src = (t?.user?.avatarUrl || DEFAULT_AVATAR);
+    chatAva.onclick  = ()=> goProfile(partnerId);
+  }
+  if (chatName) {
+    chatName.textContent = t?.user?.nickname || '用戶';
+    chatName.onclick = ()=> goProfile(partnerId);
+  }
+
+  // ---- 抓訊息 ----
+  const where = {
+    "$or":[
+      { from: mePtr, to: { "__type":"Pointer","className":"_User","objectId": partnerId } },
+      { from: { "__type":"Pointer","className":"_User","objectId": partnerId }, to: mePtr }
+    ]
+  };
+  const url = `${API}/classes/Message?where=${encodeURIComponent(JSON.stringify(where))}&order=createdAt&limit=200&include=from,to,order,product`;
+  const res = await fetch(url, { headers: AUTH });
+  const data = await res.json();
+  if(!res.ok){ console.warn('openThread error:', data); return; }
+
+  renderChat(data.results||[]);
+scrollToBottom(true);     // 打開會話時一定捲底
+
+  // ---- 標記未讀為已讀 ----
+  const needRead = (data.results||[]).filter(m=> m.to && m.to.objectId===me.objectId && (m.read===false || m.read==="false"));
+  for(const m of needRead){
+    try{
+      await fetch(`${API}/classes/Message/${m.objectId}`,{
+        method:'PUT',
+        headers:{ ...AUTH, 'Content-Type':'application/json' },
+        body: JSON.stringify({ read: true })
+      });
+    }catch(e){}
+  }
+
+  // ---- 更新左側清單並啟動輪詢 ----
+  THREADS = await fetchConversations();
+  renderThreads();
+  startThreadPolling(partnerId);
+}
+// 讓 textarea 自動增高 + 快捷鍵：Ctrl/⌘+Enter 送出（Enter 只是換行）
+(function enhanceInput(){
+  const ta = document.getElementById('msgInput');
+  if(!ta) return;
+  const autoGrow = ()=>{
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, ta.parentElement.clientHeight*0.9) + 'px';
+  };
+  ta.addEventListener('input', autoGrow);
+  autoGrow();
+
+  ta.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+})();
+let __threadPollTimer = null;
+let __lastUpdateISO = null;
+
+// 啟動當前會話的短輪詢
+function startThreadPolling(partnerId){
+  stopThreadPolling(); // 先停掉舊的
+
+  // 從現在起抓「比這個時間更新過」的
+  __lastUpdateISO = new Date().toISOString();
+
+  const tick = async ()=>{
+    // 只抓這個會話的訊息，含 from/to，我方或對方傳的都算
+    const where = {
+      "$or":[
+        { from: mePtr, to: { "__type":"Pointer","className":"_User","objectId": partnerId } },
+        { from: { "__type":"Pointer","className":"_User","objectId": partnerId }, to: mePtr }
+      ],
+      "updatedAt": { "$gt": { "__type":"Date","iso": __lastUpdateISO } }
+    };
+    const url = `${API}/classes/Message?where=${encodeURIComponent(JSON.stringify(where))}&order=createdAt&limit=200&include=from,to`;
+    try{
+      const res = await fetch(url, { headers: AUTH });
+      const data = await res.json();
+      if(res.ok && Array.isArray(data.results)){
+        // 更新最後時間（用回應裡最大的 updatedAt）
+        data.results.forEach(m=>{ if(m.updatedAt && m.updatedAt > __lastUpdateISO) __lastUpdateISO = m.updatedAt; });
+        reconcileChat(partnerId); // 做一次全量對齊（見下）
+      }
+    }catch(e){}
+    __threadPollTimer = setTimeout(tick, 800);  // 800ms 下一輪
+  };
+  tick();
+}
+
+function stopThreadPolling(){
+  if(__threadPollTimer){ clearTimeout(__threadPollTimer); __threadPollTimer = null; }
+}
+// 讓輪詢拿到更新後能重畫畫面
+async function reconcileChat(partnerId){
+  // 只允許更新當前正在看的會話，避免舊輪詢亂動 DOM
+  if (partnerId !== CURRENT_PARTNER) return;
+
+  const where = {
+    "$or":[
+      { from: mePtr, to: { "__type":"Pointer","className":"_User","objectId": partnerId } },
+      { from: { "__type":"Pointer","className":"_User","objectId": partnerId }, to: mePtr }
+    ]
+  };
+  const url = `${API}/classes/Message?where=${encodeURIComponent(JSON.stringify(where))}` +
+              `&order=createdAt&limit=200&include=from,to,order,product`;
+
+  try{
+    const res = await fetch(url, { headers: AUTH });
+    const data = await res.json();
+    if(res.ok){
+      renderChat(data.results || []);
+      // renderChat(data.results||[]) 之後
+(data.results||[]).forEach(m=>{
+  if (m.to && m.to.objectId === me.objectId &&
+      (!m.from || m.from.objectId !== me.objectId)) {
+    notifyNewMessage(m);
+  }
+});
+      // 在 tick() 裡，成功抓到 data.results 後，加：
+if (Array.isArray(data.results)) {
+  // 只挑：對我(to=me)、不是我自己發(from!=me)、未讀 或 剛更新的
+  const news = data.results.filter(m =>
+    m.to && m.to.objectId === me.objectId &&
+    (!m.from || m.from.objectId !== me.objectId)
+  );
+  news.forEach(notifyNewMessage);
+}
+      scrollToBottom();         // 不強制
+    }
+  }catch(e){
+    // 靜默失敗，不阻斷輪詢
+  }
+}
+/* 聊天訊息（含訂單卡） */
+function renderChat(list){
+  const box = document.getElementById('chatBody');
+  box.innerHTML = '';
+  if(!list.length){
+    box.innerHTML = `<div class="empty">還沒有任何訊息</div>`;
+    return;
+  }
+  list.forEach(m=>{
+    const mine = m.from && m.from.objectId === me.objectId;
+    const row = document.createElement('div');
+    row.className = 'msg ' + (mine?'me':'them');
+    row.dataset.id = m.objectId || '';
+
+    const ava  = mine ? (me.avatarUrl||DEFAULT_AVATAR) : ((m.from&&m.from.avatarUrl)||DEFAULT_AVATAR);
+    const avatarHtml = `<img class="avatar" src="${ava}" alt="">`;
+
+    if (m.kind === 'order' && m.order){
+      const o = m.order || {};
+      const addr = o.address || {};
+      const unitPrice = (o.unitPrice ?? o.price) || 0;
+      const qty       = (o.quantity ?? 1);
+      const total     = (o.totalPrice ?? (unitPrice * qty)) || unitPrice;
+      const proof     = o.payProofUrl || '';
+      const io        = o.io || (m.data && m.data.io) || '';
+
+      row.innerHTML = `
+        ${avatarHtml}
+        <div class="bubble" style="max-width:520px">
+          <div style="font-weight:800; margin-bottom:6px">🧾 訂單資訊</div>
+          <div><b>商品</b>：${escapeHTML(o.productTitle || m.product?.title || '')}</div>
+          <div><b>規格</b>：${escapeHTML(o.variantName || '')}</div>
+          ${io ? `<div><b>IO</b>：<code style="font-family:ui-monospace,monospace">${escapeHTML(io)}</code></div>` : ''}
+          <div><b>單價</b>：${CURRENCY_SIGN}${money(unitPrice)}</div>
+          ${qty ? `<div><b>數量</b>：${qty}</div>` : ''}
+          <div><b>金額</b>：${CURRENCY_SIGN}${money(total)}</div>
+          <div style="margin:8px 0;"><b>收件地址</b>：
+            ${escapeHTML([addr.countryCode, addr.province, addr.city, addr.district, addr.detail].filter(Boolean).join(' '))}
+          </div>
+          ${proof ? `<div style="margin-top:6px"><b>付款截圖</b><br><img src="${proof}" style="max-width:100%; border:1px solid #eee; border-radius:8px"></div>`:''}
+        </div>
+      `;
+   }else{
+  const mine = m.from && m.from.objectId === me.objectId;
+  const delBtn = (mine && canDeleteMsg(m)) ? `<button class="delbtn">刪除</button>` : '';
+
+  row.innerHTML = `
+    ${avatarHtml}
+    <div class="content">
+      <div class="bubble">${escapeHTML(m.text || '')}</div>
+    </div>
+    ${delBtn}
+  `;
+}
+    box.appendChild(row);
+  });
+}
+// 全局只掛一次
+document.getElementById('chatBody').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.delbtn');
+  if(!btn) return;
+  const row = btn.closest('.msg');
+  const id  = row && row.dataset.id;
+  if(id) deleteMyMessage(id);   // ← 直接用 .msg 的 data-id
+});
+// 將單一訊息插入畫面（mineForce=true 表示這則一定視為自己發的）
+function appendChatMessage(m, mineForce){
+  const box  = document.getElementById('chatBody');
+  const mine = (mineForce!==undefined) ? mineForce : (m.from && m.from.objectId===me.objectId);
+
+  const row = document.createElement('div');
+  row.className = 'msg ' + (mine ? 'me' : 'them');
+  if(m._temp) row.classList.add('pending');
+  row.dataset.id = m.objectId || '';
+
+  const ava = mine ? (me.avatarUrl || DEFAULT_AVATAR)
+                   : ((m.from && m.from.avatarUrl) || DEFAULT_AVATAR);
+
+  const avatarHtml = `<img class="avatar" src="${ava}" alt="">`;
+  const delBtn = (mine && canDeleteMsg(m)) ? `<button class="delbtn">刪除</button>` : '';
+
+row.innerHTML = `
+  ${avatarHtml}
+  <div class="content">
+    <div class="bubble">${escapeHTML(m.text || m.body || '')}</div>
+  </div>
+  ${delBtn}
+`;
+  box.appendChild(row);
+}
+
+/* 傳送訊息（可選） */
+let SENDING = false; // 簡單防抖，避免連按造成重複
+
+async function sendMessage(){
+  if(!CURRENT_PARTNER || SENDING) return;
+  const input = document.getElementById('msgInput');
+  const text  = (input.value || '').trim();
+  if(!text) return;
+
+  // 先把輸入框清空，顯示一條「暫時訊息」
+  input.value = '';
+  const tempId = 'tmp_' + Date.now();
+  const tempMsg = {
+    objectId: tempId,
+    kind: 'chat',
+    text,
+    body: text,
+    createdAt: new Date().toISOString(),
+    from: { "__type":"Pointer","className":"_User","objectId": me.objectId, avatarUrl: me.avatarUrl || '' },
+    to:   { "__type":"Pointer","className":"_User","objectId": CURRENT_PARTNER },
+    _temp: true
+  };
+  appendChatMessage(tempMsg, true);
+scrollToBottom(true);     // 我自己發訊息一定捲底
+
+  // 送到後端
+const payload = {
+  kind:'chat',
+  from:{ "__type":"Pointer","className":"_User","objectId": me.objectId },
+  to:{ "__type":"Pointer","className":"_User","objectId": CURRENT_PARTNER },
+  text, body:text, read: false
+};
+
+  SENDING = true;
+  try{
+    const res  = await fetch(`${API}/classes/Message`,{
+      method:'POST', headers:{ ...AUTH, 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'send fail');
+
+    // 把暫時訊息換成正式（移除 pending 樣式、更新 id）
+    const node = document.querySelector(`.msg[data-id="${tempId}"]`);
+    if(node){
+      node.classList.remove('pending');
+      node.dataset.id = data.objectId || '';
+    }
+
+    // 左側會話更新一下最後一則訊息
+    const th = THREADS.find(t => t.partnerId === CURRENT_PARTNER);
+    if(th){
+      th.lastMsg = { ...tempMsg, _temp: undefined, objectId: data.objectId || tempId };
+      renderThreads();
+    }
+  }catch(e){
+    // 失敗的話標記一下 & 還原輸入框內容方便重送
+    const node = document.querySelector(`.msg[data-id="${tempId}"] .bubble`);
+    if(node){
+      node.innerHTML += `<div style="color:#b00020; font-size:12px; margin-top:6px">傳送失敗</div>`;
+    }
+    input.value = text;
+    alert(e.message || '傳送失敗');
+  }finally{
+    SENDING = false;
+  }
+}
+
+/* 工具 */
+function timeAgo(iso){
+  const t = new Date(iso).getTime();
+  const d = Date.now() - t;
+  const sec = Math.round(d/1000);
+  if(sec<60) return '剛剛';
+  const min=Math.round(sec/60); if(min<60) return `${min} 分鐘前`;
+  const hr=Math.round(min/60);  if(hr<24)  return `${hr} 小時前`;
+  const dd=Math.round(hr/24);   if(dd<7)   return `${dd} 天前`;
+  return new Date(iso).toLocaleDateString();
+}
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
+/* 工具 */
+// --- 自動捲底：只在需要時 ---
+let STICKY_BOTTOM = true;   // 一開始在底部
+
+function isNearBottom(el, gap=80){
+  return (el.scrollHeight - el.scrollTop - el.clientHeight) <= gap;
+}
+
+// 綁一次：使用者手動捲動時更新 STICKY_BOTTOM
+(function bindStickyWatcher(){
+  const el = document.getElementById('chatBody');
+  if(!el) return;
+  el.addEventListener('scroll', ()=>{
+    STICKY_BOTTOM = isNearBottom(el);
+  }, { passive:true });
+})();
+
+// 只有在 sticky 或強制(force=true)時才捲到底
+function scrollToBottom(force=false){
+  const el = document.getElementById('chatBody');
+  if(!el) return;
+
+  if(!force && !STICKY_BOTTOM) return; // 你在看舊訊息，就別打擾
+
+  requestAnimationFrame(()=>{ el.scrollTop = el.scrollHeight; });
+
+  // 圖片載完再補一次（同樣遵守 sticky）
+  const imgs = el.querySelectorAll('img');
+  let left = imgs.length;
+  if(left===0) return;
+  imgs.forEach(im=>{
+    const done = ()=>{
+      left--;
+      if(left===0 && (force || STICKY_BOTTOM)){
+        requestAnimationFrame(()=>{ el.scrollTop = el.scrollHeight; });
+      }
+    };
+    if(im.complete) done(); else im.addEventListener('load', done, { once:true });
+  });
+}
+
+/* 啟動 & 輪詢 */
+(async function start(){
+  THREADS = await fetchConversations();
+  renderThreads();
+})();
+setInterval(async ()=>{
+  THREADS = await fetchConversations();
+  renderThreads();
+}, 2000);
+</script>
+<script>
+/* 只做「讀 ?to= 並打開」；不改你的輪詢、不送任何訊息 */
+(function () {
+  var to = new URLSearchParams(location.search).get('to');
+  if (!to) return;
+
+  function ready() {
+    // 不能用 window.API / window.AUTH；直接檢查函式是否存在
+    return (typeof renderThreads === 'function' &&
+            typeof openThread === 'function'); 
+  }
+
+  async function fetchUserBrief(id){
+    try{
+      // 這裡可以直接用 API / AUTH（同一全域腳本作用域可取到）
+      const where = encodeURIComponent(JSON.stringify({ objectId: id }));
+      const r = await fetch(`${API}/users?where=${where}&limit=1`, { headers: AUTH });
+      const d = await r.json();
+      if (!r.ok || !d.results || !d.results.length){
+        return { objectId:id, nickname:'用戶', avatarUrl:'' };
+      }
+      const u = d.results[0];
+      return {
+        objectId: id,
+        nickname: u.nickname || u.username || '用戶',
+        avatarUrl: u.avatarUrl || ''
+      };
+    }catch(e){
+      return { objectId:id, nickname:'用戶', avatarUrl:'' };
+    }
+  }
+
+  (async function boot(){
+    // 等到 renderThreads / openThread 可用就開始
+    await new Promise(res=>{
+      (function wait(){ if(ready()) return res(); requestAnimationFrame(wait); })();
+    });
+
+    const brief = await fetchUserBrief(to);
+    if (!Array.isArray(window.THREADS)) window.THREADS = [];
+    const idx = window.THREADS.findIndex(t => t.partnerId === to);
+    if (idx === -1){
+      window.THREADS.unshift({
+        partnerId: to,
+        lastMsg: null,
+        unread: 0,
+        user: brief
+      });
+    }else{
+      window.THREADS[idx].user = { ...(window.THREADS[idx].user||{}), ...brief };
+    }
+
+    renderThreads();
+    openThread(to);
+
+    // 保險刷新一次抬頭
+    setTimeout(function(){
+      if (window.CURRENT_PARTNER === to) openThread(to);
+    }, 1200);
+
+    // 把輸入框聚焦
+    var inp = document.getElementById('msgInput');
+    if (inp && typeof inp.focus === 'function') inp.focus();
+  })();
+})();
+//================= 切換 =================
+function canDeleteMsg(m){
+  if(!m || !m.createdAt) return false;
+  const mine = m.from && m.from.objectId === me.objectId;
+  if(!mine) return false;
+  const age = Date.now() - new Date(m.createdAt).getTime();
+  return age <= 2*60*1000; // 2 分鐘
+}
+
+async function deleteMyMessage(mOrId){
+  const id = (typeof mOrId === 'string') ? mOrId : (mOrId && mOrId.objectId);
+  if(!id) return;
+
+  const node = document.querySelector(`.msg[data-id="${id}"]`);
+  if(node){ node.classList.add('pending'); } // 淡出效果
+
+  try{
+    // 1) 嘗試硬刪（真正從資料表移除）
+    const r = await fetch(`${API}/classes/Message/${id}`,{
+      method:'DELETE', headers: AUTH
+    });
+
+    if(!r.ok){
+      // 2) 若沒有刪權就做「只對我隱藏」
+      const r2 = await fetch(`${API}/classes/Message/${id}`,{
+        method:'PUT',
+        headers:{ ...AUTH, 'Content-Type':'application/json' },
+        body: JSON.stringify({ deletedFor: { "__op":"AddUnique", "objects":[ me.objectId ] } })
+      });
+      if(!r2.ok) throw new Error('delete/soft-delete failed');
+    }
+
+    // 3) 不管硬刪或軟刪成功，前端都把這則直接移除
+    if(node) node.remove();
+
+    // 如果這則是左側清單的最後一條，更新一下
+    const th = THREADS.find(t => t.partnerId === CURRENT_PARTNER);
+    if(th && th.lastMsg && th.lastMsg.objectId === id){
+      // 重新抓一次當前會話，找新的最後一條
+      openThread(CURRENT_PARTNER);
+    }else{
+      renderThreads();
+    }
+  }catch(e){
+    alert('刪除失敗：'+(e.message||'')); 
+    if(node) node.classList.remove('pending');
+  }
+}
+// 只掛一次：靠 .msg 的 data-id 取得真正 id
+document.getElementById('chatBody').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.delbtn');
+  if(!btn) return;
+  const row = btn.closest('.msg');
+  const id  = row && row.dataset.id;
+  if(id) deleteMyMessage(id);
+});
+/* ======= 通知：權限、去重、發送 ======= */
+const NOTI_KEY   = 'sg_notified_ids';
+let NOTI_SEEN    = new Set(JSON.parse(localStorage.getItem(NOTI_KEY) || '[]').slice(-500));
+
+function saveNotiSeen(){
+  try{
+    // 只保留最近 500 筆，避免 localStorage 太大
+    const arr = Array.from(NOTI_SEEN).slice(-500);
+    localStorage.setItem(NOTI_KEY, JSON.stringify(arr));
+  }catch(e){}
+}
+
+async function ensureNotifyPermission(){
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  try{
+    const p = await Notification.requestPermission();
+    return p === 'granted';
+  }catch(e){ return false; }
+}
+
+/** 在有新訊息（對我、且不是我自己）時呼叫 */
+async function notifyNewMessage(msg){
+  // 去重：同一則不要重複提醒
+  const id = msg.objectId || msg._id || (msg.createdAt + (msg.text||'')); 
+  if (!id || NOTI_SEEN.has(id)) return;
+  NOTI_SEEN.add(id); saveNotiSeen();
+
+  const ok = await ensureNotifyPermission();
+  const title = (msg.from && (msg.from.nickname||msg.from.username)) || '新訊息';
+  const body  = msg.text || msg.body || '（圖片／內容）';
+  const icon  = (msg.from && msg.from.avatarUrl) || '/favicon.ico';
+
+  if (ok){
+    const n = new Notification(title, {
+      body, icon,
+      tag: id,                   // 同 tag 的通知會被合併
+      renotify: false,           // 不重複震動/聲音
+      data: { fromId: msg.from && msg.from.objectId }
+    });
+    // 點擊通知 → 回到分頁 & 自動打開這個對話
+    n.onclick = () => {
+      window.focus();
+      if (n.data && n.data.fromId) openThread(n.data.fromId);
+      n.close();
+    };
+  }
+  // 聲音（可能需要使用者互動後才允許）
+  try{ document.getElementById('ding')?.play?.(); }catch(e){}
+  // 手機震動
+  try{ navigator.vibrate && navigator.vibrate(120); }catch(e){}
+}
+function goBack(){
+  if (document.referrer && document.referrer !== location.href) {
+    // 有來源頁 → 回上一頁
+    history.back();
+  } else {
+    // 沒來源（例如直接輸入網址進來）→ 給個預設
+    location.href = "shopping.html";  
+  }
+}
+</script>
+<script src="im.js"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

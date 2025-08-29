@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Grove監察院</title>
+<style>
+  :root{ --brand:#6c4ef7; --muted:#777; --danger:#e91e63; }
+  *{ box-sizing:border-box }
+  body{ margin:0; font-family:system-ui,-apple-system,"Noto Sans TC",Arial,sans-serif; background:#fafafa; color:#222; }
+  .wrap{ max-width:960px; margin:0 auto; padding:24px 14px 48px; }
+
+  /* 搜尋列（Google 風） */
+  .search{ display:flex; gap:10px; align-items:center; justify-content:center; margin:24px auto 20px; max-width:720px; }
+  .input{
+    flex:1; padding:14px 16px; border-radius:999px; border:1px solid #ddd; background:#fff; outline:none;
+    box-shadow:0 4px 16px rgba(0,0,0,.06);
+    font-size:16px;
+  }
+  .btn{ padding:12px 16px; border-radius:10px; border:1px solid #ddd; background:#fff; font-weight:800; cursor:pointer; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+  .btn.danger{ background:var(--danger); color:#fff; border-color:transparent; }
+  .hint{ text-align:center; color:#777; font-size:13px; margin-top:6px; }
+
+  /* 結果卡片 */
+  .card{ background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(0,0,0,.06); }
+  .row{ display:flex; align-items:center; gap:14px; }
+  .avatar{ width:80px; height:80px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .name{ font-weight:900; font-size:18px; }
+  .muted{ color:var(--muted); font-size:13px; }
+  .meta{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:8px; margin-top:8px; }
+  .actions{ margin-top:12px; display:flex; gap:10px; }
+
+  /* 夜間（可選，與你全站色系一致） */
+  html[data-theme="dark"] body{ background:#0f0b1a; color:#cfc3ff; }
+  html[data-theme="dark"] .card{ background:#161222; border:1px solid #2b2440; box-shadow:0 10px 28px rgba(0,0,0,.45);}
+  html[data-theme="dark"] .input{ background:#1b1629; border:1px solid #2b2440; color:#cfc3ff; }
+  html[data-theme="dark"] .btn{ background:#1b1629; border:1px solid #2b2440; color:#cfc3ff; }
+  html[data-theme="dark"] .btn.primary{ background:#a48cff; color:#161222; border-color:transparent; }
+  html[data-theme="dark"] .btn.danger{ background:#bf66ff; color:#161222; border-color:transparent; }
+/* ===== 警告彈框 ===== */
+.backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); z-index:5000; padding:16px; }
+.modal{
+  width:min(560px,92vw); max-height:92vh; overflow:auto;
+  background:#fff; border:1px solid #eee; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.18);
+}
+.modal header{ position:sticky; top:0; background:#fff; padding:12px 14px; border-bottom:1px solid #eee; font-weight:900; display:flex; justify-content:space-between; align-items:center; }
+.modal .body{ padding:14px; }
+.modal .actions{ padding:10px 14px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end; }
+.modal .input, .modal .textarea{ width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; outline:none; background:#fff; }
+.modal .textarea{ min-height:120px; resize:vertical; }
+html[data-theme="dark"] .modal{ background:#161222; color:#cfc3ff; border:1px solid #2b2440; box-shadow:0 10px 28px rgba(0,0,0,.45); }
+html[data-theme="dark"] .modal header{ background:#161222; border-bottom:1px solid #2b2440; }
+html[data-theme="dark"] .modal .actions{ border-top:1px solid #2b2440; }
+html[data-theme="dark"] .modal .input, html[data-theme="dark"] .modal .textarea{ background:transparent; color:#cfc3ff; border:1px solid #2b2440; }
+/* ===== 下拉選單（彈匡）樣式＋動畫 ===== */
+/* ========== 右上角圓球按鈕 + 下拉選單 ========== */
+.menu-wrap{ position:relative; display:inline-flex; gap:8px; align-items:center; }
+
+/* 圓球按鈕 */
+.menu-btn{
+  width:34px; height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700; line-height:1;
+  background:var(--brand); color:#fff; border:none;
+  cursor:pointer; transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
+  box-shadow:0 4px 12px rgba(108,78,247,.22);
+}
+.menu-btn:hover{ transform:scale(1.08); }
+.menu-btn:active{ transform:scale(.95); }
+html[data-theme="dark"] .menu-btn{
+  background:var(--btn-bg);
+  border:1px solid var(--btn-border);
+  color:var(--btn-text);
+  box-shadow:none;
+}
+
+/* 下拉選單 */
+.dropdown{
+  position:absolute; top:calc(100% + 8px); left:0;
+  transform:translateX(8px) translateY(-6px) scale(.98);
+  opacity:0; visibility:hidden; pointer-events:none;
+  min-width:220px; max-width:min(320px,80vw);
+  border-radius:14px; padding:8px; z-index:999;
+  transition:opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+  background:var(--dropdown-bg); color:var(--dropdown-text);
+  border:1px solid var(--dropdown-border);
+  box-shadow:0 16px 32px rgba(0,0,0,.18);
+}
+.dropdown.show{
+  transform:translateX(8px) translateY(0) scale(1);
+  opacity:1; visibility:visible; pointer-events:auto;
+}
+/* 去掉突起箭頭 */
+.dropdown::after{ content:none; }
+.dropdown .item{ width:100%; text-align:left; padding:10px 12px; border:0; background:transparent; color:inherit; border-radius:8px; cursor:pointer; transition:.12s; }
+.dropdown .item:hover{ background:rgba(108,78,247,.10); transform:translateY(-1px); }
+html[data-theme="dark"] .dropdown{ background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); box-shadow:var(--shadow); }
+
+/* 小螢幕自動靠左 */
+@media(max-width:560px){
+  .dropdown, .dropdown.show{ left:0 !important; transform:translateX(0) translateY(0) scale(1); }
+}
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+</style>
+</head>
+<body>
+      <div class="menu-wrap">
+        <!-- 返回按鈕 -->
+  <button class="btn primary" onclick="goBack()" style="margin-bottom:1px">← 返回</button>
+  <button class="btn primary" onclick="location.href='shopping.html'">Esc Store</button>
+  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+  <div id="menuDrop" class="dropdown" role="menu">
+    <!-- 第一個選項：切換模式 -->
+    <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+    <button class="item" onclick="location.href='shopping.html'">Esc Store</button>
+  </div>
+</div>
+  <div class="wrap">
+    <h2 style="margin:0;text-align:center">Grove Control Yuan</h2>
+    <div class="hint">輸入用戶 GID（= _User.objectId），按 Enter 或點搜尋</div>
+
+    <div class="search">
+      <input id="kw" class="input" type="search" placeholder="例如：5sX8YZaB…" autofocus>
+      <button class="btn primary" onclick="doSearch()">搜尋</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <div id="toast" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:opacity .18s">—</div>
+    <h3 style="margin-top:24px">待處理檢舉</h3>
+<div id="reportList" class="report-list muted">讀取中…</div>
+  </div>
+
+<div id="warnDlg" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="warnTitle">
+  <div class="modal">
+    <header>
+      <div id="warnTitle">發送警告 ⚠️</div>
+      <button class="btn" onclick="closeWarn()" aria-label="關閉">×</button>
+    </header>
+    <div class="body">
+      <div class="muted" style="margin-bottom:8px">將把這則警告傳送到該用戶的站內訊息（以表格形式展示）。</div>
+
+      <!-- 固定標題 -->
+      <label class="muted" style="display:block; margin:8px 0 6px">標題</label>
+      <input id="warnTitleFixed" class="input" type="text" value="警告⚠️ 此則是重要訊息" readonly>
+
+      <!-- 管理員 GID（自動帶入目前登入的管理員） -->
+      <label class="muted" style="display:block; margin:12px 0 6px">管理員 GID</label>
+      <input id="warnAdmin" class="input" type="text" readonly>
+
+      <!-- 被檢舉 GID（目標） -->
+      <label class="muted" style="display:block; margin:12px 0 6px">被檢舉 GID</label>
+      <input id="warnUid" class="input" type="text" readonly>
+
+      <!-- 警告內容 -->
+      <label class="muted" style="display:block; margin:12px 0 6px">警告內容</label>
+      <textarea id="warnText" class="textarea" placeholder="請輸入要提醒/警告的內容…"></textarea>
+
+      <div id="warnErr" style="color:#b00020; font-size:13px; margin-top:6px"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeWarn()">取消</button>
+      <button class="btn danger" onclick="sendWarning()">送出警告</button>
+    </div>
+  </div>
+</div>
+<!-- 檢舉內容彈框 -->
+<div id="reportsDlg" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="reportsTitle">
+  <div class="modal">
+    <header>
+      <div id="reportsTitle">被檢舉內容</div>
+      <button class="btn" onclick="closeReports()" aria-label="關閉">×</button>
+    </header>
+    <div class="body" id="reportsBody">
+      <!-- 動態塞內容 -->
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeReports()">關閉</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ====== 你的 LeanCloud 設定 ====== */
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "68b19eeb90ed2201c4839219";
+
+/* ← 固定一個可進入監察院的超級 GID（就算不在 Admin 表也放行） */
+const SUPER_CONTROL_UID = "68a9a04749adb47c4133a129";  // 你可改成想要的
+
+/* 供之後行院頁面共用的類別/欄位約定 */
+const RECALL_CLASS = "RecallVote";
+
+/* ========== 基本工具 ========== */
+const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="100%" height="100%" rx="40" ry="40" fill="#f3f3f3"/><text x="50%" y="55%" text-anchor="middle" font-size="28">🙂</text></svg>`);
+
+function toast(s){
+  const t = document.getElementById('toast'); t.textContent = s;
+  t.style.opacity = '1'; setTimeout(()=>{ t.style.opacity='0'; }, 1600);
+}
+
+let __ADMIN_AUTH = null;
+
+async function requireAdmin(){
+  if(__ADMIN_AUTH) return __ADMIN_AUTH;
+
+  const token = localStorage.getItem('sg_token');
+  const me    = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!token || !me){
+    alert('請先登入'); location.replace('index.html'); return null;
+  }
+
+  // ★ 超級 GID 直接放行
+  if (me.objectId === SUPER_CONTROL_UID){
+    __ADMIN_AUTH = { me, token };
+    return __ADMIN_AUTH;
+  }
+
+  // 一般情況：必須是 Admin 表且 active:true
+  const headers = { 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY, 'X-LC-Session': token };
+  const where = encodeURIComponent(JSON.stringify({
+    user: { "__type":"Pointer","className":"_User","objectId": me.objectId },
+    active: true
+  }));
+  const r = await fetch(`${API}/classes/Admin?where=${where}&limit=1`, { headers });
+  const d = await r.json();
+  if(!r.ok || !d.results || !d.results.length){
+    alert('你沒有存取此頁的權限');
+    location.replace('shopping.html');
+    return null;
+  }
+
+  __ADMIN_AUTH = { me, token };
+  return __ADMIN_AUTH;
+}
+//身份確認
+
+//罷選
+async function hasOpenRecall(uid){
+  const nowIso = new Date().toISOString();
+  const where = encodeURIComponent(JSON.stringify({
+    target:   { "__type":"Pointer","className":"_User","objectId": uid },
+    status:   "open",
+    endsAt: { "$gt": { "__type":"Date","iso": nowIso } }
+  }));
+  const r = await fetch(`${API}/classes/${RECALL_CLASS}?where=${where}&limit=1`, { headers: lcAuth() });
+  const d = await r.json();
+  return r.ok && d.results && d.results.length > 0;
+}
+async function createRecallVote(uid, reasons){
+  const { me, token } = await requireAdmin(); if(!me) throw new Error('未登入');
+  const endsAt = new Date(Date.now() + 3*24*60*60*1000); // 三天後
+
+  const payload = {
+    target:    { "__type":"Pointer","className":"_User","objectId": uid },
+    targetGid: uid,
+    question:  "是否罷免此人？",
+    options:   ["是","否"],       // 之後行政院頁面會以這兩個選項統計
+    reasons,                       // Array<string>，供民眾檢視
+    status:    "open",
+    startsAt:  { "__type":"Date","iso": new Date().toISOString() },
+    endsAt:    { "__type":"Date","iso": endsAt.toISOString() },
+    createdBy: { "__type":"Pointer","className":"_User","objectId": me.objectId },
+    ACL: {
+      "*":              { "read": true,  "write": false },      // ★ 公開可讀
+      [me.objectId]:    { "read": true,  "write": true  },
+      [SUPER_CONTROL_UID]: { "read": true, "write": true }      // 超級可寫
+    }
+  };
+
+  const r = await fetch(`${API}/classes/${RECALL_CLASS}`,{
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', ...lcAuth() },
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || '建立投票失敗');
+  return d.objectId;
+}
+/* 用 where 查 _User（比 /users/{id} 寬鬆） */
+async function fetchUserById(uid){
+  const headers = { 'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY };
+  const token = localStorage.getItem('sg_token'); if(token) headers['X-LC-Session'] = token;
+
+  const where = encodeURIComponent(JSON.stringify({ objectId: uid }));
+  const r = await fetch(`${API}/users?where=${where}&limit=1`, { headers });
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || '讀取用戶失敗');
+  return (d.results && d.results[0]) || null;
+}
+
+/* 查是否已封鎖（BlockedUser 表） */
+async function findBlockId(uid){
+  const headers = { 'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY, 'X-LC-Session': localStorage.getItem('sg_token')||'' };
+  const where = encodeURIComponent(JSON.stringify({
+    target:{ "__type":"Pointer","className":"_User","objectId": uid },
+    status:"active"
+  }));
+  const r = await fetch(`${API}/classes/BlockedUser?where=${where}&limit=1`, { headers });
+  const d = await r.json();
+  if(!r.ok) return null;
+  return (d.results && d.results[0] && d.results[0].objectId) || null;
+}
+
+/* 建立封鎖 */
+async function blockUser(uid){
+ const { me, token } = await requireAdmin();
+const headers = {
+    'Content-Type':'application/json',
+    'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY, 'X-LC-Session': token||''
+  };
+  const payload = {
+    target: { "__type":"Pointer","className":"_User","objectId": uid },
+    by:     { "__type":"Pointer","className":"_User","objectId": me.objectId },
+    status: "active",
+    ACL:{
+      "*":{ "read": false },
+      [me.objectId]:{ "read": true, "write": true }
+      // 你也可以改成 [REPORT_ADMIN_UID]:{...} 只給指定帳號
+    }
+  };
+  const r = await fetch(`${API}/classes/BlockedUser`,{ method:'POST', headers, body:JSON.stringify(payload) });
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || '封鎖失敗（請檢查 BlockedUser 類別權限）');
+  return d.objectId;
+}
+
+/* 解除封鎖（把 status 改為 released） */
+async function unblock(blockId){
+  const token = localStorage.getItem('sg_token');
+  const headers = { 'Content-Type':'application/json', 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session': token||'' };
+  const r = await fetch(`${API}/classes/BlockedUser/${blockId}`, {
+    method:'PUT', headers, body: JSON.stringify({ status:"released" })
+  });
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || '解除封鎖失敗');
+}
+
+// 發送封鎖通知訊息（會出現在對方訊息盒）
+async function sendSystemMessage(toId, text){
+const { token, me } = await requireAdmin() || {};
+  if(!token || !me) throw new Error('未登入');
+  const payload = {
+    kind: 'system',     // 你現有 messages 頁也會當一般訊息顯示
+    subtype: 'ban',     // 方便之後前端特別樣式
+    text, body: text,
+    read: "false",      // 依你目前 Message.read 的「字串」型別
+    from: { "__type":"Pointer","className":"_User","objectId": me.objectId },
+    to:   { "__type":"Pointer","className":"_User","objectId": toId },
+    ACL: {
+      "*": { "read": false },
+      [me.objectId]: { "read": true, "write": true },
+      [toId]:        { "read": true, "write": false }
+    }
+  };
+  const r = await fetch(`${API}/classes/Message`,{
+    method:'POST',
+    headers:{ 'Content-Type':'application/json','X-LC-Id':APP_ID,'X-LC-Key':APP_KEY,'X-LC-Session': token },
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || '通知訊息發送失敗');
+  return d.objectId;
+}
+
+// 共用：阻擋對自己操作（回 true 表示已阻擋並已提示）
+async function forbidSelf(targetId, actionName){
+  const auth = await requireAdmin(); 
+  if(!auth) return true;
+  const { me } = auth;
+  if(me && me.objectId === targetId){
+    alert(`你不能對自己的帳號執行「${actionName}」。`);
+    return true;
+  }
+  return false;
+}
+/* 繪出結果卡片 */
+async function renderUser(u, blockId){
+  const box = document.getElementById('result');
+  const avatar = (u.avatarUrl ? u.avatarUrl.replace(/^http:\/\//,'https://') : '') || DEFAULT_AVATAR;
+
+  const roles  = await getUserRoles(u.objectId);  // ← 改這裡
+  const hasRpt = await hasAnyReport(u.objectId);
+  const { me } = await requireAdmin();
+  const isSelf = !!(me && me.objectId === u.objectId);
+
+  box.innerHTML = `
+    <div class="card">
+      <div class="row">
+        <img class="avatar" src="${avatar}" alt="">
+        <div>
+          <div class="name">${escapeHTML(u.nickname || u.username || '(未命名)')}</div>
+          <div class="muted">GID：${u.objectId}</div>
+          <div class="muted" style="margin-top:4px">身分：${roles.label}</div>   <!-- ← 顯示五院彙總 -->
+        </div>
+      </div>
+
+      <div class="meta">
+        <div>暱稱 / 名稱：${escapeHTML(u.nickname || u.username || '')}</div>
+        <div>Email：${escapeHTML(u.email || '(未綁定)')}</div>
+        <div>建立時間：${new Date(u.createdAt).toLocaleString()}</div>
+        <div>狀態：${blockId ? '已封鎖' : '正常'}</div>
+      </div>
+
+      <div class="actions">
+        ${blockId
+          ? `<button class="btn" ${isSelf?'disabled title="不可對自己操作"':''}
+                onclick="${isSelf?'void(0)':`onUnblock('${blockId}','${u.objectId}')`}">解除封鎖</button>`
+          : `<button class="btn danger" ${isSelf?'disabled title="不可對自己操作"':''}
+                onclick="${isSelf?'void(0)':`onBlock('${u.objectId}')`}">封鎖</button>`}
+
+        <button class="btn" onclick="viewReports('${u.objectId}')">查詢被檢舉內容</button>
+
+        ${ roles.anyOfficial
+            ? `<button class="btn primary"
+                ${(!hasRpt || isSelf)?'disabled':''}
+                title="${isSelf ? '不可對自己操作' : (hasRpt ? '' : '無檢舉，不可發起')}"
+                onclick="${(!hasRpt || isSelf)?'void(0)':`openRecall('${u.objectId}')`}">罷免</button>`
+            : '' }
+
+        <button class="btn" ${isSelf?'disabled title="不可對自己操作"':''}
+                onclick="${isSelf?'void(0)':`openWarn('${u.objectId}')`}">警告 ⚠️</button>
+      </div>
+    </div>
+  `;
+}
+async function openWarn(uid){
+  if(await forbidSelf(uid, '發送警告')) return;
+  const auth = await requireAdmin(); if(!auth) return;
+  const { me } = auth;
+
+  // 帶入四個欄位：固定標題、管理員 GID、被檢舉 GID、清空內容
+  document.getElementById('warnTitleFixed').value = '警告⚠️ 此則是重要訊息';
+  document.getElementById('warnAdmin').value = me.objectId || '';
+  document.getElementById('warnUid').value   = uid || '';
+  document.getElementById('warnText').value  = '';
+  document.getElementById('warnErr').textContent = '';
+
+  document.getElementById('warnDlg').style.display = 'flex';
+}
+function closeWarn(){
+  document.getElementById('warnDlg').style.display = 'none';
+}
+// 取用戶在五院的身份（同時查 user / User、且 active !== false）
+async function getUserRoles(uid){
+  const hdr = lcAuth();
+  const p   = { "__type":"Pointer","className":"_User","objectId": uid };
+  const w   = encodeURIComponent(JSON.stringify({ "$or":[ {user:p},{User:p} ], active:true }));
+
+  const [cR, eR, xR, jR] = await Promise.all([
+    fetch(`${API}/classes/Admin?where=${w}&limit=1`,            { headers: hdr }), // 監察院 C
+    fetch(`${API}/classes/ExecutiveStaff?where=${w}&limit=1`,   { headers: hdr }), // 行政院 I
+    fetch(`${API}/classes/ExamStaff?where=${w}&limit=1`,        { headers: hdr }), // 考試院 E
+    fetch(`${API}/classes/JudicialStaff?where=${w}&limit=1`,    { headers: hdr }), // 司法院 A
+  ]);
+  const [c, e, x, j] = await Promise.all([cR.json(), eR.json(), xR.json(), jR.json()]);
+  const hasC = cR.ok && c?.results?.length > 0;
+  const hasI = eR.ok && e?.results?.length > 0;
+  const hasE = xR.ok && x?.results?.length > 0;
+  const hasA = jR.ok && j?.results?.length > 0;
+
+  // 立法院：優先查 LegislativeStaff（如果你未建立此表，退而求其次用 ExamSubmission 的「已通過立法院」紀錄）
+  let hasL = false;
+  try{
+    const lR = await fetch(`${API}/classes/LegislativeStaff?where=${w}&limit=1`, { headers: hdr });
+    const l  = await lR.json();
+    hasL = lR.ok && l?.results?.length > 0;
+  }catch(_){ hasL = false; }
+  if(!hasL){
+    const whereLeg = encodeURIComponent(JSON.stringify({
+      applicant: p,
+      status: 'approved',
+      type: { "$in": ['apply-legislative-public','apply-legislative-internal'] }
+    }));
+    const l2R = await fetch(`${API}/classes/ExamSubmission?where=${whereLeg}&limit=1`, { headers: hdr });
+    const l2  = await l2R.json();
+    hasL = l2R.ok && l2?.results?.length > 0;
+  }
+
+  const tags = [];
+  if (hasC) tags.push('監察院(C)');
+  if (hasI) tags.push('行政院(I)');
+  if (hasE) tags.push('考試院(E)');
+  if (hasA) tags.push('司法院(A)');
+  if (hasL) tags.push('立法院(L)');
+
+  return {
+    hasC, hasI, hasE, hasA, hasL,
+    anyOfficial: (hasC || hasI || hasE || hasA || hasL),
+    label: tags.length ? tags.join(' / ') : '一般用戶'
+  };
+}
+/* ===== 檢舉查詢 ===== */
+const AUTH = {
+  'X-LC-Id': APP_ID,
+  'X-LC-Key': APP_KEY,
+};
+function lcAuth(){
+  const t = localStorage.getItem('sg_token');
+  return t ? { ...AUTH, 'X-LC-Session': t } : AUTH;
+}
+
+// 依 GID 查 Report（支援 target Pointer 與 targetGid 字串兩種欄位）
+async function fetchReports(targetUid){
+  const where = encodeURIComponent(JSON.stringify({
+    "$or":[
+      { target: { "__type":"Pointer","className":"_User","objectId": targetUid } },
+      { targetGid: targetUid }
+    ]
+  }));
+  const url = `${API}/classes/Report?where=${where}&order=-createdAt&limit=50&include=reporter`;
+  const r = await fetch(url, { headers: lcAuth() });
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || '讀取檢舉失敗');
+  return d.results || [];
+}
+
+function closeReports(){ document.getElementById('reportsDlg').style.display='none'; }
+
+ async function viewReports(uid){
+ const auth = await requireAdmin(); if(!auth) return;
+  const box = document.getElementById('reportsBody');
+  box.innerHTML = '<div class="muted">讀取中…</div>';
+  document.getElementById('reportsDlg').style.display='flex';
+
+  try{
+    const rows = await fetchReports(uid);
+    if(!rows.length){
+      box.innerHTML = '<div class="muted">目前無檢舉</div>';
+      return;
+    }
+    // 列出每一筆（理由、檢舉人、時間、圖片連結）
+    const html = rows.map((r,i)=>{
+      const who = r.reporter ? (r.reporter.nickname || r.reporter.username || r.reporter.objectId) : '（未知）';
+      const when = r.createdAt ? new Date(r.createdAt).toLocaleString() : '';
+      const imgs = Array.isArray(r.images) && r.images.length
+        ? `<div style="margin-top:6px">圖片證據：${r.images.map(u=>`<a href="${u}" target="_blank">連結</a>`).join('、')}</div>`
+        : '';
+      return `
+        <div class="card" style="margin-bottom:10px">
+          <div style="font-weight:800">#${i+1}</div>
+          <div style="margin-top:6px;white-space:pre-wrap">${escapeHTML(r.reason || r.reasonText || '')}</div>
+          ${imgs}
+          <div class="muted" style="margin-top:8px">檢舉人：${escapeHTML(who)}　時間：${when}</div>
+        </div>`;
+    }).join('');
+    box.innerHTML = html;
+  }catch(e){
+    box.innerHTML = `<div style="color:#b00020">${escapeHTML(e.message||'讀取失敗')}</div>`;
+  }
+}
+async function openRecall(uid){
+  if(await forbidSelf(uid, '發起罷免投票')) return;
+
+  const roles = await getUserRoles(uid);
+  if(!roles.anyOfficial){
+    alert('此人不是五院官員，無法發起罷免。');
+    return;
+  }
+
+  // 組理由（字串陣列）
+  const reasons = rows.map(r => (r.reason || r.reasonText || '').trim()).filter(Boolean);
+
+  // 塞到原本的 reports 彈框裡並加上動作按鈕
+  const box = document.getElementById('reportsBody');
+  const html = reasons.map((t,i)=>`
+    <div style="white-space:pre-wrap">${escapeHTML(t)}</div>
+    ${i<reasons.length-1?'<hr style="margin:12px 0;border:none;border-top:1px solid #eee">':''}
+  `).join('');
+
+  document.getElementById('reportsTitle').textContent = '被檢舉內容（供罷免用）';
+  box.innerHTML = `
+    <div class="muted" style="margin-bottom:8px">以下為此人被檢舉的理由（多人以分隔線區隔）</div>
+    <div class="card">${html}</div>
+  `;
+  // 換成「關閉 + 開啟投票」兩顆按鈕
+  const actions = document.querySelector('#reportsDlg .actions');
+  actions.innerHTML = `
+    <button class="btn" onclick="closeReports()">關閉</button>
+    <button class="btn primary" onclick="startRecall('${uid}')">開啟罷免投票🗳️</button>
+  `;
+  document.getElementById('reportsDlg').style.display='flex';
+}
+
+async function startRecall(uid){
+  try{
+    // 禁止對自己操作
+    if (await forbidSelf(uid, '發起罷免投票')) return;
+
+    // 已有進行中的罷免 → 提示後離開
+    if (await hasOpenRecall(uid)) {
+      alert('已存在進行中的罷免投票，無法重複建立。');
+      return;
+    }
+
+    // 讀檢舉 → 組理由
+    const rows = await fetchReports(uid);
+    const reasons = rows.map(r => (r.reason || r.reasonText || '').trim()).filter(Boolean);
+
+    // 沒有檢舉 → 不得開投票
+    if (!reasons.length){
+      alert('你無法實行罷免投票，因為此人無不良檢舉。');
+      return;
+    }
+
+    // 建立投票
+    const id = await createRecallVote(uid, reasons);
+    closeReports();
+    toast('已建立罷免投票（3 天）');
+  }catch(e){
+    alert(e.message || '建立投票失敗');
+  }
+}
+// 供發送前快速確認此人是否有檢舉
+async function hasAnyReport(uid){
+  try{
+    const rows = await fetchReports(uid);
+    return rows.length > 0;
+  }catch(e){
+    // 查詢失敗時，為了不阻塞流程，視為「未知」，此時仍給發送但不彈提示
+    return true;
+  }
+}
+
+/* ===== 修改 sendWarning：若無檢舉先二次確認 ===== */
+async function sendWarning(){
+  const auth = await requireAdmin(); if(!auth) return;
+  const { me, token } = auth;
+
+  const title = (document.getElementById('warnTitleFixed').value || '警告⚠️ 此則是重要訊息').trim();
+  const admin = (document.getElementById('warnAdmin').value || '').trim();
+  const toId  = (document.getElementById('warnUid').value   || '').trim();
+  const text  = (document.getElementById('warnText').value  || '').trim();
+
+  if(!toId){ document.getElementById('warnErr').textContent = '缺少對象 GID'; return; }
+  if(!text){ document.getElementById('warnErr').textContent = '請輸入警告內容'; return; }
+  document.getElementById('warnErr').textContent = '';
+
+  // ★ 這裡新增：若沒有任何檢舉，先確認
+  const any = await hasAnyReport(toId);
+  if(!any){
+    const ok = window.confirm('此人目前無檢舉，確定要發送警告嗎？');
+    if(!ok) return;
+  }
+
+  const table =
+`
+│               ${title}                       │
+           
+│ 管理員 GID : ${admin}                         │
+
+│ 被檢舉 GID : ${toId}                          │
+
+│ 警告內容   |.  ${text.replace(/\n/g, '\n│ ')} │
+`;
+
+  const finalText = `${title}\n\n${table}`;
+
+  const payload = {
+    kind:'warning',
+    text: finalText,
+    body: finalText,
+    read: "false",                 // 依你目前 Message.read 的字串型別
+    from:{ "__type":"Pointer","className":"_User","objectId": me.objectId },
+    to:{   "__type":"Pointer","className":"_User","objectId": toId },
+    ACL:{
+      "*": { "read": false },
+      [me.objectId]: { "read": true, "write": true },
+      [toId]:        { "read": true, "write": false }
+    },
+    data:{ title, adminGid:admin, targetGid:toId, content:text }
+  };
+
+  try{
+    const r = await fetch(`${API}/classes/Message`,{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY, 'X-LC-Session':token },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || '發送失敗');
+    closeWarn();
+    toast('已發送警告給該用戶');
+  }catch(e){
+    document.getElementById('warnErr').textContent = e.message || '發送失敗，請稍後重試';
+  }
+}
+
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[m])); }
+
+/* 事件 */
+async function doSearch(){
+const auth = await requireAdmin(); if(!auth) return;
+  const kw = (document.getElementById('kw').value||'').trim();
+  if(!kw){ toast('請輸入 GID'); return; }
+  document.getElementById('result').innerHTML = '';
+  try{
+    const user = await fetchUserById(kw);
+    if(!user){ toast('找不到此 GID'); return; }
+    const blockId = await findBlockId(user.objectId);
+    renderUser(user, blockId);
+  }catch(e){
+    toast(e.message||'搜尋失敗');
+  }
+}
+async function onBlock(uid){
+  if(await forbidSelf(uid, '封鎖')) return;
+  try{
+    const any = await hasAnyReport(uid);
+    if(!any){ alert('你無法實行封鎖，因為此人無不良檢舉。'); return; 
+  }
+
+    // 二次確認
+    if(!confirm('確定要封鎖此帳號？封鎖後將無法購買與發訊息。')) return;
+
+    // 建立封鎖
+    const blockId = await blockUser(uid);
+
+    // 發封鎖通知訊息
+    const notice =
+`【封鎖通知】
+你的帳號因遭檢舉並經審核確認，已被封鎖。
+自即日起禁止購買、發訊息等操作。如有疑義，請回覆此訊息或聯繫客服。`;
+    await sendSystemMessage(uid, notice);
+
+    toast('已封鎖並已通知該用戶');
+    const u = await fetchUserById(uid);
+    renderUser(u, blockId);
+  }catch(e){
+    toast(e.message || '封鎖失敗');
+  }
+}
+async function onUnblock(blockId, uid){
+  if(await forbidSelf(uid, '解除封鎖')) return;
+  try{
+    await unblock(blockId);
+    await sendSystemMessage(uid, '【解封通知】你的帳號已解除封鎖，可恢復正常使用。');
+    toast('已解除封鎖並通知');
+    const u = await fetchUserById(uid);
+    renderUser(u, null);
+  }catch(e){
+    toast(e.message||'解除失敗');
+  }
+}
+
+/* Enter 搜尋 */
+document.getElementById('kw').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') doSearch();
+});
+
+/* 初始：檢查管理員登入 */
+/* 初始：檢查管理員登入並載入檢舉 */
+(async()=>{
+  await requireAdmin();
+  await loadNewReports();   // ← 新增這行
+})();
+// 載入待處理檢舉（status = new）
+async function loadNewReports(){
+  const where = encodeURIComponent(JSON.stringify({ status:"new" }));
+  const url = `${API}/classes/Report?where=${where}&order=-createdAt&include=reporter,target&limit=20`;
+  const r = await fetch(url, { headers: lcAuth() });
+  const d = await r.json();
+  const box = document.getElementById('reportList');
+
+  if(!r.ok){ 
+    box.innerHTML = `<div style="color:#b00020">${escapeHTML(d.error||'讀取失敗')}</div>`;
+    return;
+  }
+  if(!d.results.length){
+    box.innerHTML = '<div class="muted">目前沒有新的檢舉案件</div>';
+    return;
+  }
+
+  // 渲染每一筆
+box.innerHTML = d.results.map(r=>{
+  const who = r.reporter ? (r.reporter.nickname||r.reporter.username||r.reporter.objectId) : '（未知）';
+  const tgtGid  = r.target ? r.target.objectId : r.targetGid;          // ← 目標 GID
+  const tgtName = r.target ? (r.target.nickname||r.target.username||'') : ''; // 顯示名稱
+  const when = new Date(r.createdAt).toLocaleString();
+  const img = r.images && r.images.length ? 
+    `<div>圖片：<a href="${r.images[0]}" target="_blank">查看</a></div>` : '';
+
+  return `
+    <div class="card" style="margin:10px 0;padding:12px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <b>被檢舉者：</b>
+        <span class="mono">${escapeHTML(tgtGid||'未知')}</span>
+        ${tgtName ? `<span class="muted">（${escapeHTML(tgtName)}）</span>` : ''}
+        <button class="btn" data-gid="${tgtGid||''}" onclick="copyAndSearch(this.dataset.gid)">
+          複製並搜尋
+        </button>
+      </div>
+      <div style="margin-top:6px"><b>理由：</b>${escapeHTML(r.reason||'')}</div>
+      ${img}
+      <div class="muted" style="margin-top:6px">檢舉人：${escapeHTML(who)}｜時間：${when}</div>
+    </div>
+  `;
+}).join('');
+}
+// 複製 GID，並把它帶到上方搜尋框後立即搜尋
+function copyAndSearch(gid){
+  if(!gid) return;
+  // 嘗試複製到剪貼簿（失敗就忽略）
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(gid).then(
+      ()=> toast('已複製 GID'),
+      ()=> {} // 靜默失敗
+    );
+  }
+  const kw = document.getElementById('kw');
+  if (kw) kw.value = gid;
+  doSearch();
+}
+// ===== 返回上一頁 =====
+function goBack(){
+  try{
+    const ref = document.referrer || '';
+    const sameOrigin = ref && new URL(ref).origin === location.origin;
+    if (sameOrigin) { location.href = ref; return; }
+  }catch(e){}
+  if (history.length > 1) { history.back(); return; }
+  location.href = 'shopping.html';
+}
+</script>
+<script src="im.js"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

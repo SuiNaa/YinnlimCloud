@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Grove 投票</title>
+<style>
+  :root{ --brand:#6c4ef7; --danger:#e91e63; --card:#fff; --border:#eee; --text:#222; --muted:#666; --bg:#f6f3ea; }
+  *{ box-sizing:border-box }
+  body{ margin:0; font-family:system-ui,-apple-system,"Noto Sans TC",Arial,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap{ max-width:980px; margin:0 auto; padding:20px 14px 60px; }
+  h1{ margin:6px 0 8px; text-align:center; font-size:22px; }
+  h2{ margin:18px 0 8px; text-align:center; font-size:18px; }
+  .hint{ text-align:center; color:var(--muted); font-size:13px; }
+
+  .toolbar{ display:flex; gap:8px; justify-content:center; margin:14px 0 10px; flex-wrap:wrap; }
+  .btn{ padding:10px 14px; border-radius:10px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:800; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+  .btn.muted{ color:#444; }
+  .btn.danger{ background:var(--danger); color:#fff; border-color:transparent; }
+  .btn[disabled]{ opacity:.5; cursor:not-allowed; }
+
+  .grid{ display:grid; grid-template-columns:1fr; gap:12px; margin-top:10px; }
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.06); padding:14px; }
+  .title{ font-weight:900; font-size:18px; }
+  .meta{ color:var(--muted); font-size:13px; margin-top:4px; display:flex; flex-wrap:wrap; gap:10px; }
+  .reason{ white-space:pre-wrap; }
+  .hr{ height:1px; background:#eee; margin:10px 0; }
+  .row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .chips{ display:flex; gap:6px; flex-wrap:wrap; }
+  .chip{ padding:2px 8px; border-radius:999px; background:#f2efff; color:#4b39b9; border:1px solid #ded6ff; font-size:12px; font-weight:800; }
+  .vote-bar{ display:flex; gap:8px; align-items:center; }
+  .counter{ font-weight:900; }
+  .countdown{ margin-left:auto; color:#333; font-variant-numeric:tabular-nums; }
+  .chip.L{ background:#e9eeff; color:#2d56ff; border-color:#cfd8ff; }
+  .chip.C{ background:#ffe9f0; color:#b1002f; border-color:#ffc7d2; }
+  .empty{ color:#777; text-align:center; padding:22px; }
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000; color:#fff; padding:10px 14px; border-radius:10px; opacity:0; transition:opacity .18s; z-index:10; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Grove 投票 🗳️</h1>
+  <div class="hint">本頁同時顯示：①L，②C／I。</div>
+
+  <div class="toolbar">
+    <button class="btn" onclick="goBack()">← 返回</button>
+    <button class="btn" onclick="location.href='shopping.html'">Esc Store</button>
+    <button class="btn" onclick="reloadAll()">重新整理</button>
+  </div>
+
+  <h2>公眾提案投票（L）</h2>
+  <div id="sugList" class="grid"></div>
+  <div id="sugEmpty" class="empty" style="display:none;">目前沒有公眾投票</div>
+
+  <h2>罷免投票（C／I）</h2>
+  <div id="recallList" class="grid"></div>
+  <div id="recallEmpty" class="empty" style="display:none;">目前沒有進行中的罷免投票</div>
+</div>
+
+<div id="toast" class="toast">—</div>
+
+<!-- 通用彈窗們 -->
+<div id="contentDlg" style="position:fixed;left:50%;top:16%;transform:translateX(-50%);background:#fff;color:#222;max-width:720px;width:92vw;border:1px solid #eee;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.18);padding:12px;display:none;z-index:20">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <b>投票內容</b>
+    <button class="btn" onclick="closeContent()">關閉</button>
+  </div>
+  <div id="contentBody" style="max-height:60vh;overflow:auto"></div>
+</div>
+
+<script>
+/* ====== LeanCloud 設定與共用工具 ====== */
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+/* 只讓這個 SUPER_GID 看見刪除鈕 */
+const SUPER_GID = "68b19eeb90ed2201c4839219";
+
+const AUTH = { 'X-LC-Id':APP_ID, 'X-LC-Key':APP_KEY };
+function lcHeaders(){ const t=localStorage.getItem('sg_token'); return t?{...AUTH,'X-LC-Session':t}:AUTH; }
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+function toast(s){ const t=document.getElementById('toast'); t.textContent=s; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0',1600); }
+function openContent(htmlStr){ const body = document.getElementById('contentBody'); body.innerHTML = htmlStr || '<div class="hint">（無內容）</div>'; document.getElementById('contentDlg').style.display = 'block'; }
+function closeContent(){ document.getElementById('contentDlg').style.display='none'; }
+
+let ME=null, TOKEN=null;
+async function requireLogin(){
+  TOKEN = localStorage.getItem('sg_token')||'';
+  ME    = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!TOKEN || !ME){ alert('請先登入'); location.replace('index.html'); return false; }
+  return true;
+}
+function isSuper(){ return ME && ME.objectId === SUPER_GID; }
+function goBack(){
+  try{ const ref = document.referrer || ''; const same = ref && new URL(ref).origin === location.origin; if (same) { location.href = ref; return; } }catch(_){}
+  if (history.length > 1) { history.back(); return; }
+  location.href = 'shopping.html';
+}
+
+/* ====== 共用：後台硬刪（只給超級 GID 呼叫） ====== */
+async function deleteByQuery(cls, where){
+  let skip=0;
+  while(true){
+    const q = encodeURIComponent(JSON.stringify(where));
+    const r = await fetch(`${API}/classes/${cls}?where=${q}&limit=100&skip=${skip}`, { headers: lcHeaders() });
+    const d = await r.json();
+    if(!r.ok) break;
+    const rows = d.results||[];
+    if(!rows.length) break;
+    for(const it of rows){
+      await fetch(`${API}/classes/${cls}/${it.objectId}`, { method:'DELETE', headers: lcHeaders() });
+    }
+    if(rows.length<100) break;
+    skip += rows.length;
+  }
+}
+
+/* 刪除「公眾投票」或「罷免投票」：
+   - cls: 'SuggestionVote' | 'RecallVote'
+   - bidCls: 'SuggestionBallot' | 'RecallBallot'
+   先刪 ballots，再刪 vote 本體。只有 SUPER_GID 可見 & 可按。 */
+async function hardDeleteVote(voteId, cls, bidCls){
+  if(!isSuper()){ alert('只有超級 GID 可以刪除'); return; }
+  if(!confirm('⚠️ 確定要永久刪除此投票？相關選票也會一併刪除，且無法復原。')) return;
+
+  const ptr = { "__type":"Pointer","className":cls,"objectId":voteId };
+  await deleteByQuery(bidCls, { vote: ptr });
+  const r = await fetch(`${API}/classes/${cls}/${voteId}`, { method:'DELETE', headers: lcHeaders() });
+  if(!r.ok){ const d = await r.json(); alert(d.error||'刪除失敗'); return; }
+  toast('已刪除此投票');
+  await reloadAll();
+}
+
+/* ========== 區塊 A：公眾投票（SuggestionVote） ========== */
+async function sugFetchVotes(){
+  const where = encodeURIComponent(JSON.stringify({ scope:'public', status:'open' }));
+  const url   = `${API}/classes/SuggestionVote?where=${where}&order=-createdAt&limit=100`;
+  const r = await fetch(url,{headers:lcHeaders()}); const d = await r.json();
+  if(!r.ok) throw new Error(d.error||'讀取公眾投票失敗');
+  return d.results||[];
+}
+async function sugMyBallot(voteId){
+  const where = encodeURIComponent(JSON.stringify({
+    vote:{ "__type":"Pointer","className":"SuggestionVote","objectId":voteId },
+    voter:{ "__type":"Pointer","className":"_User","objectId":ME.objectId }
+  }));
+  const r = await fetch(`${API}/classes/SuggestionBallot?where=${where}&limit=1`,{headers:lcHeaders()});
+  const d = await r.json();
+  return (r.ok && d.results && d.results[0]) ? d.results[0] : null;
+}
+async function sugCount(voteId, choice){
+  const where = encodeURIComponent(JSON.stringify({
+    vote:{ "__type":"Pointer","className":"SuggestionVote","objectId":voteId },
+    choice
+  }));
+  const r = await fetch(`${API}/classes/SuggestionBallot?where=${where}&count=1&limit=0`,{headers:lcHeaders()});
+  const d = await r.json();
+  return (r.ok && typeof d.count==='number') ? d.count : 0;
+}
+async function sugCast(voteObj, choice){
+  const headers = { 'Content-Type':'application/json', ...lcHeaders() };
+  const existed = await sugMyBallot(voteObj.objectId);
+  if(existed){
+    await fetch(`${API}/classes/SuggestionBallot/${existed.objectId}`,{method:'PUT',headers,body:JSON.stringify({choice})});
+    return existed.objectId;
+  }
+  const payload = {
+    vote:{ "__type":"Pointer","className":"SuggestionVote","objectId":voteObj.objectId },
+    voter:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
+    choice,
+    ACL:{ "*":{ "read":true }, [ME.objectId]:{ "read":true,"write":true } }
+  };
+  const r = await fetch(`${API}/classes/SuggestionBallot`,{method:'POST',headers,body:JSON.stringify(payload)});
+  const d = await r.json(); if(!r.ok) throw new Error(d.error||'投票失敗'); return d.objectId;
+}
+function sugRenderCard(v){
+  const el=document.createElement('div'); el.className='card';
+  el.innerHTML = `
+    <div class="row" style="justify-content:space-between;gap:8px">
+      <div class="title">公眾投票 <span class="chip L">L</span></div>
+      <div class="row" style="gap:8px">
+        <button class="btn" type="button" data-open-body>查看投票內容</button>
+        ${isSuper()?`<button class="btn danger" type="button" data-del>刪除此投票</button>`:''}
+      </div>
+    </div>
+    <div class="meta">建立時間：${new Date(v.createdAt).toLocaleString()}</div>
+    <div class="hr"></div>
+    <div class="row vote-bar">
+      <div class="row" style="gap:6px">
+        <button class="btn primary" data-yes>同意</button>
+        <button class="btn" data-no>不同意</button>
+      </div>
+      <div class="counter">目前：同意 <span data-yesc>0</span> ／ 不同意 <span data-noc>0</span></div>
+    </div>
+  `;
+
+  // 內容
+  el.querySelector('[data-open-body]').addEventListener('click', ()=>{
+    openContent(`<div class="reason">${escapeHTML(v.body||'(無內容)')}</div>`);
+  });
+
+  // 刪除（只有超級 GID 看得到）
+  if(isSuper()){
+    el.querySelector('[data-del]').addEventListener('click', ()=>{
+      hardDeleteVote(v.objectId, 'SuggestionVote', 'SuggestionBallot');
+    });
+  }
+
+  // 票數
+  (async()=>{
+    const [y,n] = await Promise.all([sugCount(v.objectId,'agree'), sugCount(v.objectId,'reject')]);
+    el.querySelector('[data-yesc]').textContent = y;
+    el.querySelector('[data-noc]').textContent  = n;
+  })();
+
+  // 投票
+  const busy = (b)=>{ el.querySelector('[data-yes]').disabled=b; el.querySelector('[data-no]').disabled=b; };
+  el.querySelector('[data-yes]').addEventListener('click', async ()=>{
+    try{ busy(true); await sugCast(v,'agree');
+      el.querySelector('[data-yesc]').textContent = await sugCount(v.objectId,'agree');
+      el.querySelector('[data-noc]').textContent  = await sugCount(v.objectId,'reject');
+      toast('已投同意'); }catch(e){ alert(e.message||'投票失敗'); } finally{ busy(false); }
+  });
+  el.querySelector('[data-no]').addEventListener('click', async ()=>{
+    try{ busy(true); await sugCast(v,'reject');
+      el.querySelector('[data-yesc]').textContent = await sugCount(v.objectId,'agree');
+      el.querySelector('[data-noc]').textContent  = await sugCount(v.objectId,'reject');
+      toast('已投不同意'); }catch(e){ alert(e.message||'投票失敗'); } finally{ busy(false); }
+  });
+  return el;
+}
+async function reloadSug(){
+  const list=document.getElementById('sugList'), empty=document.getElementById('sugEmpty');
+  list.innerHTML=''; empty.style.display='none';
+  try{
+    const rows = await sugFetchVotes();
+    if(!rows.length){ empty.style.display='block'; empty.textContent='目前沒有公眾投票'; return; }
+    for(const v of rows){ list.appendChild(sugRenderCard(v)); }
+  }catch(e){ empty.style.display='block'; empty.textContent=e.message||'載入失敗'; }
+}
+
+/* ========== 區塊 B：罷免投票（RecallVote） ========== */
+async function recallFetchVotes(){
+  const where = encodeURIComponent(JSON.stringify({
+    "$or": [
+      { status:"open" },
+      { status:"closed", result:"ended" },
+      { status:"closed", result:"removed" },
+      { status:"closed", result:"vetoed" }
+    ]
+  }));
+  const url = `${API}/classes/RecallVote?where=${where}&order=-createdAt&limit=100&include=target,createdBy`;
+  const r = await fetch(url, { headers: lcHeaders() });
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || '讀取罷免投票失敗');
+  return d.results || [];
+}
+async function recallMyBallot(voteId){
+  const where = encodeURIComponent(JSON.stringify({
+    vote:   { "__type":"Pointer","className":"RecallVote","objectId": voteId },
+    voter:  { "__type":"Pointer","className":"_User","objectId": ME.objectId }
+  }));
+  const url = `${API}/classes/RecallBallot?where=${where}&limit=1`;
+  const r = await fetch(url, { headers: lcHeaders() });
+  const d = await r.json();
+  if(!r.ok) return null;
+  return (d.results && d.results[0]) || null;
+}
+async function recallCast(voteObj, choice, ballot){
+  const headers = { 'Content-Type':'application/json', ...lcHeaders() };
+  if(ballot && ballot.objectId){
+    const r = await fetch(`${API}/classes/RecallBallot/${ballot.objectId}`,{
+      method:'PUT', headers, body: JSON.stringify({ choice })
+    });
+    if(!r.ok){ const d=await r.json(); throw new Error(d.error||'更新投票失敗'); }
+    return ballot.objectId;
+  }else{
+    const payload = {
+      vote:   { "__type":"Pointer","className":"RecallVote","objectId": voteObj.objectId },
+      voter:  { "__type":"Pointer","className":"_User","objectId": ME.objectId },
+      choice,
+      ACL:{
+        "*": { "read": true, "write": false },
+        [ME.objectId]: { "read": true, "write": true }
+      }
+    };
+    const r = await fetch(`${API}/classes/RecallBallot`,{
+      method:'POST', headers, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'投票失敗');
+    return d.objectId;
+  }
+}
+async function recallCount(voteId, val){
+  const where = encodeURIComponent(JSON.stringify({
+    vote:   { "__type":"Pointer","className":"RecallVote","objectId": voteId },
+    choice: val
+  }));
+  const url = `${API}/classes/RecallBallot?where=${where}&count=1&limit=0`;
+  const r = await fetch(url, { headers: lcHeaders() });
+  const d = await r.json();
+  return (r.ok && typeof d.count==='number') ? d.count : 0;
+}
+async function checkUserExists(uid){
+  try{
+    const w = encodeURIComponent(JSON.stringify({ objectId: uid }));
+    const r = await fetch(`${API}/users?where=${w}&limit=1`, { headers: lcHeaders() });
+    const d = await r.json();
+    return r.ok && d.results && d.results.length > 0;
+  }catch(_){ return false; }
+}
+function fmtLeft(ms){ if(ms<=0) return '已截止'; const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),m=Math.floor((ms%3600000)/60000); return (d?`${d}天`:'')+`${h}時${m}分`; }
+
+async function recallRenderCard(v){
+  const tgt = v.target || {};
+  const gid = (tgt.objectId || v.targetGid || '');
+  if(!gid || !(await checkUserExists(gid))) return null;
+
+  let nick = tgt.nickname || tgt.username || '';
+  if(!nick){
+    try{
+      const w = encodeURIComponent(JSON.stringify({ objectId: gid }));
+      const r = await fetch(`${API}/users?where=${w}&limit=1`, { headers: lcHeaders() });
+      const d = await r.json();
+      if(r.ok && d.results && d.results[0]) nick = d.results[0].nickname || d.results[0].username || '';
+    }catch(_){}
+  }
+
+  const isOpen  = v.status==='open';
+  const isEnded = v.status==='closed' && v.result==='ended';
+  const decidedRemoved = v.status==='closed' && v.result==='removed';
+  const decidedVetoed  = v.status==='closed' && v.result==='vetoed';
+
+  const myBallot = await recallMyBallot(v.objectId);
+  const myChoice = myBallot ? myBallot.choice : '';
+
+  const [yesCnt, noCnt] = await Promise.all([recallCount(v.objectId,'是'), recallCount(v.objectId,'否')]);
+
+  const el = document.createElement('div');
+  el.className = 'card';
+
+  const startedAt = new Date(v.startsAt?.iso || v.startsAt || Date.now());
+  const reasons = Array.isArray(v.reasons) ? v.reasons : [];
+
+  const endsAt = v.endsAt ? new Date(v.endsAt.iso || v.endsAt) : null;
+  const countdown = endsAt ? `<div class="countdown" data-end="${endsAt.toISOString()}">剩餘 ${fmtLeft(endsAt - Date.now())}</div>` : '';
+
+  el.innerHTML = `
+    <div class="row" style="justify-content:space-between;gap:8px">
+      <div class="title">
+        罷免投票 <span class="chip C">C</span>：
+        <span class="chips">
+          <span class="chip">${escapeHTML(nick||'(未命名)')}</span>
+          <span class="chip">GID：${gid}</span>
+        </span>
+      </div>
+      <div class="row" style="gap:8px">
+        <button class="btn" type="button" data-open-reasons>查看投票內容</button>
+        ${isSuper()?`<button class="btn danger" type="button" data-del>刪除此投票</button>`:''}
+      </div>
+    </div>
+
+    <div class="meta" style="gap:12px">
+      <div>發起時間：${startedAt.toLocaleString()}</div>
+      ${countdown}
+      <div class="chips" data-state></div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row vote-bar">
+      <div class="row" style="gap:6px">
+        <button class="btn primary" data-act="vote-yes" ${(!isOpen)?'disabled':''}>投「是」</button>
+        <button class="btn" data-act="vote-no" ${(!isOpen)?'disabled':''}>投「否」</button>
+      </div>
+      <div class="counter">目前：是 <span data-yes>${yesCnt}</span> 票／否 <span data-no>${noCnt}</span> 票</div>
+    </div>
+    <div class="meta" style="margin-top:6px">你的選擇：<b data-mine>${ myChoice || (isOpen?'尚未投票':'（已關閉）') }</b></div>
+  `;
+
+  // 狀態標籤
+  const st = el.querySelector('[data-state]');
+  if(isEnded){
+    st.innerHTML = `<span class="chip">投票已結束，等待行政院決定</span>`;
+  }else if(decidedRemoved){
+    st.innerHTML = `<span class="chip" style="background:#ffe8ec;border-color:#ffc7d2;color:#b1002f;">結論：同意罷免</span>`;
+  }else if(decidedVetoed){
+    st.innerHTML = `<span class="chip" style="background:#e9fff0;border-color:#c8f4d7;color:#106b2f;">結論：不同意罷免</span>`;
+  }
+
+  // 內容
+  el.querySelector('[data-open-reasons]').addEventListener('click', ()=>{
+    const html = (reasons||[]).length
+      ? reasons.map((t,i)=>`<div class="card" style="margin:6px 0;background:#fafafa"><div style="font-weight:800">#${i+1}</div><div class="reason">${escapeHTML(t||'')}</div></div>`).join('')
+      : '<div class="hint">（無提供理由）</div>';
+    openContent(html);
+  });
+
+  // 刪除（只有超級 GID 看得到）
+  if(isSuper()){
+    el.querySelector('[data-del]').addEventListener('click', ()=>{
+      hardDeleteVote(v.objectId, 'RecallVote', 'RecallBallot');
+    });
+  }
+
+  // 投票
+  if(isOpen){
+    const btnYes = el.querySelector('[data-act="vote-yes"]');
+    const btnNo  = el.querySelector('[data-act="vote-no"]');
+    function setBusy(b){ btnYes.disabled=b; btnNo.disabled=b; }
+    btnYes.addEventListener('click', async ()=>{
+      try{
+        setBusy(true);
+        const existed = await recallMyBallot(v.objectId);
+        await recallCast(v,'是', existed);
+        toast('已送出你的選票（是）');
+        el.querySelector('[data-mine]').textContent='是';
+        el.querySelector('[data-yes]').textContent = await recallCount(v.objectId,'是');
+        el.querySelector('[data-no]').textContent  = await recallCount(v.objectId,'否');
+      }catch(e){ alert(e.message||'投票失敗'); }
+      finally{ setBusy(false); }
+    });
+    btnNo.addEventListener('click', async ()=>{
+      try{
+        setBusy(true);
+        const existed = await recallMyBallot(v.objectId);
+        await recallCast(v,'否', existed);
+        toast('已送出你的選票（否）');
+        el.querySelector('[data-mine]').textContent='否';
+        el.querySelector('[data-yes]').textContent = await recallCount(v.objectId,'是');
+        el.querySelector('[data-no]').textContent  = await recallCount(v.objectId,'否');
+      }catch(e){ alert(e.message||'投票失敗'); }
+      finally{ setBusy(false); }
+    });
+  }
+
+  return el;
+}
+async function reloadRecall(){
+  const list = document.getElementById('recallList');
+  const empty= document.getElementById('recallEmpty');
+  list.innerHTML=''; empty.style.display='none';
+  try{
+    const rows = await recallFetchVotes();
+    let count = 0;
+    for(const v of rows){
+      const card = await recallRenderCard(v);
+      if(card){ list.appendChild(card); count++; }
+    }
+    if(!count) empty.style.display='block';
+  }catch(e){
+    empty.style.display='block';
+    empty.textContent = e.message || '載入失敗，請稍後再試';
+  }
+}
+
+/* ========== 一鍵刷新 + 輪詢倒數 ========== */
+async function reloadAll(){ await Promise.all([reloadSug(), reloadRecall()]); }
+function fmtLeftTick(){
+  document.querySelectorAll('.countdown').forEach(el=>{
+    const end = new Date(el.dataset.end);
+    const left = end - Date.now();
+    el.textContent = '剩餘 ' + fmtLeft(left);
+  });
+}
+let pollTimer=null;
+function startPolling(){ stopPolling(); pollTimer = setInterval(fmtLeftTick, 30000); }
+function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
+/* 啟動 */
+(async()=>{
+  const ok = await requireLogin(); if(!ok) return;
+  await reloadAll();
+  fmtLeftTick();
+  startPolling();
+})();
+</script>
+</body>
+</html>

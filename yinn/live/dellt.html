@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>處理買方申訴</title>
+<style>
+  :root{ --brand:#6c4ef7; --muted:#777; --accent:#e91e63; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Noto Sans TC",Arial,sans-serif;background:#fafafa;color:#222;}
+  .topbar{position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid #eee; padding:10px 14px; display:flex; align-items:center; gap:10px;}
+  .topbar a{ color:var(--brand); text-decoration:none; font-weight:800; }
+  .wrap{ max-width:980px; margin:0 auto; padding:18px 14px 48px; }
+  .list{ display:grid; gap:12px; }
+  .card{ background:#fff; border:1px solid #eee; border-radius:14px; padding:12px; box-shadow:0 6px 16px rgba(0,0,0,.06); display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+  .thumb{ width:64px; height:64px; border-radius:10px; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+  .meta{ flex:1 1 360px; min-width:260px; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .muted{ color:var(--muted); }
+  .price{ color:#e91e63; font-weight:900; }
+  .actions{ display:flex; gap:8px; margin-left:auto; }
+  .btn{ padding:8px 12px; border-radius:10px; border:1px solid #ddd; background:#fff; font-weight:800; cursor:pointer; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+  .btn.ghost{ background:#fff; }
+  .btn.disabled{ background:#e9e9ee; color:#999; border-color:#ddd; cursor:not-allowed; }
+  .backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:16px; z-index:1000; }
+  .dlg{ width:min(560px, 94vw); background:#fff; border:1px solid #eee; border-radius:16px; overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,.18); }
+  .dlg header{ position:sticky; top:0; background:#fff; padding:12px 14px; font-weight:900; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;}
+  .dlg .body{ padding:14px; max-height:70vh; overflow:auto; -webkit-overflow-scrolling:touch; white-space:pre-wrap; line-height:1.6; }
+  .dlg .actions{ position:sticky; bottom:0; background:#fff; display:flex; gap:10px; justify-content:flex-end; padding:10px 14px; border-top:1px solid #eee; }
+  .label{ font-size:12px; color:#777; margin:8px 0 4px; }
+  .input, .file, textarea{ width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; outline:none; }
+  textarea{ min-height:110px; resize:vertical; }
+  .err{ color:#b00020; font-size:13px; margin-top:6px; }
+  .proof{ max-width:280px; border:1px solid #eee; border-radius:10px; background:#fff; }
+  .hint{ color:#777; font-size:12px; }
+  /* ========== 夜間模式變數 ========== */
+html[data-theme="dark"]{
+  --text:#cfc3ff;
+  --muted:#9a8fd1;
+  --brand:#a48cff;
+  --accent:#bf66ff;
+
+  --card-bg:#161222;
+  --card-border:#2b2440;
+  --page-bg:#0f0b1a;
+
+  --btn-bg:#1b1629;
+  --btn-border:#2b2440;
+  --btn-text:#cfc3ff;
+
+  --shadow:0 10px 28px rgba(0,0,0,.45);
+}
+
+/* ========== 全局色系（夜間） ========== */
+html[data-theme="dark"] body{ background:var(--page-bg); color:var(--text); }
+html[data-theme="dark"] .muted{ color:var(--muted); }
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .dlg,
+html[data-theme="dark"] .wrap{
+  background:var(--card-bg);
+  border-color:var(--card-border);
+  color:var(--text);
+}
+html[data-theme="dark"] .label{ color:var(--muted); }
+html[data-theme="dark"] .btn{ background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--btn-text); }
+html[data-theme="dark"] .btn.primary{ background:var(--brand); color:#161222; border-color:transparent; }
+html[data-theme="dark"] .btn.disabled{ background:#201a31; color:#7f76ad; border-color:var(--card-border); }
+html[data-theme="dark"] .input,
+html[data-theme="dark"] .file,
+html[data-theme="dark"] textarea{
+  background:transparent;
+  color:var(--text);
+  border:1px solid var(--card-border);
+}
+html[data-theme="dark"] .proof{ background:transparent; border:1px solid var(--card-border); }
+html[data-theme="dark"] .backdrop{ background:rgba(0,0,0,.55); }
+
+/* ========== 圓球按鈕 + 下拉選單 ========== */
+.menu-wrap{ position:relative; display:inline-flex; gap:8px; align-items:center; }
+
+/* 圓球按鈕（白天是品牌色、夜間走暗色系） */
+.menu-btn{
+  width:34px; height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700; line-height:1;
+  background:var(--brand); color:#fff; border:none;
+  cursor:pointer; transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
+  box-shadow:0 4px 12px rgba(108,78,247,.22);
+}
+.menu-btn:hover{ transform:scale(1.08); }
+.menu-btn:active{ transform:scale(.95); }
+html[data-theme="dark"] .menu-btn{
+  background:var(--btn-bg);
+  border:1px solid var(--btn-border);
+  color:var(--btn-text);
+  box-shadow:none;
+}
+
+/* 下拉（白天淡粉、夜間暗色）＋自適應不被擋住 */
+.dropdown{
+  position:absolute; top:calc(100% + 8px);
+  right:0; left:auto;                 /* ✅ 靠右對齊避免被螢幕右邊擋住 */
+  max-width:90vw;                     /* ✅ 最多佔 90% 螢幕寬 */
+  transform:translateY(-6px) scale(.98);
+  opacity:0; visibility:hidden; pointer-events:none;
+  min-width:220px; border-radius:14px; padding:8px; z-index:999;
+  transition:opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+  background:#fdeaff; color:#4a3a6a;             /* 淡粉背景（白天） */
+  border:1px solid #f5ccff;
+  box-shadow:0 16px 32px rgba(0,0,0,.18);
+  overflow-wrap:break-word;
+}
+.dropdown.show{
+  transform:translateY(0) scale(1);
+  opacity:1; visibility:visible; pointer-events:auto;
+}
+.dropdown::after{ content:none; }                 /* 去掉那個突起箭頭 */
+.dropdown .item{
+  width:100%; text-align:left; padding:10px 12px;
+  border:0; background:transparent; color:inherit;
+  border-radius:8px; cursor:pointer; transition:.12s;
+}
+.dropdown .item:hover{ background:rgba(108,78,247,.10); transform:translateY(-1px); }
+html[data-theme="dark"] .dropdown{
+  background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); box-shadow:var(--shadow);
+}
+
+/* 小螢幕鋪滿避免左右被擋 */
+@media (max-width:560px){
+  .dropdown, .dropdown.show{ left:0 !important; right:auto !important; width:92vw; }
+}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="user.html">← 返回個人主頁</a>
+    <a href="ipuser.html" style="margin-left:auto">我的發貨</a>
+    <div class="menu-wrap">
+  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+  <div id="menuDrop" class="dropdown" role="menu">
+    <!-- 第一個選項：切換模式 -->
+    <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
+     <button class="item" onclick="location.href='../index.html'">主頁</button>
+    <button class="item" onclick="location.href='Grove.Examination-Yuan.html'">參加管理員</button>
+    <button class="item" onclick="location.href='Grove. Control-Yuan.html'">Control</button>
+    <button class="item" onclick="location.href='Grove.Executive-Yuan.html'">Executive</button>
+    <button class="item" onclick="location.href='Grove.Judicial-Yuan.html'">申訴</button>
+    <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
+    <button class="item" onclick="location.href='vote.html'">投票專區</button>
+    <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+  </div>
+</div>
+  </div>
+
+  <div class="wrap">
+    <h2 style="margin:0 0 12px">買方申訴管理</h2>
+    <div id="orderList" class="list"></div>
+  </div>
+
+  <!-- 查看申訴理由 -->
+  <div id="appealViewDlg" class="backdrop">
+    <div class="dlg">
+      <header>
+        <div>申訴理由</div>
+        <button class="btn" onclick="closeAppealView()">關閉</button>
+      </header>
+      <div class="body">
+        <div id="avReason">—</div>
+        <div class="label">申訴圖片</div>
+        <img id="avProof" class="proof" style="display:none" alt="申訴圖片">
+      </div>
+    </div>
+  </div>
+
+  <!-- 查看原駁回理由 -->
+  <div id="rejectViewDlg" class="backdrop">
+    <div class="dlg">
+      <header>
+        <div>原駁回理由</div>
+        <button class="btn" onclick="closeRejectView()">關閉</button>
+      </header>
+      <div class="body">
+        <div id="rvReason">—</div>
+        <div class="label">駁回圖片</div>
+        <img id="rvProof" class="proof" style="display:none" alt="駁回圖片">
+      </div>
+    </div>
+  </div>
+
+  <!-- 駁回申訴 -->
+  <div id="appealRejectDlg" class="backdrop">
+    <div class="dlg">
+      <header>
+        <div>駁回申訴</div>
+        <button class="btn" onclick="closeAppealReject()">關閉</button>
+      </header>
+      <div class="body">
+        <div class="label">駁回申訴理由</div>
+        <textarea id="arReason" class="input" placeholder="請輸入駁回申訴理由"></textarea>
+        <div class="label">圖片（可選）</div>
+        <input id="arProof" class="file" type="file" accept="image/*">
+        <div class="hint">送出後會以訊息通知買家，訂單仍維持「駁回」。</div>
+        <div id="arErr" class="err"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="closeAppealReject()">取消</button>
+        <button class="btn primary" onclick="submitAppealReject()">確認送出</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API     = "https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID  = "ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY = "U66ybZWAD99LrT9zJnQlW52H";
+
+(function guard(){
+  const t = localStorage.getItem('sg_token');
+  const u = JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!t || !u){ location.replace('index.html?redirect=dellt'); }
+})();
+const me    = JSON.parse(localStorage.getItem('sg_user')||'null');
+const token = localStorage.getItem('sg_token');
+const AUTH  = { 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY, 'X-LC-Session': token };
+
+const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="100%" height="100%" rx="40" ry="40" fill="#f3f3f3"/><text x="50%" y="55%" text-anchor="middle" font-size="28">🙂</text></svg>`);
+const money = n => Number(n||0).toLocaleString('zh-TW');
+const GID = me?.gid || me?.objectId || '';
+
+let ORDERS = [];
+let CURRENT = null;
+
+/* ---------- 核心：抓資料 + 偵測「再次申訴」 ---------- */
+async function fetchAppeals(){
+  // 先拿到賣家的所有訂單（保底用 updatedAt 做判斷）
+  const where = encodeURIComponent(JSON.stringify({
+    seller:{ "__type":"Pointer","className":"_User","objectId": me.objectId }
+  }));
+  const url = `${API}/classes/Order?where=${where}&order=-updatedAt&limit=200&include=buyer,product`;
+  const res = await fetch(url,{ headers: AUTH });
+  const data = await res.json();
+  if(!res.ok){ console.warn('fetchAppeals error:', data); return []; }
+
+  const list = (data.results||[]).filter(o=>{
+  // ✅ 只看買家是否「有申訴跡象」
+  const buyerAppealed =
+    !!(o.appealedAt || o.appealReason || o.appealProofUrl);
+
+  if (!buyerAppealed) return false;     // ← 沒申訴就不進清單
+
+  // 時間基準
+  const appealTs   = o.appealedAt ? new Date(o.appealedAt.iso || o.appealedAt).getTime()
+                                  : new Date(o.updatedAt).getTime();
+  const decisionTs = o.appealDecisionAt ? new Date(o.appealDecisionAt.iso || o.appealDecisionAt).getTime() : 0;
+
+  // 是否被你隱藏過
+  const archived     = o.appealArchivedBySeller === true;
+  const archivedMark = o.appealArchivedAppealedAt ? new Date(o.appealArchivedAppealedAt).getTime() : 0;
+
+  const approved  = o.appealDecision === 'approved';
+  const reAppealed = appealTs > Math.max(decisionTs, archivedMark);
+
+  // 再申訴 → 自動解除隱藏…（原本邏輯保留）
+  if (reAppealed) {
+    o.appealArchivedBySeller = false;
+    delete o.appealDecision;
+    delete o.appealDecisionAt;
+    delete o.appealRejectReason;
+    delete o.appealRejectProofUrl;
+    delete o.appealArchivedAppealedAt;
+    fetch(`${API}/classes/Order/${o.objectId}`,{
+      method:'PUT',
+      headers:{...AUTH,'Content-Type':'application/json'},
+      body: JSON.stringify({
+        appealArchivedBySeller:false,
+        appealArchivedAppealedAt:{ "__op":"Delete" },
+        appealDecision:{ "__op":"Delete" },
+        appealDecisionAt:{ "__op":"Delete" },
+        appealRejectReason:{ "__op":"Delete" },
+        appealRejectProofUrl:{ "__op":"Delete" }
+      })
+    }).catch(()=>{});
+  }
+
+  // 顯示條件：有申訴，且（尚未處理 or 有再申訴），且（未被隱藏 or 有再申訴）
+  return buyerAppealed && (!approved || reAppealed) && (!archived || reAppealed);
+});
+
+  await hydrateBuyers(list);
+  await fillBuyerByMessages(list);
+  return list;
+}
+
+/* 批次補買家暱稱頭貼 */
+async function hydrateBuyers(list){
+  const ids = Array.from(new Set((list||[]).map(o=>o?.buyer?.objectId).filter(Boolean)));
+  if(!ids.length) return;
+  const where = encodeURIComponent(JSON.stringify({ objectId:{ "$in": ids } }));
+  try{
+    const r = await fetch(`${API}/users?where=${where}&limit=${ids.length}`,{ headers:{...AUTH}});
+    const d = await r.json(); if(!r.ok) return;
+    const dict = new Map(); (d.results||[]).forEach(u=>dict.set(u.objectId,u));
+    list.forEach(o=>{
+      const u = dict.get(o?.buyer?.objectId);
+      if(u){
+        o.buyer.nickname = u.nickname || u.username || '';
+        o.buyer.username = u.username || o.buyer.username || '';
+        o.buyer.avatarUrl = (u.avatarUrl||'').replace(/^http:\/\//,'https://');
+      }
+    });
+  }catch(e){}
+}
+
+/* 若 buyer 缺失，用 Message(kind='order') 回填（保底） */
+async function fillBuyerByMessages(list){
+  for(const o of (list||[])){
+    if(o?.buyer?.objectId) continue;
+    try{
+      const where = encodeURIComponent(JSON.stringify({
+        kind:'order',
+        order:{ "__type":"Pointer","className":"Order","objectId": o.objectId }
+      }));
+      const url = `${API}/classes/Message?where=${where}&order=createdAt&limit=1&include=from`;
+      const r = await fetch(url,{ headers:AUTH });
+      const d = await r.json(); if(!r.ok) continue;
+      const m = (d.results||[])[0]; const u = m && m.from;
+      if(u && u.objectId){
+        try{
+          const ru = await fetch(`${API}/users/${u.objectId}`,{ headers:{...AUTH}});
+          const fu = await ru.json();
+          if(ru.ok && fu){
+            u.nickname = fu.nickname || fu.username || u.nickname || '';
+            u.username = fu.username || u.username || '';
+            u.avatarUrl = fu.avatarUrl || u.avatarUrl || '';
+          }
+        }catch(e){}
+        o.buyer = {
+          "__type":"Pointer","className":"_User","objectId": u.objectId,
+          nickname: u.nickname || u.username || '',
+          username: u.username || '',
+          avatarUrl: (u.avatarUrl||'').replace(/^http:\/\//,'https://')
+        };
+      }
+    }catch(e){}
+  }
+}
+
+/* ---------- UI ---------- */
+function renderList(){
+  const box = document.getElementById('orderList');
+  box.innerHTML='';
+  if(!ORDERS.length){
+    box.innerHTML = `<div class="muted">目前沒有待處理的申訴。</div>`;
+    return;
+  }
+  ORDERS.forEach(o=>{
+    const p = o.product||{};
+    const io = o.io || '';
+    const dt = new Date(o.appealedAt?.iso || o.appealedAt || o.updatedAt || o.createdAt);
+    const thumb = p.imageUrl || (Array.isArray(p.images)&&p.images[0]) || DEFAULT_AVATAR;
+    const unitPrice = (o.unitPrice ?? o.price) || 0;
+    const qty = (o.quantity ?? 1);
+    const total = (o.totalPrice ?? (unitPrice*qty)) || unitPrice;
+    const buyerName =
+      (o.buyer && (o.buyer.nickname || o.buyer.username)) ||
+      (o.buyer && o.buyer.objectId ? ('#'+o.buyer.objectId.slice(-6)) : '—');
+
+    const approved   = o.appealDecision === 'approved';
+    const rejected   = o.appealDecision === 'rejected';
+    const actedDone  = approved || rejected;   // 只要處理過，就兩顆都鎖
+    const disableAll = actedDone;
+
+    const card = document.createElement('div');
+card.className='card';
+card.id = `order_${o.objectId}`;
+card.innerHTML = `
+  <img class="thumb" src="${thumb}" alt="">
+  <div class="meta">
+    <div class="row">
+      <div style="font-weight:900">${escapeHTML(p.title || o.productTitle || '未命名商品')}</div>
+      <div class="muted">（規格：${escapeHTML(o.variantName || '')}）</div>
+    </div>
+
+    ${io ? `<div class="row"><div class="muted">IO：<code style="font-family:ui-monospace,monospace">${escapeHTML(io)}</code></div></div>` : ''}  <!-- ← 這一行是關鍵 -->
+
+    <div class="row">
+      <div>買家：<b>${escapeHTML(buyerName)}</b></div>
+      <div class="muted">｜ 申訴時間：${dt.toLocaleString()}</div>
+    </div>
+    <div class="row" style="margin-top:4px">
+      <div>單價：<span class="price">¥${money(unitPrice)}</span></div>
+      ${qty?`<div>｜ 數量：${qty}</div>`:''}
+      <div>｜ 總額：<span class="price">¥${money(total)}</span></div>
+      <div class="muted">｜ 狀態：${escapeHTML(o.status || 'submitted')}</div>
+    </div>
+  </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="viewAppeal('${o.objectId}')">查看申訴理由</button>
+        <button class="btn ghost" onclick="viewReject('${o.objectId}')">檢查駁回理由</button>
+
+        ${disableAll
+          ? `<button class="btn disabled" disabled>駁回申訴</button>`
+          : `<button class="btn ghost" onclick="openAppealReject('${o.objectId}')">駁回申訴</button>`}
+
+        ${disableAll
+          ? `<button class="btn disabled" disabled>申訴通過</button>`
+          : `<button class="btn primary" onclick="approveAppeal('${o.objectId}')">申訴通過</button>`}
+
+        ${actedDone ? `<button class="btn ghost" onclick="archiveAppeal('${o.objectId}')">刪除此條列</button>` : ``}
+      </div>
+    `;
+    box.appendChild(card);
+  });
+}
+
+function findOrder(id){ return ORDERS.find(o=>o.objectId===id); }
+function removeCard(id){ const el=document.getElementById(`order_${id}`); if(el) el.remove(); }
+
+/* 實際隱藏（記下當時的 appealedAt/updatedAt，方便再次申訴比對） */
+async function archiveAppeal(id){
+  const o = findOrder(id); if(!o) return;
+  if(!confirm('確定要把這條申訴從清單隱藏嗎？')) return;
+
+  const appealedTime = o.appealedAt ? new Date(o.appealedAt.iso || o.appealedAt).toISOString()
+                                     : new Date(o.updatedAt).toISOString();
+
+  try{
+    const r = await fetch(`${API}/classes/Order/${id}`,{
+      method:'PUT',
+      headers:{ ...AUTH, 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        appealArchivedBySeller: true,
+        appealArchivedAppealedAt: appealedTime,
+        appealArchivedAt: { "__type":"Date", "iso": new Date().toISOString() }
+      })
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || '操作失敗');
+
+    const idx = ORDERS.findIndex(x=>x.objectId===id);
+    if(idx>=0) ORDERS.splice(idx,1);
+    removeCard(id);
+  }catch(e){
+    alert(e.message||'刪除失敗');
+  }
+}
+
+/* 查看申訴 / 駁回理由 */
+function viewAppeal(id){
+  const o = findOrder(id); if(!o) return;
+  document.getElementById('avReason').textContent = o.appealReason || '—';
+  const img = document.getElementById('avProof');
+  const u = (o.appealProofUrl||'').replace(/^http:\/\//,'https://');
+  if(u){ img.src=u; img.style.display='block'; } else { img.removeAttribute('src'); img.style.display='none'; }
+  document.getElementById('appealViewDlg').style.display='flex';
+  // 在 setContent 之後自訂一個顯示位（用現有 body 直接塞字）
+const io = (o.io || '').trim();
+if (io) {
+  const body = document.querySelector('#appealViewDlg .body');
+  const el = document.createElement('div');
+  el.className = 'label';
+  el.innerHTML = `IO：<code style="font-family:ui-monospace,monospace">${escapeHTML(io)}</code>`;
+  body.appendChild(el);
+}
+}
+function closeAppealView(){ document.getElementById('appealViewDlg').style.display='none'; }
+
+function viewReject(id){
+  const o = findOrder(id); if(!o) return;
+  document.getElementById('rvReason').textContent = o.rejectReason || '—';
+  const img = document.getElementById('rvProof');
+  const u = (o.rejectProofUrl||'').replace(/^http:\/\//,'https://');
+  if(u){ img.src=u; img.style.display='block'; } else { img.removeAttribute('src'); img.style.display='none'; }
+  document.getElementById('rejectViewDlg').style.display='flex';
+}
+function closeRejectView(){ document.getElementById('rejectViewDlg').style.display='none'; }
+
+/* 檔案上傳 */
+function fileToBase64(file){ return new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onload=()=>resolve(fr.result.split(',')[1]); fr.onerror=reject; fr.readAsDataURL(file); }); }
+async function uploadOne(file){
+  const base64 = await fileToBase64(file);
+  const r = await fetch(`${API}/files/${encodeURIComponent(file.name)}`,{
+    method:'POST', headers:{...AUTH,'Content-Type':'application/json'}, body: JSON.stringify({ base64 })
+  });
+  const data = await r.json();
+  if(!r.ok) throw new Error(data.error || '檔案上傳失敗');
+  return data.url;
+}
+
+/* 申訴通過：狀態改回 submitted、清空欄位、通知買家（兩顆一起鎖） */
+function delOp(){ return {"__op":"Delete"}; }
+
+async function approveAppeal(id){
+  const o = findOrder(id); if(!o) return;
+  if(!confirm('確認通過本次申訴？\n訂單將回到「未發貨」狀態。')) return;
+  try{
+    const nowIso = new Date().toISOString();
+    const clear = {
+      status: 'submitted',
+      appealedAt: delOp(),
+      appealReason: delOp(),
+      appealProofUrl: delOp(),
+      appealDecision: 'approved',
+      appealDecisionAt: { "__type":"Date", "iso": nowIso },
+      rejectReason: delOp(),
+      rejectProofUrl: delOp()
+    };
+    const put = await fetch(`${API}/classes/Order/${id}`,{
+      method:'PUT', headers:{...AUTH,'Content-Type':'application/json'}, body: JSON.stringify(clear)
+    });
+    const pd = await put.json();
+    if(!put.ok) throw new Error(pd.error || '更新訂單失敗');
+
+    const idx = ORDERS.findIndex(x=>x.objectId===id);
+    if(idx>=0){
+      ORDERS[idx].appealDecision   = 'approved';
+      ORDERS[idx].appealDecisionAt = nowIso;
+      delete ORDERS[idx].appealedAt;
+      delete ORDERS[idx].appealReason;
+      delete ORDERS[idx].appealProofUrl;
+      delete ORDERS[idx].rejectReason;
+      delete ORDERS[idx].rejectProofUrl;
+    }
+    renderList();
+
+    if(o?.buyer?.objectId){
+  const io = o.io || ''; // ← 新增
+  const msgText = `${GID} 申訴通過${io ? `｜IO：${io}` : ''}`;  // ← 改
+  await fetch(`${API}/classes/Message`,{
+    method:'POST',
+    headers:{...AUTH,'Content-Type':'application/json'},
+    body: JSON.stringify({
+      kind:'appeal_ok',
+      text: msgText,
+      body: msgText,
+      from:{ "__type":"Pointer","className":"_User","objectId": me.objectId },
+      to:  { "__type":"Pointer","className":"_User","objectId": o.buyer.objectId },
+      order:{ "__type":"Pointer","className":"Order","objectId": o.objectId },
+      product: o.product ? { "__type":"Pointer","className":"Product","objectId": o.product.objectId } : undefined,
+      data:{ io }  // ← 新增
+    })
+  });
+}
+
+    alert('✅ 已通過申訴，訂單回到未發貨。');
+  }catch(e){
+    alert(e.message || '操作失敗');
+  }
+}
+
+/* 駁回申訴（兩顆一起鎖，寫 appealDecisionAt） */
+function openAppealReject(id){
+  CURRENT = findOrder(id) || null; if(!CURRENT) return;
+  document.getElementById('arReason').value = '';
+  document.getElementById('arProof').value = '';
+  document.getElementById('arErr').textContent = '';
+  document.getElementById('appealRejectDlg').style.display='flex';
+}
+function closeAppealReject(){ document.getElementById('appealRejectDlg').style.display='none'; }
+
+async function submitAppealReject(){
+  if(!CURRENT) return;
+  const reason = document.getElementById('arReason').value.trim();
+  const pf = document.getElementById('arProof').files[0];
+  if(!reason){ document.getElementById('arErr').textContent='請填寫駁回申訴理由'; return; }
+
+  try{
+    let proofUrl = '';
+    if(pf) proofUrl = await uploadOne(pf);
+
+    const nowIso = new Date().toISOString();
+    const put = await fetch(`${API}/classes/Order/${CURRENT.objectId}`,{
+      method:'PUT',
+      headers:{...AUTH,'Content-Type':'application/json'},
+      body: JSON.stringify({
+        status: 'rejected',
+        appealDecision: 'rejected',
+        appealDecisionAt: { "__type":"Date", "iso": nowIso },
+        appealRejectReason: reason,
+        appealRejectProofUrl: proofUrl
+      })
+    });
+    const pd = await put.json();
+    if(!put.ok) throw new Error(pd.error || '更新訂單失敗');
+
+    const idx = ORDERS.findIndex(x=>x.objectId===CURRENT.objectId);
+    if(idx>=0){
+      ORDERS[idx].appealDecision   = 'rejected';
+      ORDERS[idx].appealDecisionAt = nowIso;
+      ORDERS[idx].appealRejectReason   = reason;
+      ORDERS[idx].appealRejectProofUrl = proofUrl;
+    }
+    closeAppealReject();
+    renderList();
+
+    if(CURRENT?.buyer?.objectId){
+  const io = CURRENT.io || ''; // ← 新增
+  const msgText = `商家駁回申訴：${reason}${io ? `｜IO：${io}` : ''}`; // ← 改
+  await fetch(`${API}/classes/Message`,{
+    method:'POST',
+    headers:{...AUTH,'Content-Type':'application/json'},
+    body: JSON.stringify({
+      kind:'appeal_reject',
+      text: msgText,
+      body: msgText,
+      from:{ "__type":"Pointer","className":"_User","objectId": me.objectId },
+      to:  { "__type":"Pointer","className":"_User","objectId": CURRENT.buyer.objectId },
+      order:{ "__type":"Pointer","className":"Order","objectId": CURRENT.objectId },
+      product: CURRENT.product ? { "__type":"Pointer","className":"Product","objectId": CURRENT.product.objectId } : undefined,
+      data:{ reason, proofUrl, io }  // ← 新增
+    })
+  });
+}
+
+    alert('✅ 已駁回申訴並通知買家');
+  }catch(e){
+    document.getElementById('arErr').textContent = e.message || '送出失敗';
+  }
+}
+
+/* 啟動 & 輪詢（6 秒） */
+(async function start(){
+  ORDERS = await fetchAppeals();
+  renderList();
+})();
+setInterval(async ()=>{
+  ORDERS = await fetchAppeals();
+  renderList();
+}, 3000);
+
+/* utils */
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
+</script>
+<script src="im.js"></script>
+<!--=================-->
+<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
+  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+</p>
+</body>
+</html>

@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Grove 立法院</title>
+<style>
+  :root{ --brand:#6c4ef7; --danger:#e91e63; --card:#fff; --border:#eee; --text:#222; --muted:#666; --bg:#f6f3ea; }
+  *{ box-sizing:border-box }
+  .law-body{ ime-mode:auto; } /* 非標準屬性，但有些舊瀏覽器吃 */
+  body{ margin:0; font-family:system-ui,-apple-system,"Noto Sans TC",Arial,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap{ max-width:980px; margin:0 auto; padding:20px 14px 60px; }
+  h1{ margin:6px 0 8px; text-align:center; font-size:22px; }
+  .hint{ text-align:center; color:var(--muted); font-size:13px; }
+  .toolbar{ display:flex; gap:8px; justify-content:center; margin:14px 0 10px; flex-wrap:wrap; }
+  .btn{ padding:10px 14px; border-radius:10px; border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:800; }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
+  .btn.danger{ background:var(--danger); color:#fff; border-color:transparent; }
+  .btn[disabled]{ opacity:.5; cursor:not-allowed; }
+  .grid{ display:grid; grid-template-columns:1fr; gap:12px; margin-top:10px; }
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.06); padding:14px; }
+  .row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .title{ font-weight:900; font-size:18px; }
+  .meta{ color:var(--muted); font-size:13px; margin-top:4px; display:flex; flex-wrap:wrap; gap:10px; }
+  .hr{ height:1px; background:#eee; margin:10px 0; }
+  .chip{ padding:2px 8px; border-radius:999px; background:#f2efff; color:#4b39b9; border:1px solid #ded6ff; font-size:12px; font-weight:800; }
+  .chip.L{ background:#e9eeff; color:#2d56ff; border-color:#cfd8ff; }
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000; color:#fff; padding:10px 14px; border-radius:10px; opacity:0; transition:opacity .18s; z-index:10; }
+
+  /* 簡易彈窗 */
+  .mask{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); z-index:999; padding:16px; }
+  .modal{ width:min(680px,92vw); max-height:92vh; overflow:auto; background:#fff; border:1px solid #eee; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.18); }
+  .modal header{ position:sticky; top:0; background:#fff; padding:12px 14px; border-bottom:1px solid #eee; font-weight:900; display:flex; justify-content:space-between; align-items:center; }
+  .modal .body{ padding:14px; }
+  .modal .actions{ padding:10px 14px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end; }
+  .input, .textarea{ width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; outline:none; }
+  .textarea{ min-height:140px; resize:vertical; }
+  /* === 漢堡選單（∞） === */
+:root{
+  --brand:#6c4ef7; --danger:#e91e63; --card:#fff; --border:#eee; --text:#222; --muted:#666; --bg:#f6f3ea;
+  --ham-w: min(360px, 86vw);
+}
+
+/* 圓形、放大、字更大 */
+.hamburger{
+  position:fixed; left:14px; top:14px; z-index:1100;
+  width:30px; height:30px; border-radius:50%;
+  border:1px solid #ddd; background:#fff; cursor:pointer; font-weight:900;
+  font-size:15px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 18px rgba(0,0,0,.12);
+  transition: transform .36s cubic-bezier(.22,1,.36,1), box-shadow .24s, background .2s;
+}
+.hamburger:hover{ box-shadow:0 10px 26px rgba(0,0,0,.18); }
+.hamburger:active{ transform:scale(.94); }
+
+/* 開啟時 ∞ 被「推到」側欄外，並輕微旋轉 */
+body.ham-open .hamburger{
+  transform: translateX(calc(var(--ham-w) + 14px)) rotate(90deg);
+}
+
+/* 遮罩：可淡入淡出 */
+.ham-mask{
+  position:fixed; inset:0; z-index:1099; display:none;
+  background:rgba(0,0,0,.38);
+  opacity:0;
+  transition: opacity .28s ease;
+  backdrop-filter: blur(2px);
+}
+.ham-mask.show{ display:block; opacity:1; }
+.ham-mask.leaving{ opacity:0; } /* 退場淡出 */
+
+/* 側欄本體：我們用 opacity+translate 做淡入淡出 */
+/* 側欄本體：一開始就定位在左側，只做透明度/模糊動畫 */
+.ham-panel{
+  position:absolute; left:0; top:0; height:100%; width:var(--ham-w);
+  background:#fff; border-right:1px solid #eee; box-shadow:0 10px 28px rgba(0,0,0,.2);
+  opacity:0; filter: blur(6px);
+}
+
+/* 純淡入（帶一點清晰化的質感） */
+@keyframes panel-fade-in {
+  0%   { opacity:0; filter: blur(6px); }
+  100% { opacity:1; filter: blur(0);   }
+}
+
+/* 純淡出 */
+@keyframes panel-fade-out {
+  0%   { opacity:1; filter: blur(0);   }
+  100% { opacity:0; filter: blur(6px); }
+}
+
+/* 顯示／收回時套對應動畫 */
+.ham-mask.show    .ham-panel{ animation: panel-fade-in  .36s ease forwards; }
+.ham-mask.leaving .ham-panel{ animation: panel-fade-out .24s ease forwards; }
+
+/* 列表項目：碎片式拼接感（逐一淡入+位移） */
+.ham-list{ padding:10px; overflow:auto; }
+
+/* 每一片小卡：由淡 → 清晰、由小 → 正常、微上浮 */
+.ham-item{
+  display:flex; gap:10px; align-items:center; padding:8px; border-radius:10px;
+  border:1px solid #eee; background:#fff; margin-bottom:8px;
+  opacity:0; transform: translateY(8px) scale(.96); filter: blur(6px);
+  animation: frag-in .42s ease forwards;
+}
+
+@keyframes frag-in{
+  to { opacity:1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+.ham-item img{ width:42px; height:42px; border-radius:50%; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+.ham-name{ font-weight:900; }
+.ham-gid{ font-size:12px; color:#666; }
+
+/* 標頭 */
+.ham-head{ padding:12px 14px; border-bottom:1px solid #eee; font-weight:900; display:flex; align-items:center; gap:8px; }
+/* 司法院法條：每一條的小卡 */
+.law-item{
+  border:1px solid #eee; border-radius:12px; padding:10px; background:#fafafa; margin-bottom:10px;
+}
+.law-head{ display:flex; gap:8px; align-items:center; }
+.law-title{ font-weight:900; }
+.law-del{ margin-left:auto; }
+.law-body{ width:100%; padding:10px 12px; 
+border:1px solid #ddd; 
+border-radius:10px; 
+min-height:100px; 
+resize:vertical; 
+margin-top:8px; 
+}
+/* 右上角固定按鈕：查看已有法條 */
+.view-laws-btn{
+  position:fixed; right:14px; top:14px; z-index:1100;
+  padding:10px 12px; border-radius:10px; border:1px solid #ddd; background:#fff;
+  cursor:pointer; font-weight:800;
+  box-shadow:0 6px 18px rgba(0,0,0,.06);
+}
+.view-laws-btn[hidden]{ display:none; }
+
+/* 檢視既有法條的彈匡 */
+#viewLawsDlg.mask .modal{ width:min(760px,92vw); max-height:88vh; }
+.exist-law-item{
+  display:flex; gap:10px; align-items:flex-start;
+  border:1px solid #eee; border-radius:12px; padding:10px; background:#fafafa; margin-bottom:10px;
+}
+.exist-law-title{ font-weight:900; }
+.exist-law-meta{ color:#666; font-size:12px; }
+.exist-law-body{ color:#333; white-space:pre-wrap; max-height:120px; overflow:auto; }
+</style>
+</head>
+<body>
+    <!-- ∞ 漢堡按鈕 -->
+<button id="hamBtn" class="hamburger" title="立法院名單">∞</button>
+<!-- 右上角固定：查看已有法條 -->
+<button id="btnViewLaws" class="view-laws-btn" hidden onclick="openExistingLaws()">查看已有法條</button>
+
+<!-- 側邊選單 -->
+<div id="hamMask" class="ham-mask" aria-hidden="true">
+  <div class="ham-panel" role="dialog" aria-label="立法院名單">
+    <div class="ham-head">
+      立法院在職人員
+      <span class="chip" style="margin-left:auto">L</span>
+    </div>
+    <div id="hamList" class="ham-list">
+      <div class="hint" style="padding:8px 4px">讀取中…</div>
+    </div>
+  </div>
+</div>
+<div class="wrap">
+  <h1>Grove 立法院</h1>
+  <div class="hint">僅限「立法院在職人員」或超級帳號進入。本頁可審核外部/內部提案，並管理法案。</div>
+  <div class="toolbar">
+    <button class="btn" onclick="goBack()">← 返回</button>
+    <button class="btn" onclick="reloadAll()">重新整理</button>
+    <button class="btn primary" id="btnSuggestInside" style="display:none" onclick="openSuggest(true)">提出建議（內部）</button>
+    <button class="btn" id="btnConstitution" style="display:none" onclick="goConstitution()">修法 / 寫入</button>
+    <!-- 你的 toolbar 裡，緊接在 修法 / 寫入 之後加這顆 -->
+<button class="btn" id="btnPublishLaw" style="display:none" onclick="openPublishLaw()">發佈法條到司法院</button>
+  </div>
+
+  <!-- 立委可見：建議清單 + 法案清單 -->
+  <h2 id="secSugTitle" style="display:none;text-align:center;margin:6px 0 8px">建議清單</h2>
+  <div id="sugList" class="grid"></div>
+  <div id="sugEmpty" class="hint" style="display:none">目前沒有新的建議</div>
+
+  <h2 id="secBillTitle" style="display:none;text-align:center;margin:16px 0 8px">法案清單</h2>
+  <div id="billList" class="grid"></div>
+  <div id="billEmpty" class="hint" style="display:none">目前沒有法案</div>
+</div>
+
+<div id="toast" class="toast">—</div>
+
+<!-- 非立委：公共入口彈框 -->
+<div id="publicDlg" class="mask">
+  <div class="modal">
+    <header>
+      <div>立法院僅限在職人員</div>
+      <button class="btn" onclick="closePublic()">×</button>
+    </header>
+    <div class="body">
+      <div class="hint" style="margin-bottom:10px">你可以提出建議，我們會轉交立法院審查。</div>
+      <div class="row" style="align-items:flex-start">
+        <img id="pubAvatar" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid #eee;background:#f3f3f3">
+        <div>
+          <div><b id="pubName">—</b> <span class="chip" id="pubGid">—</span></div>
+          <div class="hint">以上為你的暱稱 / GID</div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="hint">建議內容</div>
+        <textarea id="pubText" class="textarea" placeholder="請描述你的建議…"></textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="goBack()">返回上一頁</button>
+      <button class="btn primary" onclick="submitSuggestion(false)">提出建議</button>
+    </div>
+  </div>
+</div>
+<!-- 查看已有法條（列表 + 刪除） -->
+<div id="viewLawsDlg" class="mask">
+  <div class="modal">
+    <header>
+      <div>已有法條</div>
+      <button class="btn" onclick="closeExistingLaws()">×</button>
+    </header>
+    <div class="body" id="existLawBox">
+      <div class="hint">讀取中…</div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeExistingLaws()">關閉</button>
+    </div>
+  </div>
+</div>
+<!-- 立委內部：提出建議彈窗 -->
+<div id="sugDlg" class="mask">
+  <div class="modal">
+    <header>
+      <div>提出建議（內部）</div>
+      <button class="btn" onclick="closeSuggest()">×</button>
+    </header>
+    <div class="body">
+      <div class="row" style="align-items:flex-start">
+        <img id="inAvatar" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid #eee;background:#f3f3f3">
+        <div>
+          <div><b id="inName">—</b> <span class="chip L">L</span> <span class="chip" id="inGid">—</span></div>
+          <div class="hint">內部人員提出的建議將標示 <span style="font-weight:700;color:#2d56ff">L</span></div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="hint">建議內容</div>
+        <textarea id="inText" class="textarea" placeholder="請描述你的建議…"></textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeSuggest()">取消</button>
+      <button class="btn primary" onclick="submitSuggestion(true)">送出</button>
+    </div>
+  </div>
+</div>
+<!-- 發佈法條到司法院：可增減條文、可滾動 -->
+<div id="lawModal" class="mask">
+  <div class="modal">
+    <header>
+      <div>發佈法條到司法院</div>
+      <button class="btn" onclick="closePublishLaw()">×</button>
+    </header>
+
+    <div class="body">
+      <label class="hint" style="display:block;margin-bottom:8px">點「新增條文」可增加更多條文；拖曳右側滾動。</label>
+
+      <!-- 可滾動區 -->
+      <div id="lawScroll" style="max-height:52vh; overflow:auto; border:1px solid #eee; border-radius:12px; padding:10px; background:#fff;">
+        <div id="lawList"></div>
+      </div>
+
+      <div class="row" style="justify-content:space-between;margin-top:10px">
+        <button class="btn" onclick="addLawArticle()">＋ 新增條文</button>
+        <div class="hint">條數：<span id="lawCount">0</span></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="closePublishLaw()">取消</button>
+      <button class="btn primary" onclick="submitPublishLaw()">提交發佈</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ====== 基本設定 ====== */
+const API="https://zdqo2eqb.lc-cn-n1-shared.com/1.1";
+const APP_ID="ZDqo2eQBcSChCfRgwix9jUeI-gzGzoHsz";
+const APP_KEY="U66ybZWAD99LrT9zJnQlW52H";
+const SUPER_UID="68b19eeb90ed2201c4839219"; // ← 你的超級 GID
+
+const AUTH={ 'X-LC-Id':APP_ID,'X-LC-Key':APP_KEY };
+function lc(){ const t=localStorage.getItem('sg_token'); return t?{...AUTH,'X-LC-Session':t}:AUTH; }
+function h(s){return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
+function toast(s){const t=document.getElementById('toast'); t.textContent=s; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0',1600);}
+
+/* ====== 登入 / 權限 ====== */
+let ME=null, IS_LEGI=false;
+async function requireLogin(){
+  const token=localStorage.getItem('sg_token'); const me=JSON.parse(localStorage.getItem('sg_user')||'null');
+  if(!token||!me){ alert('請先登入'); location.replace('index.html'); return false; }
+  ME=me; return true;
+}
+// 這裡用「Legislator 表」做為在職判定；如果你暫時還沒建，可以先用 Admin/ExamStaff 代替
+async function isLegislator(uid){
+  if(uid===SUPER_UID) return true;
+  const p={ "__type":"Pointer","className":"_User","objectId":uid };
+  const w=encodeURIComponent(JSON.stringify({ "$or":[{user:p},{User:p}], active:true }));
+  // 假如你還沒建 Legislator 類，先把下面 Legislator 換成 Admin 或 ExamStaff 測試
+  const r=await fetch(`${API}/classes/Legislator?where=${w}&limit=1`,{headers:lc()}); const d=await r.json();
+  return r.ok && d.results && d.results.length>0;
+}
+/* ====== Suggestion API ====== */
+async function fetchSuggestions(){
+  // 立委看：先列 new，其次歷史（approved/rejected）
+  const where=encodeURIComponent(JSON.stringify({}));
+  const url=`${API}/classes/BillSuggestion?where=${where}&order=-createdAt&limit=200&include=by,reviewedBy`;
+  const r=await fetch(url,{headers:lc()}); const d=await r.json();
+  if(!r.ok) throw new Error(d.error||'讀取建議失敗');
+  return d.results||[];
+}
+async function createSuggestion(text, isInternal){
+  const headers = { 'Content-Type':'application/json', ...lc() };
+
+  const payload = {
+    text,
+    isInternal: !!isInternal,
+    status: 'new',
+    by: { "__type":"Pointer","className":"_User","objectId": ME.objectId },
+    ACL: {
+      "*":               { "read": false, "write": false }, // 不公開（要公開可把 read 改 true）
+      [ME.objectId]:     { "read": true,  "write": true  }, // 建立者
+      "role:Legislator": { "read": true,  "write": true  }, // 立委
+      "role:Admin":      { "read": true,  "write": true  }, // 管理
+      "role:ExamStaff":  { "read": true,  "write": true  }, // 其它內部角色
+      [SUPER_UID]:       { "read": true,  "write": true  }  // 超級帳號
+    }
+  }; // ← 這個是你漏掉的右大括號
+
+  const r = await fetch(`${API}/classes/BillSuggestion`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || '送出失敗');
+  return d.objectId;
+}
+async function reviewSuggestion(sug, pass){
+  if(!IS_LEGI && ME.objectId!==SUPER_UID){ alert('無權審核'); return; }
+  if(sug.by && (sug.by.objectId===ME.objectId) && (ME.objectId!==SUPER_UID)){
+    alert('你不能審核自己提出的建議'); return;
+  }
+  const note = prompt(pass?'（可選）通過理由':'（可選）不通過理由') || '';
+  const headers={'Content-Type':'application/json', ...lc()};
+  const body={
+    status: pass?'approved':'rejected',
+    reviewNote: note,
+    reviewedAt:{ "__type":"Date","iso":new Date().toISOString() },
+    reviewedBy:{ "__type":"Pointer","className":"_User","objectId":ME.objectId }
+  };
+  const r=await fetch(`${API}/classes/BillSuggestion/${sug.objectId}`,{method:'PUT',headers,body:JSON.stringify(body)});
+  const d=await r.json(); if(!r.ok) throw new Error(d.error||'審核失敗');
+}
+/* ===== 內部投票：API ===== */
+// 取得或建立「內部投票」：開始時間 = 建議 createdAt，截止 = +2 天
+async function getOrCreateInternalVote(sug){
+  const where = encodeURIComponent(JSON.stringify({
+    suggestion: { "__type":"Pointer","className":"BillSuggestion","objectId": sug.objectId },
+    scope: "internal"
+  }));
+  const url = `${API}/classes/SuggestionVote?where=${where}&limit=1`;
+  let r = await fetch(url,{headers:lc()}); let d = await r.json();
+  if(r.ok && d.results && d.results[0]) return d.results[0];
+
+  const starts = new Date(sug.createdAt);
+  const ends   = new Date(starts.getTime() + 2*24*60*60*1000);
+  const payload = {
+    suggestion: { "__type":"Pointer","className":"BillSuggestion","objectId":sug.objectId },
+    scope: "internal",
+    status: "open",
+    startsAt: { "__type":"Date","iso": starts.toISOString() },
+    endsAt:   { "__type":"Date","iso": ends.toISOString() },
+    title: (sug.title||'') ,
+    body:  (sug.text||''),
+    createdBy:{ "__type":"Pointer","className":"_User","objectId": ME.objectId },
+    ACL:{
+      "*": { "read": false, "write": false },
+      "role:Legislator": { "read": true, "write": true },
+      "role:Admin":      { "read": true, "write": true },
+      "role:ExamStaff":  { "read": true, "write": true },
+      [SUPER_UID]:       { "read": true, "write": true }
+    }
+  };
+  r = await fetch(`${API}/classes/SuggestionVote`,{
+    method:'POST', headers:{'Content-Type':'application/json',...lc()}, body:JSON.stringify(payload)
+  });
+  d = await r.json();
+  if(!r.ok) throw new Error(d.error||'建立內部投票失敗');
+  return { objectId:d.objectId, ...payload };
+}
+async function countSugVotes(voteId, choice){
+  const where = encodeURIComponent(JSON.stringify({
+    vote: { "__type":"Pointer","className":"SuggestionVote","objectId": voteId },
+    choice
+  }));
+  const r = await fetch(`${API}/classes/SuggestionBallot?where=${where}&count=1&limit=0`,{headers:lc()});
+  const d = await r.json();
+  return (r.ok && typeof d.count==='number') ? d.count : 0;
+}
+async function mySugBallot(voteId){
+  const where = encodeURIComponent(JSON.stringify({
+    vote:  { "__type":"Pointer","className":"SuggestionVote","objectId": voteId },
+    voter: { "__type":"Pointer","className":"_User","objectId": ME.objectId }
+  }));
+  const r = await fetch(`${API}/classes/SuggestionBallot?where=${where}&limit=1`,{headers:lc()});
+  const d = await r.json();
+  return r.ok && d.results && d.results[0] ? d.results[0] : null;
+}
+async function castSugBallot(voteObj, choice){
+  const headers = {'Content-Type':'application/json', ...lc()};
+  const existed = await mySugBallot(voteObj.objectId);
+  if(existed){
+    await fetch(`${API}/classes/SuggestionBallot/${existed.objectId}`,{
+      method:'PUT', headers, body:JSON.stringify({ choice })
+    });
+    return existed.objectId;
+  }
+  const payload = {
+    vote:  { "__type":"Pointer","className":"SuggestionVote","objectId": voteObj.objectId },
+    voter: { "__type":"Pointer","className":"_User","objectId": ME.objectId },
+    choice,
+    ACL:{ "*":{ "read": true }, [ME.objectId]:{ "read": true, "write": true } }
+  };
+  const r = await fetch(`${API}/classes/SuggestionBallot`,{method:'POST',headers,body:JSON.stringify(payload)});
+  const d = await r.json(); if(!r.ok) throw new Error(d.error||'投票失敗');
+  return d.objectId;
+}
+// 發佈為公眾投票（scope=public）
+async function publishPublicVote(sug){
+  const payload = {
+    suggestion: { "__type":"Pointer","className":"BillSuggestion","objectId":sug.objectId },
+    scope: "public",
+    status: "open",
+    startsAt: { "__type":"Date","iso": new Date().toISOString() },
+    // 不設定 endsAt：公眾頁由你決定何時關閉（或另設）
+    title: (sug.title||'立法院提議'),
+    body:  (sug.text||''),
+    createdBy:{ "__type":"Pointer","className":"_User","objectId": ME.objectId },
+    ACL:{ "*":{ "read": true }, [ME.objectId]:{ "read": true, "write": true } }
+  };
+  const r = await fetch(`${API}/classes/SuggestionVote`,{
+    method:'POST', headers:{'Content-Type':'application/json',...lc()}, body:JSON.stringify(payload)
+  });
+  const d = await r.json(); if(!r.ok) throw new Error(d.error||'發佈失敗');
+  return d.objectId;
+}
+// 行政院建議：查詢是否有，給立法院顯示
+async function fetchExecutiveAdvice(sugId){
+  const where = encodeURIComponent(JSON.stringify({
+    suggestion: { "__type":"Pointer","className":"BillSuggestion","objectId":sugId }
+  }));
+  const r = await fetch(`${API}/classes/ExecutiveAdvice?where=${where}&order=-createdAt&limit=1`,{headers:lc()});
+  const d = await r.json(); if(!r.ok) return null;
+  return (d.results && d.results[0]) || null;
+}
+/* ====== Bill (之前你已有；這裡保留最小版列表) ====== */
+async function fetchBills(){
+  const url=`${API}/classes/Bill?order=-createdAt&limit=100&include=createdBy`;
+  const r=await fetch(url,{headers:lc()}); const d=await r.json();
+  if(!r.ok) throw new Error(d.error||'讀取法案失敗');
+  return d.results||[];
+}
+/* ========= 已有法條：開關 ========= */
+function openExistingLaws(){
+  document.getElementById('viewLawsDlg').style.display='flex';
+  loadExistingLaws();
+}
+function closeExistingLaws(){
+  document.getElementById('viewLawsDlg').style.display='none';
+}
+
+/* 讀取 JudicialLaw + LawArticle，混合顯示 */
+async function loadExistingLaws(){
+  const box = document.getElementById('existLawBox');
+  box.innerHTML = '<div class="hint">讀取中…</div>';
+  try{
+    const where = encodeURIComponent(JSON.stringify({ status:'active' }));
+    const [rJ, rA] = await Promise.all([
+      fetch(`${API}/classes/JudicialLaw?where=${where}&order=-publishedAt,-updatedAt&limit=200`, {headers:lc()}),
+      fetch(`${API}/classes/LawArticle?where=${where}&order=-publishedAt,-updatedAt&limit=200`, {headers:lc()})
+    ]);
+    const dJ = await rJ.json(), dA = await rA.json();
+    if(!rJ.ok) throw new Error(dJ.error||'讀取司法法條失敗');
+    if(!rA.ok) throw new Error(dA.error||'讀取立法法條失敗');
+
+    // 正規化資料：兩邊都轉成同樣結構
+    const rows = [
+      ...(dJ.results||[]).map(x=>({
+        cls:'JudicialLaw',
+        id:x.objectId,
+        title: x.title || '（司法法條）',
+        code:  x.code || '',
+        body:  Array.isArray(x.articles) ? x.articles.map(a=>`第 ${a.no} 條\n${a.body||''}`).join('\n\n') : (x.body||''),
+        meta:  '司法院（JudicialLaw）'
+      })),
+      ...(dA.results||[]).map(x=>({
+        cls:'LawArticle',
+        id:x.objectId,
+        title: x.title || '（立法院法條）',
+        code:  x.code || '',
+        body:  x.body || '',
+        meta:  '立法院（LawArticle）'
+      }))
+    ];
+
+    if(!rows.length){
+      box.innerHTML = '<div class="hint">目前沒有可顯示的法條</div>';
+      return;
+    }
+
+    // 渲染清單
+    box.innerHTML = rows.map(r=>`
+      <div class="exist-law-item">
+        <div style="flex:1;min-width:0">
+          <div class="exist-law-title">${r.code?`${h(r.code)} — `:''}${h(r.title)}</div>
+          <div class="exist-law-meta">${h(r.meta)}　ID：${r.id}</div>
+          <div class="exist-law-body" title="可滾動">${h(r.body||'（無內文）')}</div>
+        </div>
+        <div>
+          <button class="btn danger" onclick="deleteLaw('${r.cls}','${r.id}')">刪除</button>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    box.innerHTML = `<div class="hint" style="color:#b00020">${h(e.message||'讀取失敗')}</div>`;
+  }
+}
+
+/* 後台移除法條：DELETE 指定類別與 ID */
+async function deleteLaw(cls, id){
+  if(!(IS_LEGI || (ME && ME.objectId===SUPER_UID))){
+    alert('你沒有刪除法條的權限'); return;
+  }
+  if(!confirm('確定要刪除此法條？此動作無法復原。')) return;
+  try{
+    const r = await fetch(`${API}/classes/${cls}/${id}`, { method:'DELETE', headers: lc() });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'刪除失敗');
+    toast('已刪除法條');
+    loadExistingLaws();     // 重新載入列表
+  }catch(e){
+    alert(e.message||'刪除失敗');
+  }
+}
+/* ====== UI：公共入口（非立委） ====== */
+function openPublic(){
+  const ava=(ME.avatarUrl? ME.avatarUrl.replace(/^http:/,'https:'):'')||'https://via.placeholder.com/56?text=%20';
+  document.getElementById('pubAvatar').src=ava;
+  document.getElementById('pubName').textContent=ME.nickname||ME.username||'(未命名)';
+  document.getElementById('pubGid').textContent='GID：'+ME.objectId;
+  document.getElementById('publicDlg').style.display='flex';
+}
+function closePublic(){ document.getElementById('publicDlg').style.display='none'; }
+async function submitSuggestion(isInternal){
+  const text=(isInternal?document.getElementById('inText'):document.getElementById('pubText')).value.trim();
+  if(!text){ alert('請輸入建議內容'); return; }
+  try{
+    await createSuggestion(text,isInternal);
+    if(isInternal){ closeSuggest(); } else { closePublic(); }
+    toast('建議已送出');
+    if(IS_LEGI) reloadSuggestions();
+  }catch(e){ alert(e.message||'送出失敗'); }
+}
+
+/* ====== UI：內部提出建議 ====== */
+function openSuggest(isInternal){
+  const ava=(ME.avatarUrl? ME.avatarUrl.replace(/^http:/,'https:'):'')||'https://via.placeholder.com/56?text=%20';
+  document.getElementById('inAvatar').src=ava;
+  document.getElementById('inName').textContent=ME.nickname||ME.username||'(未命名)';
+  document.getElementById('inGid').textContent='GID：'+ME.objectId;
+  document.getElementById('inText').value='';
+  document.getElementById('sugDlg').style.display='flex';
+}
+function closeSuggest(){ document.getElementById('sugDlg').style.display='none'; }
+
+/* ====== 渲染：建議卡片 ====== */
+function renderSuggestionCard(s){
+  const by = s.by || {};
+  const name = by.nickname||by.username||by.objectId||'未知';
+  const gid  = by.objectId||'';
+  const L = s.isInternal ? `<span class="chip L">L</span>`:'';
+  const statusChip = s.status==='new' ? `<span class="chip">待審</span>`
+                    : s.status==='approved' ? `<span class="chip" style="background:#e9fff0;border-color:#c8f4d7;color:#106b2f;">✅ 已通過</span>`
+                    : `<span class="chip" style="background:#ffe8ec;border-color:#ffc7d2;color:#b1002f;">❌ 不通過</span>`;
+
+  const el=document.createElement('div'); el.className='card';
+  el.innerHTML=`
+    <div class="row">
+      <div class="title">建議：${L} <span class="chip">${h(name)}</span> <span class="chip">GID：${gid}</span></div>
+      <span style="margin-left:auto">${statusChip}</span>
+    </div>
+    <div class="meta">提出時間：${new Date(s.createdAt).toLocaleString()}</div>
+    <div class="hr"></div>
+    <div style="white-space:pre-wrap">${h(s.text||'')}</div>
+
+    <!-- 內部投票區（動態填充） -->
+    <div class="hr"></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap" data-invote>
+      <div style="font-weight:800">內部投票：</div>
+      <button class="btn primary"   data-agree>同意此提議</button>
+      <button class="btn"           data-reject>不同意此提議</button>
+      <div class="chip">同意 <b data-yes>0</b></div>
+      <div class="chip">不同意 <b data-no>0</b></div>
+      <div class="hint" style="margin-left:auto" data-left>讀取中…</div>
+    </div>
+
+    <div class="hr"></div>
+    <div class="row" style="justify-content:flex-end;gap:8px">
+      <button class="btn" data-publish>發佈至公眾投票</button>
+      <button class="btn danger"  data-reject-final>不通過</button>
+      <button class="btn primary" data-approve-final>通過</button>
+    </div>
+
+    <div class="meta" data-exec-hint style="display:none"></div>
+  `;
+
+  // ---- 內部投票：載入、綁定 ----
+  (async()=>{
+    try{
+      const vote = await getOrCreateInternalVote(s);
+      const ends = new Date(vote.endsAt?.iso || vote.endsAt || (Date.now()+1));
+      const leftEl = el.querySelector('[data-left]');
+      function leftText(){
+        const left = ends - Date.now();
+        if(left<=0) return '已截止';
+        const d=Math.floor(left/864e5),h=Math.floor(left%864e5/36e5),m=Math.floor(left%36e5/6e4);
+        return `剩餘 ${d?d+'天':''}${h}時${m}分`;
+      }
+      // 票數與我自己的選擇
+      const [yesCnt,noCnt,myBallot] = await Promise.all([
+        countSugVotes(vote.objectId,'agree'),
+        countSugVotes(vote.objectId,'reject'),
+        mySugBallot(vote.objectId)
+      ]);
+      el.querySelector('[data-yes]').textContent = yesCnt;
+      el.querySelector('[data-no]').textContent  = noCnt;
+      leftEl.textContent = leftText();
+
+      // 兩天前不可結束；超級 GID 不受限
+      const canFinalize = (Date.now() >= ends.getTime()) || (ME.objectId===SUPER_UID);
+      el.querySelector('[data-approve-final]').disabled = !canFinalize;
+      el.querySelector('[data-reject-final]').disabled  = !canFinalize;
+
+      // 投票按鈕（到期後仍可看票但不可再投）
+      const btnA = el.querySelector('[data-agree]');
+      const btnR = el.querySelector('[data-reject]');
+      function setBusy(b){ btnA.disabled=b; btnR.disabled=b; }
+      if(Date.now() >= ends.getTime()){ btnA.disabled = btnR.disabled = true; }
+
+      btnA.addEventListener('click', async ()=>{
+        try{
+          setBusy(true);
+          await castSugBallot(vote,'agree');
+          el.querySelector('[data-yes]').textContent = await countSugVotes(vote.objectId,'agree');
+          el.querySelector('[data-no]').textContent  = await countSugVotes(vote.objectId,'reject');
+          toast('已投「同意」');
+        }catch(e){ alert(e.message||'投票失敗'); } finally{ setBusy(false); }
+      });
+      btnR.addEventListener('click', async ()=>{
+        try{
+          setBusy(true);
+          await castSugBallot(vote,'reject');
+          el.querySelector('[data-yes]').textContent = await countSugVotes(vote.objectId,'agree');
+          el.querySelector('[data-no]').textContent  = await countSugVotes(vote.objectId,'reject');
+          toast('已投「不同意」');
+        }catch(e){ alert(e.message||'投票失敗'); } finally{ setBusy(false); }
+      });
+
+      // 每 30 秒更新一次剩餘
+      const timer = setInterval(()=>{ leftEl.textContent = leftText(); }, 30000);
+      el.addEventListener('remove', ()=>clearInterval(timer));
+
+    }catch(e){
+      const bar = el.querySelector('[data-invote]');
+      bar.innerHTML = `<div class="hint" style="color:#b00020">內部投票載入失敗：${h(e.message||'error')}</div>`;
+    }
+  })();
+
+  // ---- 發佈至公眾投票 ----
+  el.querySelector('[data-publish]').addEventListener('click', async ()=>{
+    if(!confirm('要將此提案發佈到公眾投票嗎？發佈後所有使用者可見（不顯示提案人）。')) return;
+    try{
+      await publishPublicVote(s);
+      toast('已發佈至公眾投票');
+    }catch(e){ alert(e.message||'發佈失敗'); }
+  });
+
+  // ---- 審核按鈕：兩天後才能按（SUPER 例外），且不得審自己 ----
+  const passBtn = el.querySelector('[data-approve-final]');
+  const rejBtn  = el.querySelector('[data-reject-final]');
+  if(!(IS_LEGI || ME.objectId===SUPER_UID) || (gid===ME.objectId && ME.objectId!==SUPER_UID)){
+    passBtn.style.display = rejBtn.style.display = 'none';
+  }else{
+    passBtn.addEventListener('click', async ()=>{ try{ await reviewSuggestion(s,true); toast('已通過'); await reloadSuggestions(); }catch(e){ alert(e.message);} });
+    rejBtn .addEventListener('click', async ()=>{ try{ await reviewSuggestion(s,false); toast('已駁回'); await reloadSuggestions(); }catch(e){ alert(e.message);} });
+  }
+
+  // ---- 行政院建議（若有就顯示一個連結） ----
+  (async()=>{
+    try{
+      const adv = await fetchExecutiveAdvice(s.objectId);
+      if(adv && adv.text){
+        const box = el.querySelector('[data-exec-hint]');
+        box.style.display='block';
+        box.innerHTML = `<button class="btn" onclick="alert(${JSON.stringify(adv.text)})">行政院建議（點擊查看）</button>`;
+      }
+    }catch(_){}
+  })();
+
+  return el;
+}
+
+/* ====== 渲染：法案（保留最小版，只列出） ====== */
+function renderBillCard(b){
+  const el=document.createElement('div'); el.className='card';
+  const who = b.createdBy ? (b.createdBy.nickname||b.createdBy.username||b.createdBy.objectId) : '未知';
+  let chip = `<span class="chip">狀態：${h(b.status||'draft')}</span>`;
+  if(b.status==='passed') chip=`<span class="chip" style="background:#e9fff0;border-color:#c8f4d7;color:#106b2f;">已通過</span>`;
+  if(b.status==='rejected') chip=`<span class="chip" style="background:#ffe8ec;border-color:#ffc7d2;color:#b1002f;">已否決</span>`;
+  el.innerHTML=`
+    <div class="title">${h(b.title||'(未命名法案)')}</div>
+    <div class="meta">提案人：${h(who)}｜時間：${new Date(b.createdAt).toLocaleString()}｜${chip}</div>
+    <div class="hr"></div>
+    <div style="white-space:pre-wrap">${h(b.body||'')}</div>
+  `;
+  return el;
+}
+
+/* ====== 填充區塊 ====== */
+async function reloadSuggestions(){
+  const box=document.getElementById('sugList'), emp=document.getElementById('sugEmpty');
+  box.innerHTML=''; emp.style.display='none';
+  try{
+    const rows=await fetchSuggestions();
+    if(!rows.length){ emp.style.display='block'; return; }
+    // 先 new，再歷史
+    rows.sort((a,b)=>{
+      const rank = (s)=> s.status==='new'?0:(s.status==='approved'?1:2);
+      if(rank(a)!==rank(b)) return rank(a)-rank(b);
+      return new Date(b.createdAt)-new Date(a.createdAt);
+    });
+    rows.forEach(s=>box.appendChild(renderSuggestionCard(s)));
+  }catch(e){ emp.style.display='block'; emp.textContent=e.message||'讀取失敗'; }
+}
+async function reloadBills(){
+  const box=document.getElementById('billList'), emp=document.getElementById('billEmpty');
+  box.innerHTML=''; emp.style.display='none';
+  try{
+    const rows=await fetchBills();
+    if(!rows.length){ emp.style.display='block'; return; }
+    rows.forEach(b=>box.appendChild(renderBillCard(b)));
+  }catch(e){ emp.style.display='block'; emp.textContent=e.message||'讀取失敗'; }
+}
+async function reloadAll(){
+  if(!(IS_LEGI || ME.objectId===SUPER_UID)) return;
+  if(isReloading) return;            // ← 防止重入
+  isReloading = true;
+  try{
+    await reloadSuggestions();
+    await reloadBills();
+  }finally{
+    isReloading = false;
+  }
+}
+function goConstitution(){
+  const pass = {
+    uid: ME.objectId,
+    from: 'legislature',
+    exp: Date.now() + 5*60*1000   // 5 分鐘有效
+  };
+  // 1) 本分頁通關證
+  sessionStorage.setItem('constitution_pass', JSON.stringify(pass));
+
+  // 2) 備援：URL 參數一併帶上（新分頁也看得到）
+  const url = new URL('constitution.html', location.href);
+  url.searchParams.set('from', 'legislature');
+  url.searchParams.set('u', ME.objectId);
+  url.searchParams.set('t', String(pass.exp));
+
+  // 建議用同分頁跳轉，避免彈新分頁
+  location.href = url.toString();
+}
+let pollTimer = null;
+let isReloading = false;
+
+function startPolling(){
+  stopPolling();
+  // 頁面聚焦才輪詢（可節能）
+  pollTimer = setInterval(()=>{
+    if(document.hidden) return;
+    reloadAll();
+  }, 15000); // 15 秒
+}
+function stopPolling(){
+  if(pollTimer){ clearInterval(pollTimer); pollTimer = null; }
+}
+window.addEventListener('beforeunload', stopPolling);
+/* ====== 啟動 ====== */
+(async()=>{
+  if(!await requireLogin()) return;
+  IS_LEGI = await isLegislator(ME.objectId);
+  if(!(IS_LEGI || ME.objectId===SUPER_UID)){
+    // 非立委：只顯示公共入口
+    openPublic();
+  }else{
+  // 立委入口：顯示區塊與內部提出按鈕
+  document.getElementById('secSugTitle').style.display='block';
+  document.getElementById('secBillTitle').style.display='block';
+  document.getElementById('btnSuggestInside').style.display='inline-block';
+
+  // 顯示「修法 / 寫入」按鈕
+  const btnConst = document.getElementById('btnConstitution');
+  if(btnConst) btnConst.style.display = 'inline-block';
+
+  await reloadAll();
+
+  // 啟動 15 秒輪詢
+  startPolling();
+}
+})();
+
+/* ====== 返回 ====== */
+function goBack(){
+  try{
+    const ref=document.referrer||''; const same=ref && new URL(ref).origin===location.origin;
+    if(same){ location.href=ref; return; }
+  }catch(e){}
+  if(history.length>1){ history.back(); return; }
+  location.href='shopping.html';
+}
+/* === 漢堡選單：資料與行為 === */
+const DEFAULT_AVA = 'data:image/svg+xml;utf8,'+encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="42" height="42"><rect width="100%" height="100%" rx="21" ry="21" fill="#f3f3f3"/></svg>`
+);
+
+/** 取立委名單（Legislator.active=true，指針欄位 user / User 皆相容） */
+async function fetchLegislatorsList(){
+  const w = encodeURIComponent(JSON.stringify({ active:true }));
+  // 一次撈 Legislator，包含兩種欄位；include 支援逗點鍵值
+  const url = `${API}/classes/Legislator?where=${w}&limit=200&include=user,User`;
+  const r   = await fetch(url, { headers: lc() });
+  const d   = await r.json();
+  if(!r.ok) throw new Error(d.error||'讀取立委失敗');
+  // 映射到人員資料
+  return (d.results||[])
+    .map(row=>{
+      const u = row.user || row.User || {};
+      return {
+        id: u.objectId || '',
+        name: u.nickname || u.username || '(未命名)',
+        ava: (u.avatarUrl ? u.avatarUrl.replace(/^http:/,'https:') : '') || DEFAULT_AVA
+      };
+    })
+    .filter(x=>x.id);
+}
+
+/** 渲染進側欄 */
+async function renderHamList(){
+  const box = document.getElementById('hamList');
+  box.innerHTML = '<div class="hint" style="padding:8px 4px">讀取中…</div>';
+  try{
+    const rows = await fetchLegislatorsList();
+    if(!rows.length){ box.innerHTML = '<div class="hint" style="padding:8px 4px">目前無名單</div>'; return; }
+    box.innerHTML = rows.map(m=>`
+      <div class="ham-item">
+        <img src="${m.ava}" alt="">
+        <div>
+          <div class="ham-name">${h(m.name)}</div>
+          <div class="ham-gid">GID：${m.id}</div>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    box.innerHTML = `<div class="hint" style="color:#b00020;padding:8px 4px">${h(e.message||'載入失敗')}</div>`;
+  }
+}
+// 建一張一次性通關證，5 分鐘內有效
+function grantConstitutionPass(){
+  const pass = {
+    uid: (ME && ME.objectId) || '',
+    from: 'legislature',
+    exp: Date.now() + 5*60*1000   // 有效 5 分鐘
+  };
+  sessionStorage.setItem('constitution_pass', JSON.stringify(pass));
+}
+/** 開關選單 */
+function openHam(){
+  const mask = document.getElementById('hamMask');
+  mask.classList.remove('leaving');
+  mask.classList.add('show');
+  mask.setAttribute('aria-hidden','false');
+  document.body.classList.add('ham-open');
+}
+function closeHam(){
+  const mask = document.getElementById('hamMask');
+  // 先進入 leaving 動畫，再真正關閉
+  mask.classList.add('leaving');
+  mask.setAttribute('aria-hidden','true');
+  document.body.classList.remove('ham-open');
+  setTimeout(()=>{ mask.classList.remove('show','leaving'); }, 260); // 對應 CSS 退場 .24s
+}
+function toggleHam(){
+  const mask = document.getElementById('hamMask');
+  if(mask.classList.contains('show') && !mask.classList.contains('leaving')) closeHam();
+  else openHam();
+}
+
+/** 取名單後渲染，並做碎片延遲（stagger） */
+async function renderHamList(){
+  const box = document.getElementById('hamList');
+  box.innerHTML = '<div class="hint" style="padding:8px 4px">讀取中…</div>';
+  try{
+    const rows = await fetchLegislatorsList();
+    if(!rows.length){ box.innerHTML = '<div class="hint" style="padding:8px 4px">目前無名單</div>'; return; }
+    box.innerHTML = rows.map((m,i)=>`
+      <div class="ham-item" style="animation-delay:${30*i}ms">
+        <img src="${m.ava}" alt="">
+        <div>
+          <div class="ham-name">${h(m.name)}</div>
+          <div class="ham-gid">GID：${m.id}</div>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    box.innerHTML = `<div class="hint" style="color:#b00020;padding:8px 4px">${h(e.message||'載入失敗')}</div>`;
+  }
+}
+
+/** 綁定：點 ∞ 可開也可關；點遮罩空白關；ESC 關 */
+(function bindHamburger(){
+  const btn  = document.getElementById('hamBtn');
+  const mask = document.getElementById('hamMask');
+
+  btn.addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    if(mask.classList.contains('show') && !mask.classList.contains('leaving')){
+      closeHam();  // 再點一次收回
+    }else{
+      openHam();
+      await renderHamList(); // 顯示時再載
+    }
+  });
+
+  // 點遮罩空白關：若點到 panel 本體則不關閉
+  mask.addEventListener('click', (e)=>{
+    const panel = mask.querySelector('.ham-panel');
+    if(!panel.contains(e.target)) closeHam();
+  });
+
+  // ESC
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeHam(); });
+})();
+</script>
+<script>
+// ============ 發佈法條：前端邏輯（可增減條文） ============
+// 讀取司法院目前最高「第 N 條」（只看 JudicialLaw.articles[*].no）
+async function fetchMaxJudicialArticleNo(){
+  try{
+    const where = encodeURIComponent(JSON.stringify({ status:'active' }));
+    const [rJ, rA] = await Promise.all([
+      fetch(`${API}/classes/JudicialLaw?where=${where}&order=-publishedAt,-updatedAt&limit=200`, { headers: lc() }),
+      fetch(`${API}/classes/LawArticle?where=${where}&order=-publishedAt,-updatedAt&limit=200`, { headers: lc() })
+    ]);
+    const dJ = await rJ.json(), dA = await rA.json();
+    if(!rJ.ok) throw new Error(dJ.error||'讀取司法法條失敗');
+
+    let maxNo = 0;
+    (dJ.results||[]).forEach(row=>{
+      (row.articles||[]).forEach(a=>{
+        const n = Number(a?.no);
+        if(Number.isFinite(n) && n > maxNo) maxNo = n;
+      });
+    });
+
+    // （可選）從 LawArticle 嘗試用正則抓「第 N 條」數字
+    if(rA.ok){
+      const rx = /第\s*([0-9０-９]+)\s*條/; // 粗略匹配
+      (dA.results||[]).forEach(x=>{
+        const text = `${x.code||''} ${x.title||''} ${x.body||''}`;
+        const m = text.match(rx);
+        if(m){
+          const n = Number((m[1]||'').replace(/[０-９]/g,d=>'０１２３４５６７８９'.indexOf(d)));
+          if(Number.isFinite(n) && n > maxNo) maxNo = n;
+        }
+      });
+    }
+    return maxNo;
+  }catch(e){
+    console.warn('[fetchMaxJudicialArticleNo] fallback 0:', e);
+    return 0;
+  }
+}
+// ============ 發佈法條：前端邏輯（可增減條文） ============
+let LAW_ARTICLES = [];  // { no:number, body:string }
+let LAW_BASE_NO  = 0;   // ★ 已有法條的最高條號（開彈匡時算出）
+// 把使用者在 textarea 的輸入，寫回 LAW_ARTICLES
+function onLawBodyChange(idx, value){
+  if (!LAW_ARTICLES[idx]) return;
+  LAW_ARTICLES[idx].body = value;
+}
+
+async function openPublishLaw(){
+  // 1) 先查目前已到第幾條
+  LAW_BASE_NO = await fetchMaxJudicialArticleNo();
+
+  // 2) 清空本次要送出的條文，並從「最高條號 + 1」開始顯示
+  LAW_ARTICLES = [];
+  addLawArticle();  // 第 1 條（畫面上會顯示為 LAW_BASE_NO + 1）
+
+  // 3) 打開視窗
+  document.getElementById('lawModal').style.display = 'flex';
+}
+function closePublishLaw(){
+  document.getElementById('lawModal').style.display = 'none';
+}
+
+// 新增一條
+// 新增一條（顯示編號 = 基準 + 當前長度 + 1）
+function addLawArticle(bodyText=''){
+  LAW_ARTICLES.push({ no: LAW_BASE_NO + LAW_ARTICLES.length + 1, body: bodyText });
+  renderLawList();
+}
+
+// 刪除一條並依照「基準條號」重排編號
+function removeLawArticle(idx){
+  LAW_ARTICLES.splice(idx,1);
+  LAW_ARTICLES.forEach((a,i)=>{ a.no = LAW_BASE_NO + i + 1; });
+  renderLawList();
+}
+
+// 渲染清單（顯示「第 N 條」與 placeholder 都用 a.no）
+function renderLawList(){
+  const box = document.getElementById('lawList');
+  const cnt = document.getElementById('lawCount');
+
+  box.innerHTML = LAW_ARTICLES.map((a,i)=>`
+    <div class="law-item">
+      <div class="law-head">
+        <div class="law-title">第 ${a.no} 條</div>
+        <button class="btn law-del" onclick="removeLawArticle(${i})">刪除本條</button>
+      </div>
+<textarea class="law-body"
+          lang="zh-Hant"
+          inputmode="text"
+          autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+          placeholder="請輸入第 ${a.no} 條的內文…"
+          oninput="onLawBodyChange(${i}, this.value)">${(a.body||'')}</textarea>
+    </div>
+  `).join('');
+
+  cnt.textContent = LAW_ARTICLES.length || 0;
+}
+
+// 送到 LeanCloud：建立 JudicialLaw（簡單版）
+async function submitPublishLaw(){
+  // ★ 保險：從 DOM 再同步一次內容到 LAW_ARTICLES
+  const tas = document.querySelectorAll('#lawList textarea.law-body');
+  tas.forEach((ta, i) => {
+    if (LAW_ARTICLES[i]) LAW_ARTICLES[i].body = ta.value;
+  });
+
+  // 基本檢查
+  const clean = LAW_ARTICLES
+    .map(a=>({ no:a.no, body:(a.body||'').trim() }))
+    .filter(a=>a.body);
+  if(!clean.length){ alert('請至少填寫一條法條內容'); return; }
+
+  // 這邊先用一張簡化表：JudicialLaw
+  // 欄位：
+  // - articles: Array<{no:number, body:string}>
+  // - publishedBy: Pointer<_User>
+  // - status: string = "active"
+  // ACL：公開可讀（司法院公眾頁要看），只有立法院角色與超級 GID可寫
+  const payload = {
+    articles: clean,
+    status: 'active',
+    publishedAt: { "__type":"Date","iso": new Date().toISOString() },
+    publishedBy: { "__type":"Pointer","className":"_User","objectId": ME.objectId },
+    ACL: {
+      "*":                 { "read": true,  "write": false },
+      "role:Legislator":   { "read": true,  "write": true  },
+      "role:Admin":        { "read": true,  "write": true  },
+      [SUPER_UID]:         { "read": true,  "write": true  }
+    }
+  };
+
+  try{
+    const r = await fetch(`${API}/classes/JudicialLaw`,{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', ...lc() },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'發佈失敗');
+
+    closePublishLaw();
+    toast('已發佈到司法院');
+  }catch(e){
+    alert(e.message||'發佈失敗，請稍後再試');
+  }
+}
+
+// 讓按鈕只在有權者顯示（沿用你現有的 IS_LEGI/SUPER）
+(function exposePublishBtnWhenReady(){
+  // 當你的啟動程式把 IS_LEGI 設好後，再開啟按鈕
+  const btn = document.getElementById('btnPublishLaw');
+  // 如果啟動時已算過 IS_LEGI，就立刻套；否則延後一拍
+  const apply = ()=>{ if(btn) btn.style.display = (IS_LEGI || (ME && ME.objectId===SUPER_UID)) ? 'inline-block' : 'none'; };
+  if(typeof IS_LEGI !== 'undefined' && ME){ apply(); }
+  // 啟動程式最後或 IS_LEGI 判定完成後：
+const btnView = document.getElementById('btnViewLaws');
+if(btnView) btnView.hidden = !(IS_LEGI || (ME && ME.objectId===SUPER_UID));
+  // 保險：1 秒後再檢一次，避免 race condition
+  setTimeout(apply, 1000);
+})();
+</script>
+</body>
+</html>
