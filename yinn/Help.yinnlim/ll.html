@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>筆記（2025）</title>
+<meta name="color-scheme" content="light">
+<style>
+  :root{
+    --bg1:#f7e6ff; --bg2:#e6f7ff; --bg3:#fff5f7;
+    --card:#ffffffcc; --border:#ffffff88;
+    --text:#222; --muted:#666; --accent:#b46cff;
+    --maxw:960px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:"DFKai-SB","BiauKai","KaiTi","Kaiti SC","Noto Serif TC",serif; /* 小楷體優先 */
+    color:var(--text);
+    background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));
+    background-size:200% 200%;
+    animation:bgmove 16s ease-in-out infinite;
+  }
+  @keyframes bgmove{
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+  }
+  .wrap{max-width:var(--maxw);margin:24px auto 48px;padding:clamp(16px,2.5vw,28px)}
+  .topbar{
+    position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;
+    padding:10px 12px;background:linear-gradient(180deg,#ffffffc9,#ffffff88);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--border)
+  }
+  .back-btn{
+    appearance:none;border:1px solid var(--border);padding:8px 14px;border-radius:999px;
+    font-family:inherit;font-size:14px;background:#fff;cursor:pointer;
+    transition:transform .05s ease, box-shadow .2s ease; box-shadow:0 8px 20px #00000010
+  }
+  .back-btn:hover{box-shadow:0 10px 24px #00000014}
+  .back-btn:active{transform:translateY(1px)}
+  .title{
+    margin:8px 0 0; font-size:clamp(22px,2.8vw,34px); letter-spacing:.06em; color:#3d2b7b
+  }
+  .chip{
+    display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--border);
+    background:#fff;margin-left:6px;font-size:.9em;color:#7a57e6
+  }
+  .card{
+    background:var(--card); box-shadow:0 20px 40px #00000014; border:1px solid var(--border);
+    border-radius:18px; padding:clamp(18px,2.8vw,30px); margin-top:18px
+  }
+  h2{margin:0 0 8px; font-size:clamp(18px,2.2vw,26px); color:#5a3bb5}
+  h3{margin:18px 0 8px; font-size:clamp(16px,2vw,22px); color:#6a4dd1}
+  p{line-height:1.85; margin:10px 0}
+  ul{margin:6px 0 14px 1.1em}
+  li{margin:6px 0; line-height:1.8}
+  .note{color:var(--muted); font-size:.98em}
+  .footer{ text-align:center; color:var(--muted); font-size:.9em; margin-top:18px }
+
+  /* ===== 滑入淡入／滑出淡出 ===== */
+  .reveal{
+    opacity:0; transform:translateY(18px); filter:blur(2px);
+    transition:opacity .8s ease, transform .8s ease, filter .8s ease;
+    will-change:opacity,transform,filter;
+  }
+  .reveal.show{
+    opacity:1; transform:none; filter:blur(0);
+  }
+  /* 支援以 data-delay 微調進場延遲 */
+  .reveal[data-delay="1"]{ transition-delay:.15s }
+  .reveal[data-delay="2"]{ transition-delay:.30s }
+  .reveal[data-delay="3"]{ transition-delay:.45s }
+
+  /* 無障礙：若使用者偏好減少動效，直接顯示 */
+  @media (prefers-reduced-motion: reduce){
+    .reveal, .reveal.show{ opacity:1; transform:none; filter:none; transition:none }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar reveal show" data-delay="1">
+    <button class="back-btn" onclick="history.back()">← 返回上一頁</button>
+    <div class="title">泰國三大醫生手術花費明細（2025）</div>
+    <span class="chip">整理 By 金子</span>
+     <button class="back-btn"><a href="img/zip.zip" style="text-decoration: none; color: #bb00ff;">下載更多檔案</a></button>
+  </div>
+
+  <div class="wrap">
+    <section class="card reveal" data-delay="1">
+      <h2>🌷 替迪醫生手術花費明細</h2>
+      <p class="note">溫馨提醒：術前三天需要先支付所有費用。</p>
+
+      <h3>手術套餐費用</h3>
+      <ul>
+        <li>1）蝶變手術（零深度）：<strong>28 萬泰幣</strong></li>
+        <li>2）蝶變手術（陰莖皮嫁接陰囊皮技術）：<strong>29 萬泰幣</strong></li>
+        <li>3）蝶變手術（傳統結腸技術）：<strong>38 萬泰幣</strong></li>
+        <li>4）蝶變手術（腹腔鏡結腸技術）：<strong>57 萬泰幣</strong></li>
+        <li>5）蝶變手術（皮瓣 + 腹膜）腹腔鏡：<strong>57 萬泰幣</strong></li>
+      </ul>
+      <p class="note">提示：選擇傳統結腸技術者，若皮過少或小腹脂肪過多，可能需另加 <strong>3 萬泰幣</strong> 風險控制費。結腸技術 BMI &gt; 23 者，醫師可能建議改皮瓣技術或先降至合適體重。</p>
+
+      <ul>
+        <li>6）喉結手術：<strong>45,000 泰幣（全麻）</strong></li>
+        <li>7）隆胸手術：<strong>150,000 泰幣（曼托圓形假體）</strong>；<strong>180,000 泰幣（女王波）</strong></li>
+      </ul>
+
+      <p>下體手術套餐費用包含：醫生費、麻醉費、<strong>五晚六天住院</strong>、住院期間常規醫藥與餐飲費用。<span class="note">（不含其它共病治療與風控費，如高血壓、心臟病、前列腺病、疝氣、肛瘻、痔瘡、糖尿病、血液病等）</span></p>
+
+      <p>一站式服務費：<strong>10,000 泰幣</strong>（簽證指導、行程安排、陪同面診、翻譯、術後護理指導、生活指導、住宿安排、飲食指導、心理建設、接送機等）。<span class="note">受限於泰國交通壅塞，僅接待<strong>指定住宿</strong>之個案；搬出指定住宿後，一站式服務即停止。</span></p>
+
+      <p>兩位精神科醫生費用：<strong>4,000–7,000 泰幣</strong></p>
+
+      <h3>護理師費用</h3>
+      <ul>
+        <li>1）日常護理師：<strong>400 泰幣/日</strong>，雇 10–20 天（協助傷口護理每日 2 次、代購每日 1 次、安排營養餐）</li>
+        <li>2）全日制護理師：<strong>1,000 泰幣/日</strong>，<strong>5 天起跳</strong>。<span class="note">體弱易暈或自理能力差、合併焦慮恐慌者，建議至少 15 天；需提前 3–4 天預約。</span></li>
+      </ul>
+
+      <p>生活雜費預算：<strong>40,000–60,000 泰幣</strong>（住宿、飲食、護理用品等）。<br />
+      指定住宿：<strong>1,300–1,600 泰幣/晚</strong>，<strong>約住 15–25 晚</strong>；離開指定住宿後，一站式服務終止。</p>
+    </section>
+
+    <section class="card reveal" data-delay="2">
+      <h2>🌷 WIH 蔡達武醫生蝶變手術花費明細</h2>
+      <p class="note">溫馨提醒：<strong>面診當天需先付清</strong>所有費用。醫院不接受第三方或換匯機構轉帳。</p>
+
+      <ul>
+        <li>1）性別肯定手術（零深度）：<strong>350,000 泰幣</strong>（含住院 3 晚）</li>
+        <li>2）非陰莖逆塞皮瓣技術：<strong>370,000 泰幣</strong>（含住院 4 晚）</li>
+        <li>3）結腸傳統技術：<strong>620,000 泰幣</strong>（含住院 5 晚）</li>
+        <li>4）結腸腹腔鏡：<strong>660,000 泰幣</strong>（含住院 5 晚）</li>
+        <li>5）腹膜技術（陰囊皮嫁接腹膜）：<strong>720,000 泰幣</strong>（含住院 4 晚）</li>
+      </ul>
+
+      <p>套餐包含：醫生費、麻醉費、住院費、住院期間常規醫藥與餐飲費。<span class="note">（不含個案其他疾病治療費）</span></p>
+
+      <p>額外預算建議：<strong>約 100,000 泰幣</strong>（住院外指定住宿、飲食、術後護理用品、其他服務、精神科費用等）。</p>
+
+      <p class="note">術後須於<strong>指定住宿</strong>再住至少 3–4 週（依恢復而定）。若未照此規定，需簽拒絕治療知情同意書。</p>
+
+      <h3>指定住宿費用（含 2 次護理指導）</h3>
+      <ul>
+        <li>單人豪華房：<strong>2,900 泰幣/晚</strong>（含 1 份早餐）</li>
+        <li>雙人豪華房：<strong>3,400 泰幣/晚</strong>（含 2 份早餐）</li>
+        <li>單人大豪華房：<strong>3,200 泰幣/晚</strong>（含 1 份早餐）</li>
+        <li>雙人大豪華房：<strong>3,700 泰幣/晚</strong>（含 2 份早餐）</li>
+      </ul>
+      <p class="note">未住指定住宿者：醫院不提供術後護理指導與交通接送。透過金子預約者：WIH 住宿部<strong>住七晚送一晚</strong>。</p>
+
+      <ul>
+        <li>護理站費：<strong>600 泰幣/次</strong>（面診或複診）</li>
+        <li>複診醫生費：<strong>1,200 泰幣/次</strong>（一般術後含一次免費複診）</li>
+        <li>預付消費金：<strong>10,000 泰幣</strong>（餐點、藥品、護理用品、洗衣；未用完於離院前一天現金退回）</li>
+        <li>精神科醫生費：<strong>10,000 泰幣/兩位</strong>（透過金子預約之優惠）</li>
+        <li>術前體檢費：<strong>12,500 泰幣</strong></li>
+        <li>全日制護工：<strong>1,000 泰幣/日</strong>（24 小時，最少 5 天；通常不必，無陪同且體質極弱者可考慮，需提前 3–4 天預約）</li>
+      </ul>
+      <p class="note">整理 By 金子</p>
+    </section>
+
+    <section class="card reveal" data-delay="3">
+      <h2>🌷 PAI 布林醫生手術套餐費用</h2>
+      <p class="note">溫馨提醒：面診當天需付清手術費。<strong>僅接受手術者本人轉帳</strong>（訂金與手術費）。父母代轉需提供護照與關係證明/出生證。不接受第三方或換匯機構轉帳。</p>
+
+      <h3>費用與條件</h3>
+      <ul>
+        <li>皮瓣技術（住院五晚六天）：<strong>USD 9,300</strong>。材料不足需嫁接其他皮膚者，另加 <strong>USD 500</strong>。條件：BMI 18–25、體重 &lt;= 90kg，並符合身心條件。</li>
+        <li>結腸技術（住院七晚）：<strong>USD 18,000</strong>。條件：BMI 18–23、體重 &lt;= 90kg；超標加收<strong>20%</strong>；超出過多則建議先減重。</li>
+      </ul>
+
+      <p>下體手術費用包含：醫生費、麻醉費、住院費、住院期間常規醫藥與餐飲費。<span class="note">（不含其他疾病治療與風控費）</span></p>
+
+      <p>一站式服務費：<strong>10,000 泰幣</strong>（簽證指導、行程安排、陪同面診、翻譯、術後護理指導、生活指導、住宿安排、飲食指導、心理建設、接送機等）。<span class="note">因交通壅塞，僅接待<strong>指定住宿</strong>；搬出後服務停止。</span></p>
+
+      <p>兩位精神科醫生費用：<strong>4,000–7,000 泰幣</strong></p>
+
+      <h3>護理師費用</h3>
+      <ul>
+        <li>1）日常護理師：<strong>400 泰幣/日</strong>，雇 10–20 天（每日兩次傷口護理、代購一次、營養餐安排）</li>
+        <li>2）全日制護理師：<strong>1,000 泰幣/日</strong>，<strong>5 天起跳</strong>（出院後虛弱、易暈或自理差/焦慮恐慌者建議至少 15 天；需提前 3–4 天預約）</li>
+      </ul>
+
+      <p>生活雜費預算：<strong>40,000–60,000 泰幣</strong>（住宿、飲食、護理用品等）。<br />
+      指定住宿：<strong>1,300–1,500 泰幣/晚</strong>，<strong>約住 15–25 晚</strong>；離開指定住宿後，一站式服務終止。</p>
+
+      <div class="footer">
+        微信：liangjin3039　|　備用微信：info4ts　|　Line：info4ts　|　Telegram：info4ts　|　IG：info4ts<br />
+        電子郵箱：jinliang222@gmail.com　|　部落格：http://jinliang222.pixnet.net　|　微博：http://weibo.cn/forts5　|　公眾號：破繭成蝶BY梁金　|　網站：www.tcmspro.com
+      </div>
+    </section>
+  </div>
+
+<script>
+  // 監看 .reveal 元素：進入視窗時加 .show，離開時移除（即可淡出）
+  const els = document.querySelectorAll('.reveal');
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting){
+        entry.target.classList.add('show');
+      } else {
+        entry.target.classList.remove('show'); // 想只進場一次可註解掉這行
+      }
+    });
+  }, { root: null, threshold: 0.2 });
+
+  els.forEach(el => io.observe(el));
+</script>
+</body>
+</html>

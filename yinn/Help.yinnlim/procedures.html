@@ -74,6 +74,7 @@ border:1px dashed var(--border);padding:8px 10px;border-radius:10px;color:#d1cfe
   <div class="header">
     <div class="h-left">
       <h1 style="margin:0;font-size:clamp(20px,4.6vw,28px)">跨性別手術資料查詢</h1>
+      <button class="btn small ghost"><a href="ll.html">詳情</a></button>
       <div><button id="compareBtn" class="btn small ghost">術式對比</button>←點擊查看</div>
     </div>
     <button class="btn small ghost"><a href="help.html" class="E" >返回</a></button>
@@ -216,7 +217,7 @@ function render(items){
     };
   });
 }
-
+function convertText(s){ return s || ''; } // 先當作不轉換，之後要做簡繁轉再換掉
 function applyFilters() {
   const q = qEl.value.trim();  // 用戶輸入的搜尋字詞
   const convertedQuery = convertText(q); // 將搜尋字詞轉換成正體字

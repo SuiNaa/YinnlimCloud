@@ -235,6 +235,32 @@ const DRUGS = [
     }
   ]
 },
+{
+  id: 'quetiapine',
+  class: '精麻類',
+  rx: 'RX',
+  name: '奎硫平（Quetiapine）',
+  aliases: ['思瑞康', 'Seroquel'],
+  forms: '口服錠（一般釋放、緩釋劑型）',
+  typicalDose: '一般 150–800 mg/日，依病情分 1–2 次；失眠或輔助用途時可用低劑量（25–100 mg/日）',
+  bioavailability: '口服吸收佳，蛋白結合率約 83%，經肝臟 CYP3A4 代謝',
+  actions: '拮抗多巴胺 D2、血清素 5-HT2A 受體，並作用於 H1、α1 受體；具鎮靜、抗躁、抗憂鬱、抗精神病作用',
+  indications: '思覺失調症、雙相情感障礙（躁期、鬱期、維持治療）、重性憂鬱症增效治療、部分失眠與焦慮症（非核准適應症）',
+  monitoring: '體重、BMI、血糖、血脂、血壓；肝功能（ALT/AST）；必要時做心電圖（QT 間期）',
+  cautions: '慎用於心血管疾病、糖尿病或代謝症候群患者；避免與強效 CYP3A4 抑制劑/誘導劑併用；老年失智相關精神病禁用（增加死亡風險）',
+  interactions: 'CYP3A4 抑制劑（如酮康唑、紅黴素）會升高血中濃度；CYP3A4 誘導劑（如卡馬西平、苯妥英）會降低療效；合併中樞抑制劑會加強嗜睡',
+  sideEffects: '嗜睡、體重增加、代謝異常（血糖升高、血脂異常）、姿勢性低血壓、口乾、便秘；高劑量可能增加錐體外症狀與 QT 延長',
+  refs: [
+    {
+      name: 'UpToDate – Quetiapine: Drug Information',
+      url: 'https://www.uptodate.com/contents/quetiapine-drug-information'
+    },
+    {
+      name: 'FDA Label – Seroquel (Quetiapine)',
+      url: 'https://www.accessdata.fda.gov/drugsatfda_docs/label/2020/020639s069,021472s053lbl.pdf'
+    }
+  ]
+},
   /* ==== HRT-激素（新增）==== */
   {
     id:'progesterone_inj',
