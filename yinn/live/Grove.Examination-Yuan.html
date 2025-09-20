@@ -671,15 +671,25 @@ async function submitJoinControl(){
   if(!rule||!respect){ $('#ctrlErr').textContent='請選擇「是否遵守規則／是否尊重多元」'; return; }
   if(!essay){ $('#ctrlErr').textContent='請填寫論述內容'; return; }
   const durationSec=Math.max(1,Math.floor((Date.now()-ctrlStartAt)/1000));
-  const payload={
-    type:'join-control', status:'pending',
-    applicant:{ "__type":"Pointer","className":"_User","objectId":ME.objectId },
-    answers:{rule,respect}, essay, durationSec,
-    ACL:{ "*":{ "read":false }, [ME.objectId]:{ "read":true,"write":false }, ...REVIEW_READ }
-  };
-  const r=await fetch(`${API}/classes/ExamSubmission`,{
-    method:'POST', headers:{...lcHeaders(true),'Content-Type':'application/json'}, body:JSON.stringify(payload)
-  });
+  // 原本 type === 'join-control' 的那段，payload 改成：
+const payload = {
+  user:   { "__type":"Pointer","className":"_User","objectId": applicantId },
+  active: true,
+  role:   'member',        // 建議加上，和其他院一致
+  status: 'active',        // ★ 這個是造成 400 的關鍵
+  ACL: {
+    "*":               { "read": false },
+    "role:Admin":      { "read": true,  "write": true },
+    "role:ExamStaff":  { "read": true },
+    [applicantId]:     { "read": true },
+    [SUPER_EXAM_UID]:  { "read": true,  "write": true }
+  }
+};
+await fetch(`${API}/classes/Admin`, {
+  method:'POST',
+  headers:{ ...lcHeaders(true), 'Content-Type':'application/json' },
+  body: JSON.stringify(payload)
+});
   const d=await r.json(); if(!r.ok){ $('#ctrlErr').textContent=d.error||'提交失敗'; return; }
   closeCtrlModal(); alert('已送出監察院申請，待審核。');
 }
@@ -850,7 +860,12 @@ function switchTab(which){
 
 async function getRoleSummary(uid){
   const p = { "__type":"Pointer","className":"_User","objectId": uid };
-  const w = encodeURIComponent(JSON.stringify({ "$or":[ {user:p},{User:p} ], active:true }));
+  const w = encodeURIComponent(JSON.stringify({
+  "$or": [
+    { user: p, active: true },
+    { User: p, active: true }
+  ]
+}));
 
   const [e, c, i, a] = await Promise.all([
     safeFetchJson(`${API}/classes/ExamStaff?where=${w}&limit=1`, { headers: lcHeaders(true) }),
@@ -1134,8 +1149,20 @@ async function approveSubmission(id, type, uid){
         [SUPER_EXAM_UID]:{ "read": true,  "write": true }
       }
     };
-    const r = await fetch(`${API}/classes/Admin`, { method: 'POST', headers: { ...lcHeaders(true), 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
-    if (!r.ok) { alert('建立監察院身份失敗'); return; }
+    const r = await fetch(`${API}/classes/Admin`, {
+  method: 'POST',
+  headers: { ...lcHeaders(true), 'Content-Type':'application/json' },
+  body: JSON.stringify({
+    user:   { "__type":"Pointer","className":"_User","objectId": applicantId },
+    active: true
+  })
+});
+const d = await r.json().catch(() => ({}));
+if (!r.ok) {
+  console.error('Admin create failed:', r.status, d);
+  alert(d.error || `建立監察院身份失敗（${r.status}）`);
+  return;
+}
 
   } else if (type === 'join-exam') {
     const payload = {
