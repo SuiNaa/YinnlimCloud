@@ -222,7 +222,7 @@
     <div class="topbar mainbar">
       <div class="center-block">
         <h1>Grove Examination Yuan</h1>
-        <div class="hint">E=考試院、C=監察院、I=行政院、A=司法院（本頁為考試院）。</div>
+        <div class="hint">E=考試、C=審查、I=管理、A=處理（本頁為Ｅ）。</div>
         <button id="btnApplyC" class="btn brand cta-under-title" style="display:none;" onclick="openJoinControl()">申請監察院人員（C）</button>
         <button id="btnApplyI" class="btn brand cta-under-title" style="display:none;" onclick="openJoinExecutive()">申請行政院人員（I）</button>
         <button id="btnApplyLInternal" class="btn brand cta-under-title" style="display:none;" onclick="openApplyLegInternal()">參加立法院（L）</button>
@@ -231,18 +231,20 @@
       </div>
 
       <nav class="right-links" aria-label="審查切換">
-        <a id="lnkBack" class="tablink back" onclick="goBack()" title="返回上一頁">返回</a>
-        <a class="tablink back" href="shopping.html">Esc Store</a>
-        <div class="vnav">
-          <a id="lnkAll" class="tablink vcol small" onclick="switchTab('all')">顯示全部</a>
-          <a id="lnkHistory" class="tablink vcol small" onclick="switchTab('history')">查看歷史審查</a>
-          <a id="lnkCtrl"    class="tablink vcol" onclick="switchTab('ctrl')">監察院人員審查</a>
-          <a id="lnkExam"    class="tablink vcol" onclick="switchTab('exam')">考試院人員審查</a>
-          <a id="lnkExec"    class="tablink vcol" onclick="switchTab('exec')">行政院人員審查</a>
-          <a id="lnkLeg"     class="tablink vcol" onclick="switchTab('leg')">立法院申請審查</a>
-          <a id="lnkJud"     class="tablink vcol" onclick="switchTab('jud')">司法院人員審查</a>
-        </div>
-      </nav>
+  <a id="lnkBack" class="tablink back" onclick="goBack()" title="返回上一頁">返回</a>
+  <a class="tablink back" href="shopping.html">Esc Store</a>
+
+  <!-- 加上 id="reviewTabs" -->
+  <div id="reviewTabs" class="vnav">
+    <a id="lnkAll" class="tablink vcol small" onclick="switchTab('all')">顯示全部</a>
+    <a id="lnkHistory" class="tablink vcol small" onclick="switchTab('history')">查看歷史審查</a>
+    <a id="lnkCtrl" class="tablink vcol" onclick="switchTab('ctrl')">監察院人員審查</a>
+    <a id="lnkExam" class="tablink vcol" onclick="switchTab('exam')">考試院人員審查</a>
+    <a id="lnkExec" class="tablink vcol" onclick="switchTab('exec')">行政院人員審查</a>
+    <a id="lnkLeg"  class="tablink vcol" onclick="switchTab('leg')">立法院申請審查</a>
+    <a id="lnkJud"  class="tablink vcol" onclick="switchTab('jud')">司法院人員審查</a>
+  </div>
+</nav>
     </div>
 
     <div id="applyBox" class="card" style="display:none;">
@@ -667,31 +669,35 @@ async function submitJoinExam(){
   closeJoinExam(); alert('已送出考試院申請，待審核。');
 }
 async function submitJoinControl(){
-  const rule=($('#ctrlRule').value||'').trim(), respect=($('#ctrlRespect').value||'').trim(), essay=($('#ctrlEssay').value||'').trim();
-  if(!rule||!respect){ $('#ctrlErr').textContent='請選擇「是否遵守規則／是否尊重多元」'; return; }
-  if(!essay){ $('#ctrlErr').textContent='請填寫論述內容'; return; }
-  const durationSec=Math.max(1,Math.floor((Date.now()-ctrlStartAt)/1000));
-  // 原本 type === 'join-control' 的那段，payload 改成：
-const payload = {
-  user:   { "__type":"Pointer","className":"_User","objectId": applicantId },
-  active: true,
-  role:   'member',        // 建議加上，和其他院一致
-  status: 'active',        // ★ 這個是造成 400 的關鍵
-  ACL: {
-    "*":               { "read": false },
-    "role:Admin":      { "read": true,  "write": true },
-    "role:ExamStaff":  { "read": true },
-    [applicantId]:     { "read": true },
-    [SUPER_EXAM_UID]:  { "read": true,  "write": true }
-  }
-};
-await fetch(`${API}/classes/Admin`, {
-  method:'POST',
-  headers:{ ...lcHeaders(true), 'Content-Type':'application/json' },
-  body: JSON.stringify(payload)
-});
-  const d=await r.json(); if(!r.ok){ $('#ctrlErr').textContent=d.error||'提交失敗'; return; }
-  closeCtrlModal(); alert('已送出監察院申請，待審核。');
+  const rule    = ($('#ctrlRule').value || '').trim();
+  const respect = ($('#ctrlRespect').value || '').trim();
+  const essay   = ($('#ctrlEssay').value || '').trim();
+  if (!rule || !respect){ $('#ctrlErr').textContent = '請選擇「是否遵守規則／是否尊重多元」'; return; }
+  if (!essay){ $('#ctrlErr').textContent = '請填寫論述內容'; return; }
+
+  const durationSec = Math.max(1, Math.floor((Date.now() - ctrlStartAt) / 1000));
+
+  // 送審 → 新增 ExamSubmission（不要碰 Admin）
+  const payload = {
+    type: 'join-control',
+    status: 'pending',
+    applicant: { "__type":"Pointer", "className":"_User", "objectId": ME.objectId },
+    answers: { rule, respect },
+    essay,
+    durationSec,
+    ACL: { "*": { read:false }, [ME.objectId]: { read:true, write:false }, ...REVIEW_READ }
+  };
+
+  const r = await fetch(`${API}/classes/ExamSubmission`, {
+    method: 'POST',
+    headers: { ...lcHeaders(true), 'Content-Type':'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if (!r.ok){ $('#ctrlErr').textContent = d.error || '提交失敗'; return; }
+
+  closeCtrlModal();
+  alert('已送出監察院（C）申請，待審核。');
 }
 
 function openJoinExecutive(){
@@ -1138,31 +1144,31 @@ async function approveSubmission(id, type, uid){
   if (!confirm('確定通過此申請？')) return;
 
   if (type === 'join-control') {
-    const payload = {
-      user:   { "__type":"Pointer","className":"_User","objectId": applicantId },
-      active: true,
-      ACL: {
-        "*":{ "read": false },
-        "role:Admin":{ "read": true,  "write": true },
-        "role:ExamStaff":{ "read": true },
-        [applicantId]:{ "read": true },
-        [SUPER_EXAM_UID]:{ "read": true,  "write": true }
-      }
-    };
-    const r = await fetch(`${API}/classes/Admin`, {
-  method: 'POST',
-  headers: { ...lcHeaders(true), 'Content-Type':'application/json' },
-  body: JSON.stringify({
+  const payload = {
     user:   { "__type":"Pointer","className":"_User","objectId": applicantId },
-    active: true
-  })
-});
-const d = await r.json().catch(() => ({}));
-if (!r.ok) {
-  console.error('Admin create failed:', r.status, d);
-  alert(d.error || `建立監察院身份失敗（${r.status}）`);
-  return;
-}
+    active: true,
+    status: 'active',           // ← 必填！你的 schema 要這個欄位
+    role: 'member',             // （可選）如果有 role 欄位
+    ACL: {
+      "*": { read: false },
+      "role:Admin":     { read: true, write: true },
+      "role:ExamStaff": { read: true },
+      [applicantId]:    { read: true },
+      [SUPER_EXAM_UID]: { read: true, write: true }
+    }
+  };
+
+  const r = await fetch(`${API}/classes/Admin`, {
+    method: 'POST',
+    headers: { ...lcHeaders(true), 'Content-Type':'application/json' },
+    body: JSON.stringify(payload)   // ← 用 payload，不要自己再寫 body
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    console.error('Admin create failed:', r.status, d);
+    alert(d.error || `建立監察院身份失敗（${r.status}）`);
+    return;
+  }
 
   } else if (type === 'join-exam') {
     const payload = {
@@ -1250,8 +1256,7 @@ async function sendSystemMessage(toId, text){
 
 /* ====== 輪詢 ====== */
 async function refreshAll(){
-  await loadRoster();
-  if (!IS_STAFF) return;
+  if (IS_STAFF) { await loadRoster(); } else { return; }
 
   if (ACTIVE_TAB === 'all'){
     await Promise.all(['ctrl','exam','exec','leg','jud'].map(loadPending));
@@ -1279,7 +1284,31 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState=
   IS_EXEC = await isExecutiveStaff(ME.objectId);
   IS_JUD  = await isJudicialStaff(ME.objectId);
   IS_STAFF = IS_EXAM || IS_CTRL || IS_EXEC || IS_JUD;
+  // 只給內部看的東西
+const tabs = document.getElementById('reviewTabs');
+if (tabs) tabs.style.display = IS_STAFF ? 'flex' : 'none';
 
+// 外部成員：不顯示任何申請入口與側欄
+if (!IS_STAFF) {
+  // 關掉「加入申請」卡片（applyBox）
+  const applyBox = document.getElementById('applyBox');
+  if (applyBox) applyBox.style.display = 'none';
+
+  // 關掉所有 CTA 按鈕（避免外部看到申請入口）
+  ['btnApplyC','btnApplyI','btnApplyLInternal','btnApplyAInternal','btnApplyAPublic']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+  // 關掉側欄與漢堡鍵（避免看到外部人員名單的框）
+  const aside = document.getElementById('aside');
+  const openBtn = document.getElementById('openBtn');
+  if (aside)   aside.style.display = 'none';
+  if (openBtn) openBtn.style.display = 'none';
+} else {
+  // 內部：顯示審查區
+  document.getElementById('reviewBox').style.display = 'block';
+}
+
+// 非內部只顯示申請框，內部才顯示審查框（你原本就有，保留）
   // CTA 顯示
   document.getElementById('btnApplyAInternal').style.display = IS_EXAM ? 'inline-flex' : 'none';
   document.getElementById('btnApplyAPublic').style.display   = !IS_JUD ? 'inline-flex' : 'none';

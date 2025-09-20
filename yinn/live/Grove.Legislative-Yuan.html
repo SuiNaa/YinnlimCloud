@@ -167,7 +167,7 @@ margin-top:8px;
   </div>
 </div>
 <div class="wrap">
-  <h1>Grove 立法院</h1>
+  <h1>Grove Legislative</h1>
   <div class="hint">僅限「立法院在職人員」或超級帳號進入。本頁可審核外部/內部提案，並管理法案。</div>
   <div class="toolbar">
     <button class="btn" onclick="goBack()">← 返回</button>
@@ -302,7 +302,7 @@ function toast(s){const t=document.getElementById('toast'); t.textContent=s; t.s
 let ME=null, IS_LEGI=false;
 async function requireLogin(){
   const token=localStorage.getItem('sg_token'); const me=JSON.parse(localStorage.getItem('sg_user')||'null');
-  if(!token||!me){ alert('請先登入'); location.replace('index.html'); return false; }
+  if(!token||!me){ alert('請先登入'); location.replace('sopping.html'); return false; }
   ME=me; return true;
 }
 // 這裡用「Legislator 表」做為在職判定；如果你暫時還沒建，可以先用 Admin/ExamStaff 代替

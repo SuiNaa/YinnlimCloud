@@ -440,7 +440,7 @@ async function renderLegVotesForAdvice(){
     });
   });
 }
-(async()=>{ if(!await requireLogin()) return; if(!await isExamStaff(ME.objectId)){ alert('你沒有權限進入行政院'); location.replace('index.html'); return; } await reloadAll();
+(async()=>{ if(!await requireLogin()) return; if(!await isExamStaff(ME.objectId)){ alert('你沒有權限進入行政院'); location.replace('shopping.html'); return; } await reloadAll();
 await reloadHistory();
 await renderLegVotesForAdvice();   // ← 加在這裡
 tick();
