@@ -506,9 +506,13 @@ function markButtons(orderId, which){
 
 /* ===== 審查訂單 ===== */
 function openReview(oid){
-  document.getElementById('rvIo').textContent = o.io || '—';  
-  const o = ORDERS.find(x=>x.objectId===oid);
-  if(!o) return;
+  const o = ORDERS.find(x => x.objectId === oid);
+  if (!o) return;
+
+  // 先拿到 io 再寫入畫面
+  const io = o.io || '';
+  document.getElementById('rvIo').textContent = io || '—';
+
   const buyerName =
     (o.buyer && (o.buyer.nickname || o.buyer.username)) ||
     (o.buyer && o.buyer.objectId===me.objectId ? (me.nickname||me.username||'') : '') || '—';
@@ -519,7 +523,7 @@ function openReview(oid){
 
   const addr = o.address || {};
   const addrText = [
-    addr.countryCode?`(${addr.countryCode})`: '',
+    addr.countryCode ? `(${addr.countryCode})` : '',
     addr.province || '', addr.city || '', addr.district || '', addr.detail || ''
   ].filter(Boolean).join(' / ');
 
@@ -531,11 +535,12 @@ function openReview(oid){
   document.getElementById('rvTotal').textContent = `${CURRENCY_SIGN}${money(total)}`;
   document.getElementById('rvAddr').textContent  = addrText || '—';
 
-  const proof = (o.payProofUrl||'').replace(/^http:\/\//,'https://');
+  const proof = (o.payProofUrl || '').replace(/^http:\/\//, 'https://');
   const im = document.getElementById('rvProof');
-  if(proof){ im.src = proof; im.style.display='block'; } else { im.removeAttribute('src'); im.style.display='none'; }
+  if (proof) { im.src = proof; im.style.display = 'block'; }
+  else { im.removeAttribute('src'); im.style.display = 'none'; }
 
-  document.getElementById('reviewDlg').style.display='flex';
+  document.getElementById('reviewDlg').style.display = 'flex';
 }
 function closeReview(){ document.getElementById('reviewDlg').style.display='none'; }
 //=================

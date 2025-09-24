@@ -31,7 +31,13 @@
   .t-main{ flex:1; min-width:0; }
   .t-name{ font-weight:800; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .t-last{ color:#777; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .t-meta{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .t-meta{
+  display:flex;
+  flex-direction: row;     /* 橫向排 */
+  align-items: center;     /* 垂直置中 */
+  gap:6px;                 /* 間距 */
+  justify-content: flex-end; /* 靠右對齊 */
+}
   .badge{ min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#e91e63; color:#fff; font-size:12px; line-height:18px; text-align:center; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.2); }
   .time{ color:#999; font-size:12px; }
 
@@ -51,7 +57,11 @@
   cursor:pointer;
 }
 .msg-tools .link:hover{ text-decoration:underline; }
-
+.link[disabled]{
+  opacity:.4;
+  pointer-events:none;
+  cursor:default;
+}
 
 /*-------------------------*/
   .msg{ display:flex; gap:10px; margin:8px 0; align-items:flex-end; }
@@ -322,9 +332,17 @@ function getDismissedMap(){
   try{ return JSON.parse(localStorage.getItem('sg_dismissed_threads')||'{}'); }
   catch(e){ return {}; }
 }
+function getReadCutMap(){
+  try{ return JSON.parse(localStorage.getItem('sg_read_cut')||'{}'); }
+  catch(e){ return {}; }
+}
+function setReadCutMap(mp){
+  localStorage.setItem('sg_read_cut', JSON.stringify(mp||{}));
+}
 function setDismissedMap(mp){
   localStorage.setItem('sg_dismissed_threads', JSON.stringify(mp||{}));
 }
+
 // 認證保護
 (function guard(){
   const token = localStorage.getItem('sg_token');
@@ -352,6 +370,7 @@ window.goProfile = goProfile;
 
 /* 讀「含我」的訊息，前端聚合成會話 */
 async function fetchConversations(){
+  const readCutMap = getReadCutMap();  // 讀取已讀截止時間
   const orWhere = { "$or":[ { to: mePtr }, { from: mePtr } ] };
   const where = encodeURIComponent(JSON.stringify(orWhere));
   const url = `${API}/classes/Message?where=${where}&order=-createdAt&limit=100&include=from,to`;
@@ -362,29 +381,42 @@ async function fetchConversations(){
 
   const map = new Map();
   data.results.forEach(m=>{
-    const from = m.from, to = m.to;
-    const fromId = from && from.objectId;
-    const toId   = to   && to.objectId;
-    if(!fromId || !toId) return;
+  const from = m.from, to = m.to;
+  const fromId = from && from.objectId;
+  const toId   = to   && to.objectId;
+  if(!fromId || !toId) return;
 
-    const partnerId   = (fromId === me.objectId) ? toId : fromId;
-    const plusUnread = (toId === me.objectId && m.read === false) ? 1 : 0;
-    const partnerObj  = (fromId === me.objectId ? to : from) || {};
-    if(!map.get(partnerId)){
-      map.set(partnerId, {
-        partnerId,
-        lastMsg: m,
-        unread: plusUnread,
-        user: {
-          objectId: partnerId,
-          nickname: partnerObj.nickname || partnerObj.username || '',
-          avatarUrl: partnerObj.avatarUrl || ''
-        }
-      });
-    }else{
-      map.get(partnerId).unread += plusUnread;
+  const partnerId   = (fromId === me.objectId) ? toId : fromId;
+  const isRead = (m.read === true || m.read === "true");
+
+  // ← 新增：只把「晚於 cut」的未讀算進去
+  const cutISO   = readCutMap[partnerId] || null;
+  const cutTime  = cutISO ? new Date(cutISO).getTime() : 0;
+  const msgTime  = new Date(m.createdAt || m.updatedAt || 0).getTime();
+  const afterCut = !cutISO || msgTime > cutTime;
+
+  const plusUnread = (toId === me.objectId && !isRead && afterCut) ? 1 : 0;
+
+  const partnerObj  = (fromId === me.objectId ? to : from) || {};
+  if(!map.get(partnerId)){
+    map.set(partnerId, {
+      partnerId,
+      lastMsg: m,
+      unread: plusUnread,
+      user: {
+        objectId: partnerId,
+        nickname: partnerObj.nickname || partnerObj.username || '',
+        avatarUrl: partnerObj.avatarUrl || ''
+      }
+    });
+  }else{
+    map.get(partnerId).unread += plusUnread;
+    // 更新最後一則（保持原本行為）
+    if(new Date(m.createdAt) > new Date(map.get(partnerId).lastMsg.createdAt)){
+      map.get(partnerId).lastMsg = m;
     }
-  });
+  }
+});
 
   const list = Array.from(map.values());
   const needIds = list.filter(t => !(t.user.nickname && t.user.avatarUrl)).map(t => t.partnerId);
@@ -451,6 +483,26 @@ function renderThreads(){
         ${t.unread>0 ? `<div class="badge">${t.unread>99?'99+':t.unread}</div>` : ''}
         <button class="link" onclick="dismissThread('${t.partnerId}', event)">移除</button>
       </div>`;
+      // —— 從這裡往下是新增的：用 DOM 動態插入「已讀」按鈕 —— //
+const meta = a.querySelector('.t-meta');
+if (meta) {
+  const readBtn = document.createElement('button');
+  readBtn.className = 'link';
+  readBtn.textContent = '已讀';
+  if (t.unread > 0) {
+    readBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+      markThreadRead(t.partnerId, ev);
+    });
+  } else {
+    readBtn.disabled = true;        // 沒未讀就置灰
+  }
+
+  // 把「已讀」插到「移除」前面（或用 meta.appendChild(readBtn) 放最後）
+  const removeBtn = meta.querySelector('button.link:last-of-type');
+  if (removeBtn) meta.insertBefore(readBtn, removeBtn); else meta.appendChild(readBtn);
+}
     box.appendChild(a);
   });
 }
@@ -520,16 +572,33 @@ async function openThread(partnerId){
 scrollToBottom(true);     // 打開會話時一定捲底
 
   // ---- 標記未讀為已讀 ----
-  const needRead = (data.results||[]).filter(m=> m.to && m.to.objectId===me.objectId && (m.read===false || m.read==="false"));
-  for(const m of needRead){
-    try{
-      await fetch(`${API}/classes/Message/${m.objectId}`,{
-        method:'PUT',
-        headers:{ ...AUTH, 'Content-Type':'application/json' },
-        body: JSON.stringify({ read: true })
-      });
-    }catch(e){}
-  }
+  // 本地遮罩：打開會話就視為讀到最後
+try{
+  const lastISO = (data.results && data.results.length)
+    ? (data.results[data.results.length-1].updatedAt || data.results[data.results.length-1].createdAt)
+    : new Date().toISOString();
+  const mp = getReadCutMap();
+  mp[partnerId] = lastISO;
+  setReadCutMap(mp);
+}catch(e){}
+
+  const needRead = (data.results||[]).filter(m => {
+  const isRead = (m.read === true || m.read === "true");
+  return m.to && m.to.objectId === me.objectId && !isRead && canWriteMsg(m);
+});
+
+for (const m of needRead){
+  // 沒寫權就不送 PUT，避免 403 紅字
+  if(!canWriteMsg(m)) continue;
+  try{
+    const r = await fetch(`${API}/classes/Message/${m.objectId}`,{
+      method:'PUT',
+      headers:{ ...AUTH, 'Content-Type':'application/json' },
+      body: JSON.stringify({ read: true })
+    });
+    // 失敗就算了，不要噴錯
+  }catch(e){}
+}
 
   // ---- 更新左側清單並啟動輪詢 ----
   THREADS = await fetchConversations();
@@ -750,10 +819,17 @@ scrollToBottom(true);     // 我自己發訊息一定捲底
 
   // 送到後端
 const payload = {
-  kind:'chat',
-  from:{ "__type":"Pointer","className":"_User","objectId": me.objectId },
-  to:{ "__type":"Pointer","className":"_User","objectId": CURRENT_PARTNER },
-  text, body:text, read: false
+  kind: 'chat',
+  from: { "__type":"Pointer","className":"_User","objectId": me.objectId },
+  to:   { "__type":"Pointer","className":"_User","objectId": CURRENT_PARTNER },
+  text,
+  body: text,
+  read: false,                          // ← Boolean
+  ACL: {
+    [me.objectId]:     { read:true, write:true },   // 我
+    [CURRENT_PARTNER]: { read:true, write:true },   // 對方（要能把 read 改成 true）
+    "*":               { read:false }               // 不公開
+  }
 };
 
   SENDING = true;
@@ -792,6 +868,7 @@ const payload = {
 }
 
 /* 工具 */
+
 function timeAgo(iso){
   const t = new Date(iso).getTime();
   const d = Date.now() - t;
@@ -804,6 +881,17 @@ function timeAgo(iso){
 }
 function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
 /* 工具 */
+function getAclWrite(acl, uid){
+  try{
+    if(!acl || !uid) return false;
+    if(acl[uid] && acl[uid].write === true) return true;
+    if(acl["*"] && acl["*"].write === true) return true;
+    return false;
+  }catch(e){ return false; }
+}
+function canWriteMsg(m){
+  return getAclWrite(m.ACL, me.objectId);
+}
 // --- 自動捲底：只在需要時 ---
 let STICKY_BOTTOM = true;   // 一開始在底部
 
@@ -843,7 +931,54 @@ function scrollToBottom(force=false){
     if(im.complete) done(); else im.addEventListener('load', done, { once:true });
   });
 }
+async function markThreadRead(partnerId){
+  // 找出「對方→我」且未讀的訊息
+  const where = {
+    from: { "__type":"Pointer","className":"_User","objectId": partnerId },
+    to:   { "__type":"Pointer","className":"_User","objectId": me.objectId },
+    read: { "$nin":[ true, "true" ] }   // 相容舊字串
+  };
+  const url = `${API}/classes/Message?where=${encodeURIComponent(JSON.stringify(where))}&limit=200&include=from,to`;
+  try{
+    const res = await fetch(url, { headers: AUTH });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'fetch unread fail');
 
+    // 逐筆設為已讀（僅當我有寫權，避免 403）
+    for(const m of (data.results||[])){
+      if(!canWriteMsg(m)) continue;
+      try{
+        await fetch(`${API}/classes/Message/${m.objectId}`,{
+          method:'PUT',
+          headers:{ ...AUTH, 'Content-Type':'application/json' },
+          body: JSON.stringify({ read: true })
+        });
+      }catch(e){}
+    }
+
+    // —— 無論 PUT 是否成功，都在本地記錄「我已讀到最後一則」——
+    const th = THREADS.find(t => t.partnerId === partnerId);
+    const lastISO = (th && th.lastMsg && (th.lastMsg.updatedAt || th.lastMsg.createdAt))
+                    || new Date().toISOString();
+    const mp = getReadCutMap();
+    mp[partnerId] = lastISO;
+    setReadCutMap(mp);
+
+    // 重新算徽章並打開該會話（UI 立即歸零）
+    THREADS = await fetchConversations();
+    renderThreads();
+    openThread(partnerId);
+  }catch(e){
+    // 即使抓未讀失敗，也做一個保守的本地已讀遮罩：用現在時間
+    const mp = getReadCutMap();
+    mp[partnerId] = new Date().toISOString();
+    setReadCutMap(mp);
+    THREADS = await fetchConversations();
+    renderThreads();
+    openThread(partnerId);
+    console.warn('已讀但後端失敗：', e);
+  }
+}
 /* 啟動 & 輪詢 */
 (async function start(){
   THREADS = await fetchConversations();
