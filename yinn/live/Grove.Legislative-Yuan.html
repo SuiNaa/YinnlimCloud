@@ -28,7 +28,13 @@
   .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000; color:#fff; padding:10px 14px; border-radius:10px; opacity:0; transition:opacity .18s; z-index:10; }
 
   /* 簡易彈窗 */
-  .mask{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); z-index:999; padding:16px; }
+  .mask{
+  position:fixed; inset:0;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.35);
+  z-index:1400;         /* ★ 提高，確保在漢堡側欄與按鈕之上 */
+  padding:16px;
+}
   .modal{ width:min(680px,92vw); max-height:92vh; overflow:auto; background:#fff; border:1px solid #eee; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.18); }
   .modal header{ position:sticky; top:0; background:#fff; padding:12px 14px; border-bottom:1px solid #eee; font-weight:900; display:flex; justify-content:space-between; align-items:center; }
   .modal .body{ padding:14px; }
@@ -146,6 +152,9 @@ margin-top:8px;
 .exist-law-title{ font-weight:900; }
 .exist-law-meta{ color:#666; font-size:12px; }
 .exist-law-body{ color:#333; white-space:pre-wrap; max-height:120px; overflow:auto; }
+.o{
+  text-decoration: none;
+}
 </style>
 </head>
 <body>
@@ -158,9 +167,10 @@ margin-top:8px;
 <div id="hamMask" class="ham-mask" aria-hidden="true">
   <div class="ham-panel" role="dialog" aria-label="立法院名單">
     <div class="ham-head">
-      立法院在職人員
-      <span class="chip" style="margin-left:auto">L</span>
-    </div>
+  立法院在職人員
+  <span class="chip" style="margin-left:auto">L</span>
+  <span id="deletedChip" class="chip" style="display:none; margin-left:6px; cursor:pointer" title="查看已刪除清單"></span>
+</div>
     <div id="hamList" class="ham-list">
       <div class="hint" style="padding:8px 4px">讀取中…</div>
     </div>
@@ -171,6 +181,7 @@ margin-top:8px;
   <div class="hint">僅限「立法院在職人員」或超級帳號進入。本頁可審核外部/內部提案，並管理法案。</div>
   <div class="toolbar">
     <button class="btn" onclick="goBack()">← 返回</button>
+    <button class="btn"><a href="shopping.html" class="o">Esc Store</a></button>
     <button class="btn" onclick="reloadAll()">重新整理</button>
     <button class="btn primary" id="btnSuggestInside" style="display:none" onclick="openSuggest(true)">提出建議（內部）</button>
     <button class="btn" id="btnConstitution" style="display:none" onclick="goConstitution()">修法 / 寫入</button>
@@ -229,6 +240,34 @@ margin-top:8px;
     </div>
     <div class="actions">
       <button class="btn" onclick="closeExistingLaws()">關閉</button>
+    </div>
+  </div>
+</div>
+<div id="deletedDlg" class="mask">
+  <div class="modal">
+    <header>
+      <div>已刪除建議</div>
+      <button class="btn" onclick="closeDeletedList()">×</button>
+    </header>
+    <div class="body" id="deletedBox">
+      <div class="hint">讀取中…</div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeDeletedList()">關閉</button>
+    </div>
+  </div>
+</div>
+<div id="deletedDetailDlg" class="mask">
+  <div class="modal">
+    <header>
+      <div>刪除建議詳情</div>
+      <button class="btn" onclick="closeDeletedDetail()">×</button>
+    </header>
+    <div class="body" id="deletedDetailBody">
+      <div class="hint">讀取中…</div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeDeletedDetail()">關閉</button>
     </div>
   </div>
 </div>
@@ -316,10 +355,9 @@ async function isLegislator(uid){
 }
 /* ====== Suggestion API ====== */
 async function fetchSuggestions(){
-  // 立委看：先列 new，其次歷史（approved/rejected）
-  const where=encodeURIComponent(JSON.stringify({}));
-  const url=`${API}/classes/BillSuggestion?where=${where}&order=-createdAt&limit=200&include=by,reviewedBy`;
-  const r=await fetch(url,{headers:lc()}); const d=await r.json();
+  const where = encodeURIComponent(JSON.stringify({ status: { "$ne": "deleted" } }));
+  const url = `${API}/classes/BillSuggestion?where=${where}&order=-createdAt&limit=200&include=by,reviewedBy`;
+  const r = await fetch(url,{headers:lc()}); const d = await r.json();
   if(!r.ok) throw new Error(d.error||'讀取建議失敗');
   return d.results||[];
 }
@@ -350,23 +388,165 @@ async function createSuggestion(text, isInternal){
   if (!r.ok) throw new Error(d.error || '送出失敗');
   return d.objectId;
 }
-async function reviewSuggestion(sug, pass){
-  if(!IS_LEGI && ME.objectId!==SUPER_UID){ alert('無權審核'); return; }
-  if(sug.by && (sug.by.objectId===ME.objectId) && (ME.objectId!==SUPER_UID)){
-    alert('你不能審核自己提出的建議'); return;
+// 成功前，關閉對應內部投票（標記為 closed）
+function openDeletedDetail(html){
+  document.getElementById('deletedDetailBody').innerHTML = html;
+  document.getElementById('deletedDetailDlg').style.display = 'flex';
+}
+function closeDeletedDetail(){
+  document.getElementById('deletedDetailDlg').style.display = 'none';
+}
+// 關閉此建議的所有 internal 投票
+async function closeInternalVotes(sugId){
+  const where = encodeURIComponent(JSON.stringify({
+    suggestion:{ "__type":"Pointer","className":"BillSuggestion","objectId": sugId },
+    scope:"internal"
+  }));
+  const r = await fetch(`${API}/classes/SuggestionVote?where=${where}&limit=100`,{headers:lc()});
+  const d = await r.json();
+  if(r.ok && d.results){
+    const nowISO = new Date().toISOString();
+    for(const v of d.results){
+      await fetch(`${API}/classes/SuggestionVote/${v.objectId}`,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json', ...lc()},
+        body: JSON.stringify({ status:'closed', endsAt:{ "__type":"Date","iso": nowISO } })
+      });
+    }
   }
-  const note = prompt(pass?'（可選）通過理由':'（可選）不通過理由') || '';
-  const headers={'Content-Type':'application/json', ...lc()};
-  const body={
-    status: pass?'approved':'rejected',
+}
+async function reviewSuggestion(sug, pass){
+  const superId = SUPER_UID;
+  const localUser = JSON.parse(localStorage.getItem('sg_user') || '{}');
+  const uid = (ME && ME.objectId) || localUser.objectId || '';
+
+  if(!uid){ alert('尚未取得登入身分（請重新登入）'); return; }
+  if(!IS_LEGI && uid !== superId){ alert('無權審核'); return; }
+  if(sug.by && sug.by.objectId === uid && uid !== superId){ alert('你不能審核自己提出的建議'); return; }
+  if(sug.status !== 'new'){ alert('此提案目前狀態不是「待審」，不可再審核'); return; }
+
+  const note = prompt(pass ? '（可選）通過理由' : '（可選）不通過理由') || '';
+  const headers = { 'Content-Type':'application/json', ...lc() };
+
+  const nowISO = new Date().toISOString();
+  const body = {
+    status: pass ? 'approved' : 'rejected',
     reviewNote: note,
-    reviewedAt:{ "__type":"Date","iso":new Date().toISOString() },
-    reviewedBy:{ "__type":"Pointer","className":"_User","objectId":ME.objectId }
+    reviewedBy: { "__type":"Pointer", "className":"_User", "objectId": uid },
+    statusHistory: pass
+      ? { approvedAt: { "__type":"Date","iso": nowISO } }
+      : { rejectedAt: { "__type":"Date","iso": nowISO } }
   };
-  const r=await fetch(`${API}/classes/BillSuggestion/${sug.objectId}`,{method:'PUT',headers,body:JSON.stringify(body)});
-  const d=await r.json(); if(!r.ok) throw new Error(d.error||'審核失敗');
+
+  // 先關掉內部投票（不額外建立新的）
+  await closeInternalVotes(sug.objectId);
+
+  const r = await fetch(`${API}/classes/BillSuggestion/${sug.objectId}`, {
+    method:'PUT', headers, body: JSON.stringify(body)
+  });
+  const d = await r.json().catch(()=> ({}));
+  if(!r.ok){
+    console.error('Review PUT 失敗：', r.status, d);
+    alert((d && (d.error || d.message)) || `審核失敗（HTTP ${r.status}）`);
+    return;
+  }
+
+  toast(pass ? '已通過' : '已駁回');
+  await reloadSuggestions();
+  await reloadDeletedCount?.(); // 若有這個函式就一起更新
 }
 /* ===== 內部投票：API ===== */
+// 依狀態渲染底部按鈕（刪除≠不通過）
+function renderActions(s, el){
+  const box = el.querySelector('[data-actions]');
+  if(!box){ return; }
+  box.innerHTML = '';
+
+  if (s.status === 'new') {
+    // 待審：可以發佈、公決、不通過
+    box.innerHTML = `
+      <button class="btn" data-publish>發佈至公眾投票</button>
+      <button class="btn danger"  data-reject-final>不通過</button>
+      <button class="btn primary" data-approve-final>通過</button>
+    `;
+
+    const passBtn = box.querySelector('[data-approve-final]');
+    const rejBtn  = box.querySelector('[data-reject-final]');
+    const pubBtn  = box.querySelector('[data-publish]');
+
+    passBtn?.addEventListener('click', async ()=>{ await reviewSuggestion(s, true); });
+    rejBtn ?.addEventListener('click', async ()=>{ await reviewSuggestion(s, false); });
+    pubBtn ?.addEventListener('click', async ()=>{
+      if(!confirm('要將此提案發佈到公眾投票嗎？')) return;
+      try{ await publishPublicVote(s); toast('已發佈至公眾投票'); }catch(e){ alert(e.message||'發佈失敗'); }
+    });
+
+  } else if (s.status === 'approved' || s.status === 'rejected') {
+    // 歷史（已通過或不通過）：可重審或刪除
+    box.innerHTML = `
+      <button class="btn" data-reopen>重審</button>
+      <button class="btn danger" data-delete>刪除</button>
+    `;
+
+    const reopenBtn = box.querySelector('[data-reopen]');
+    const delBtn    = box.querySelector('[data-delete]');
+    reopenBtn?.addEventListener('click', async ()=>{ await reopenSuggestion(s); });
+    delBtn   ?.addEventListener('click', async ()=>{ await deleteSuggestion(s); });
+
+  } else if (s.status === 'deleted') {
+    // 已刪除：主清單不該出現，但若真的渲到卡片就不顯示任何操作
+    box.innerHTML = '';
+  }
+}
+
+// 重審：把狀態改回 new，並把「內部投票」全部刪掉（投票數歸零）
+async function reopenSuggestion(s){
+  if(!confirm('確定要重審此建議？內部投票將歸零。')) return;
+
+  // 刪除所有與此建議關聯、scope=internal 的投票
+  const where = encodeURIComponent(JSON.stringify({
+    suggestion:{ "__type":"Pointer","className":"BillSuggestion","objectId": s.objectId },
+    scope:"internal"
+  }));
+  const rr = await fetch(`${API}/classes/SuggestionVote?where=${where}&limit=100`,{headers:lc()});
+  const dd = await rr.json();
+  if(rr.ok && dd.results){
+    for(const v of dd.results){
+      await fetch(`${API}/classes/SuggestionVote/${v.objectId}`, { method:'DELETE', headers:lc() });
+    }
+  }
+
+  // 設回待審
+  const r = await fetch(`${API}/classes/BillSuggestion/${s.objectId}`,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json',...lc()},
+    body: JSON.stringify({ status:'new' })
+  });
+  const d = await r.json();
+  if(!r.ok) { alert(d.error||'重審失敗'); return; }
+
+  toast('已改為「待審」；投票已歸零');
+  await reloadSuggestions();
+  await reloadDeletedCount();
+}
+
+// 刪除：不真的刪資料，改標記 status=deleted，並記 who/when
+async function deleteSuggestion(s){
+  if(!confirm('確定要刪除此建議？')) return;
+  const payload = {
+    status:'deleted',
+    deletedAt:{ "__type":"Date","iso": new Date().toISOString() },
+    deletedBy:{ "__type":"Pointer","className":"_User","objectId": ME.objectId }
+  };
+  const r = await fetch(`${API}/classes/BillSuggestion/${s.objectId}`,{
+    method:'PUT', headers:{'Content-Type':'application/json',...lc()}, body:JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error||'刪除失敗'); return; }
+  toast('已刪除');
+  await reloadSuggestions();   // 主清單會消失（因為 fetchSuggestions 已排除 deleted）
+  await reloadDeletedCount();  // 漢堡上的刪除數會更新
+}
 // 取得或建立「內部投票」：開始時間 = 建議 createdAt，截止 = +2 天
 async function getOrCreateInternalVote(sug){
   const where = encodeURIComponent(JSON.stringify({
@@ -620,95 +800,112 @@ function renderSuggestionCard(s){
     </div>
 
     <div class="hr"></div>
-    <div class="row" style="justify-content:flex-end;gap:8px">
-      <button class="btn" data-publish>發佈至公眾投票</button>
-      <button class="btn danger"  data-reject-final>不通過</button>
-      <button class="btn primary" data-approve-final>通過</button>
-    </div>
-
+    <div class="row" style="justify-content:flex-end;gap:8px" data-actions></div>
     <div class="meta" data-exec-hint style="display:none"></div>
   `;
+  // renderActions 會在 data-actions 填上按鈕 (發佈/通過/不通過 或 重審/刪除)
+  renderActions(s, el);
 
+  // 若 renderActions 有建立審核按鈕，我們這邊可以在稍後決定是否隱藏它們（權限判斷）
   // ---- 內部投票：載入、綁定 ----
   (async()=>{
     try{
       const vote = await getOrCreateInternalVote(s);
       const ends = new Date(vote.endsAt?.iso || vote.endsAt || (Date.now()+1));
       const leftEl = el.querySelector('[data-left]');
+
       function leftText(){
         const left = ends - Date.now();
         if(left<=0) return '已截止';
-        const d=Math.floor(left/864e5),h=Math.floor(left%864e5/36e5),m=Math.floor(left%36e5/6e4);
+        const d=Math.floor(left/864e5), h=Math.floor(left%864e5/36e5), m=Math.floor(left%36e5/6e4);
         return `剩餘 ${d?d+'天':''}${h}時${m}分`;
       }
+
       // 票數與我自己的選擇
       const [yesCnt,noCnt,myBallot] = await Promise.all([
         countSugVotes(vote.objectId,'agree'),
         countSugVotes(vote.objectId,'reject'),
         mySugBallot(vote.objectId)
       ]);
-      el.querySelector('[data-yes]').textContent = yesCnt;
-      el.querySelector('[data-no]').textContent  = noCnt;
-      leftEl.textContent = leftText();
+      const yesEl = el.querySelector('[data-yes]');
+      const noEl  = el.querySelector('[data-no]');
+      if(yesEl) yesEl.textContent = yesCnt;
+      if(noEl)  noEl.textContent  = noCnt;
+      if(leftEl) leftEl.textContent = leftText();
 
-      // 兩天前不可結束；超級 GID 不受限
-      const canFinalize = (Date.now() >= ends.getTime()) || (ME.objectId===SUPER_UID);
-      el.querySelector('[data-approve-final]').disabled = !canFinalize;
-      el.querySelector('[data-reject-final]').disabled  = !canFinalize;
+      if(s.status !== 'new'){
+        const btnAgree = el.querySelector('[data-agree]');
+        const btnReject = el.querySelector('[data-reject]');
+        if(btnAgree) btnAgree.disabled = true;
+        if(btnReject) btnReject.disabled = true;
+        if(leftEl) leftEl.textContent = '已截止';
+      }
+
+      // 決定能否 finalize（結束 / 審核）要等到 ends 已知
+      const canFinalize = (Date.now() >= ends.getTime()) || (ME && ME.objectId===SUPER_UID);
+      const approveBtn = el.querySelector('[data-approve-final]');
+      const rejectBtn  = el.querySelector('[data-reject-final]');
+      if(approveBtn) approveBtn.disabled = !canFinalize;
+      if(rejectBtn)  rejectBtn.disabled  = !canFinalize;
 
       // 投票按鈕（到期後仍可看票但不可再投）
       const btnA = el.querySelector('[data-agree]');
       const btnR = el.querySelector('[data-reject]');
-      function setBusy(b){ btnA.disabled=b; btnR.disabled=b; }
-      if(Date.now() >= ends.getTime()){ btnA.disabled = btnR.disabled = true; }
+      function setBusy(b){
+        if(btnA) btnA.disabled = b;
+        if(btnR) btnR.disabled = b;
+      }
+      if(Date.now() >= ends.getTime()){ setBusy(true); }
 
-      btnA.addEventListener('click', async ()=>{
-        try{
-          setBusy(true);
-          await castSugBallot(vote,'agree');
-          el.querySelector('[data-yes]').textContent = await countSugVotes(vote.objectId,'agree');
-          el.querySelector('[data-no]').textContent  = await countSugVotes(vote.objectId,'reject');
-          toast('已投「同意」');
-        }catch(e){ alert(e.message||'投票失敗'); } finally{ setBusy(false); }
-      });
-      btnR.addEventListener('click', async ()=>{
-        try{
-          setBusy(true);
-          await castSugBallot(vote,'reject');
-          el.querySelector('[data-yes]').textContent = await countSugVotes(vote.objectId,'agree');
-          el.querySelector('[data-no]').textContent  = await countSugVotes(vote.objectId,'reject');
-          toast('已投「不同意」');
-        }catch(e){ alert(e.message||'投票失敗'); } finally{ setBusy(false); }
-      });
+      if(btnA){
+        btnA.addEventListener('click', async ()=>{
+          try{
+            setBusy(true);
+            await castSugBallot(vote,'agree');
+            if(yesEl) yesEl.textContent = await countSugVotes(vote.objectId,'agree');
+            if(noEl)  noEl.textContent  = await countSugVotes(vote.objectId,'reject');
+            toast('已投「同意」');
+          }catch(e){ alert(e.message||'投票失敗'); } finally{ setBusy(false); }
+        });
+      }
+      if(btnR){
+        btnR.addEventListener('click', async ()=>{
+          try{
+            setBusy(true);
+            await castSugBallot(vote,'reject');
+            if(yesEl) yesEl.textContent = await countSugVotes(vote.objectId,'agree');
+            if(noEl)  noEl.textContent  = await countSugVotes(vote.objectId,'reject');
+            toast('已投「不同意」');
+          }catch(e){ alert(e.message||'投票失敗'); } finally{ setBusy(false); }
+        });
+      }
 
-      // 每 30 秒更新一次剩餘
-      const timer = setInterval(()=>{ leftEl.textContent = leftText(); }, 30000);
+      // 每 30 秒更新一次剩餘時間顯示
+      const timer = setInterval(()=>{ if(leftEl) leftEl.textContent = leftText(); }, 30000);
       el.addEventListener('remove', ()=>clearInterval(timer));
 
     }catch(e){
       const bar = el.querySelector('[data-invote]');
-      bar.innerHTML = `<div class="hint" style="color:#b00020">內部投票載入失敗：${h(e.message||'error')}</div>`;
+      if(bar) bar.innerHTML = `<div class="hint" style="color:#b00020">內部投票載入失敗：${h(e.message||'error')}</div>`;
     }
   })();
 
-  // ---- 發佈至公眾投票 ----
-  el.querySelector('[data-publish]').addEventListener('click', async ()=>{
-    if(!confirm('要將此提案發佈到公眾投票嗎？發佈後所有使用者可見（不顯示提案人）。')) return;
-    try{
-      await publishPublicVote(s);
-      toast('已發佈至公眾投票');
-    }catch(e){ alert(e.message||'發佈失敗'); }
-  });
-
-  // ---- 審核按鈕：兩天後才能按（SUPER 例外），且不得審自己 ----
-  const passBtn = el.querySelector('[data-approve-final]');
-  const rejBtn  = el.querySelector('[data-reject-final]');
-  if(!(IS_LEGI || ME.objectId===SUPER_UID) || (gid===ME.objectId && ME.objectId!==SUPER_UID)){
-    passBtn.style.display = rejBtn.style.display = 'none';
-  }else{
-    passBtn.addEventListener('click', async ()=>{ try{ await reviewSuggestion(s,true); toast('已通過'); await reloadSuggestions(); }catch(e){ alert(e.message);} });
-    rejBtn .addEventListener('click', async ()=>{ try{ await reviewSuggestion(s,false); toast('已駁回'); await reloadSuggestions(); }catch(e){ alert(e.message);} });
-  }
+  // ---- 根據身分權限隱藏審核按鈕（若是自己提出則隱藏） ----
+  // 這段保護 renderActions 產出的按鈕：如果不是立委 / 也不是 super，或是提案者自己，就隱藏
+  setTimeout(()=>{ // 等 renderActions 建構完後再檢查
+    const passBtn = el.querySelector('[data-approve-final]');
+    const rejBtn  = el.querySelector('[data-reject-final]');
+    if(passBtn){
+      if(!(IS_LEGI || (ME && ME.objectId===SUPER_UID)) || (gid=== (ME && ME.objectId) && !(ME && ME.objectId===SUPER_UID))){
+        passBtn.style.display = 'none';
+      }
+    }
+    if(rejBtn){
+      if(!(IS_LEGI || (ME && ME.objectId===SUPER_UID)) || (gid=== (ME && ME.objectId) && !(ME && ME.objectId===SUPER_UID))){
+        rejBtn.style.display = 'none';
+      }
+    }
+  }, 50);
 
   // ---- 行政院建議（若有就顯示一個連結） ----
   (async()=>{
@@ -716,15 +913,39 @@ function renderSuggestionCard(s){
       const adv = await fetchExecutiveAdvice(s.objectId);
       if(adv && adv.text){
         const box = el.querySelector('[data-exec-hint]');
-        box.style.display='block';
-        box.innerHTML = `<button class="btn" onclick="alert(${JSON.stringify(adv.text)})">行政院建議（點擊查看）</button>`;
+        if(box){
+          box.style.display='block';
+          box.innerHTML = `<button class="btn" onclick="alert(${JSON.stringify(adv.text)})">行政院建議（點擊查看）</button>`;
+        }
       }
     }catch(_){}
   })();
 
   return el;
 }
+// 從刪除恢復到主頁（設回待審）
+async function restoreSuggestion(s){
+  if(!confirm('確定要恢復此建議？')) return;
 
+  const payload = {
+    status: 'new',
+    restoredAt: { "__type":"Date","iso": new Date().toISOString() },
+    restoredBy: { "__type":"Pointer","className":"_User","objectId": ME.objectId }
+  };
+
+  const r = await fetch(`${API}/classes/BillSuggestion/${s.objectId}`, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json', ...lc()},
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if(!r.ok){ alert(d.error||'恢復失敗'); return; }
+
+  toast('已恢復到主頁（待審）');
+  await reloadSuggestions();   // 立法院主頁刷新
+  await reloadDeletedCount();  // 更新刪除數
+  await loadDeletedList();     // 刷新刪除清單
+}
 /* ====== 渲染：法案（保留最小版，只列出） ====== */
 function renderBillCard(b){
   const el=document.createElement('div'); el.className='card';
@@ -773,6 +994,7 @@ async function reloadAll(){
   try{
     await reloadSuggestions();
     await reloadBills();
+    await reloadDeletedCount();
   }finally{
     isReloading = false;
   }
@@ -828,6 +1050,7 @@ window.addEventListener('beforeunload', stopPolling);
   if(btnConst) btnConst.style.display = 'inline-block';
 
   await reloadAll();
+  await reloadDeletedCount();
 
   // 啟動 15 秒輪詢
   startPolling();
@@ -888,6 +1111,97 @@ async function renderHamList(){
   }catch(e){
     box.innerHTML = `<div class="hint" style="color:#b00020;padding:8px 4px">${h(e.message||'載入失敗')}</div>`;
   }
+}
+// 右上角 chip 顯示刪除數
+async function reloadDeletedCount(){
+  const where = encodeURIComponent(JSON.stringify({ status:'deleted' }));
+  const r = await fetch(`${API}/classes/BillSuggestion?where=${where}&count=1&limit=0`,{headers:lc()});
+  const d = await r.json();
+  const chip = document.getElementById('deletedChip');
+  const n = (r.ok && typeof d.count==='number') ? d.count : 0;
+  if(n>0){
+    chip.style.display='inline-block';
+    chip.textContent = `刪除 ${n}`;
+    chip.onclick = openDeletedList;
+  }else{
+    chip.style.display='none';
+    chip.onclick = null;
+  }
+}
+
+function openDeletedList(){
+  document.getElementById('deletedDlg').style.display='flex';
+  loadDeletedList();
+}
+function closeDeletedList(){
+  document.getElementById('deletedDlg').style.display='none';
+}
+
+// 小工具：彙總（所有 internal 投票）的同意/不同意
+async function sumVotesForSuggestion(sugId){
+  let yes = 0, no = 0;
+  const where = encodeURIComponent(JSON.stringify({
+    suggestion:{ "__type":"Pointer","className":"BillSuggestion","objectId": sugId },
+    scope:"internal"
+  }));
+  const r = await fetch(`${API}/classes/SuggestionVote?where=${where}&limit=100`,{headers:lc()});
+  const d = await r.json();
+  if(r.ok && d.results){
+    for(const v of d.results){
+      yes += await countSugVotes(v.objectId,'agree');
+      no  += await countSugVotes(v.objectId,'reject');
+    }
+  }
+  return { yes, no };
+}
+
+async function loadDeletedList(){
+  const box = document.getElementById('deletedBox');
+  box.innerHTML = '<div class="hint">讀取中…</div>';
+
+  const where = encodeURIComponent(JSON.stringify({ status:'deleted' }));
+  const url   = `${API}/classes/BillSuggestion?where=${where}&order=-deletedAt&limit=200&include=by,reviewedBy,deletedBy`;
+  const r = await fetch(url, { headers:lc() });
+  const d = await r.json();
+  if(!r.ok){ box.innerHTML = `<div class="hint" style="color:#b00020">${h(d.error||'讀取失敗')}</div>`; return; }
+  const rows = d.results || [];
+  if(!rows.length){ box.innerHTML = '<div class="hint">沒有刪除的建議</div>'; return; }
+
+  const blocks = [];
+  for(const s of rows){
+    const who   = s.by ? (s.by.nickname||s.by.username||s.by.objectId) : '未知';
+    const gid   = s.by?.objectId || '';
+    const delBy = s.deletedBy ? (s.deletedBy.nickname||s.deletedBy.username||s.deletedBy.objectId) : '未知';
+    const delAt = s.deletedAt ? new Date(s.deletedAt.iso || s.deletedAt).toLocaleString() : '';
+
+    // 詳細內容 HTML
+    const approvedAt = s.statusHistory?.approvedAt?.iso ? new Date(s.statusHistory.approvedAt.iso).toLocaleString() : '';
+    const rejectedAt = s.statusHistory?.rejectedAt?.iso ? new Date(s.statusHistory.rejectedAt.iso).toLocaleString() : '';
+    const reviewedBy = s.reviewedBy ? (s.reviewedBy.nickname||s.reviewedBy.username||s.reviewedBy.objectId) : '無';
+    const detailHTML = `
+      <div class="meta">提出人：${h(who)} (${gid})</div>
+      <div class="meta">提出時間：${new Date(s.createdAt).toLocaleString()}</div>
+      ${approvedAt? `<div class="meta">通過時間：${approvedAt}</div>` : ''}
+      ${rejectedAt? `<div class="meta">不通過時間：${rejectedAt}</div>` : ''}
+      <div class="meta">刪除時間：${delAt}</div>
+      <div class="meta">審核人：${h(reviewedBy)}</div>
+      <div class="meta">刪除操作者：${h(delBy)}</div>
+      <div class="hr"></div>
+      <div style="white-space:pre-wrap">${h(s.text||'')}</div>
+    `;
+
+    blocks.push(`
+  <div class="card">
+    <div class="title">${h(who)} <span class="chip">GID：${gid}</span></div>
+    <div class="meta">刪除：${delAt}</div>
+    <div class="row" style="gap:8px;margin-top:8px">
+      <button class="btn" onclick='openDeletedDetail(${JSON.stringify(detailHTML)})'>查看詳情</button>
+      <button class="btn primary" onclick='restoreSuggestion(${JSON.stringify(s)})'>恢復到主頁</button>
+    </div>
+  </div>
+`);
+  }
+  box.innerHTML = blocks.join('');
 }
 // 建一張一次性通關證，5 分鐘內有效
 function grantConstitutionPass(){
