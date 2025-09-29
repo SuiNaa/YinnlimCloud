@@ -9,12 +9,93 @@
   *{box-sizing:border-box}
   body{ margin:0; font-family: system-ui, -apple-system, "Noto Sans TC", Arial, sans-serif; background:#f6f7fb; color:#222; }
   .wrap{ max-width:900px; margin:0 auto; padding:140px 14px 60px; }
-  .back-home{ position:fixed; top:20px; left:20px; z-index:110; padding:10px 14px; border-radius:10px; border:1px solid #ddd; background:#fff; font-weight:700; text-decoration:none; color:var(--brand); }
-  .search-bar{ position:fixed; top:24px; left:50%; transform:translateX(-50%); z-index:100; display:flex; align-items:center; gap:10px; width:min(800px, 92vw); }
-  .search-input{ flex:1 1 auto; height:46px; padding:0 16px; border:1px solid #ddd; border-radius:999px; outline:none; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.04); font-size:16px; }
-  .btn{ padding:10px 16px; border-radius:12px; border:1px solid #ddd; background:#fff; font-weight:700; cursor:pointer; }
-  .btn.primary{ background:var(--brand); color:#fff; border-color:transparent; }
-  .hint-under{ position:fixed; top:78px; left:50%; transform:translateX(-50%); width:min(800px, 92vw); color:var(--muted); font-size:14px; }
+  /* 固定區域改成彈性容器 */
+.header-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 120;
+  display: flex;
+  flex-wrap: wrap;        /* 小螢幕會自動換行 */
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+}
+
+/* 返回鍵 */
+.back-home {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+/* 搜尋列 */
+.search-bar {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 200px;
+}
+.search-input {
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 15px;
+}
+
+/* 按鈕 */
+.btn {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn.primary {
+  background: var(--brand);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* 提示文字 */
+.hint-under {
+  position: static;     /* 不要 fixed，放 header 下方 */
+  width: 100%;
+  text-align: center;
+  margin-top: 70px;     /* 給 header 騰位置 */
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* 小螢幕調整 */
+@media (max-width: 600px) {
+  .header-bar {
+    flex-direction: column;    /* 垂直堆疊 */
+    align-items: stretch;
+  }
+  .search-bar {
+    width: 100%;
+  }
+  .btn {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
   .card{ background:#fff; border:1px solid #eee; border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,.06); padding:18px; }
   .result{ margin-top:16px; }
   .urow{ display:flex; gap:14px; align-items:center; }
@@ -125,15 +206,67 @@ html[data-theme="dark"] .warn{ background:#3a2c0f; color:#ffd992; }
 html[data-theme="dark"] .bad{ background:#3a0f1d; color:#ff9ab0; }
 html[data-theme="dark"] .none{ background:#1e1f3a; color:#cfd3ff; }
 </style>
+<style>
+  /*游標*/
+/* 透明 1x1 游標（資料URI），比單純 none 更不會被瀏覽器臨時覆蓋 */
+:root{
+  --cursor-none: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAEklEQVQImWNgYGBgYAAAAAQAARV7J8EAAAAASUVORK5CYII=') 0 0, none;
+}
+
+/* 徹底套用到所有盒與偽元素 */
+html, body, *, *::before, *::after{
+  cursor: var(--cursor-none) !important;
+}
+
+/* 任何原本會把游標改成 pointer / text 的元素，強制繼承就不會跳回原生樣式 */
+a, button, [role="button"], label, summary,
+input, textarea, select, option, details, svg, canvas{
+  cursor: inherit !important;
+}
+
+/* 你的自訂游標外層（不變） */
+#cursor{
+  position: fixed; left:0; top:0; width:0; height:0;
+  pointer-events: none; will-change: transform; z-index: 9999;
+}
+/* 內層圖片（不變） */
+#cursor .cursor-img{
+  width:32px; height:32px;
+  background: url('../sea.png') center/contain no-repeat;
+  transform: translate(-8px,-12px) scale(1);
+  transition: transform .12s ease; 
+  will-change: transform;
+}
+#cursor.down .cursor-img{ 
+  transform: translate(-8px,-12px) scale(.9); 
+}
+/* 透明遮罩：預設不擋互動，但在捲動瞬間短暫接手 hit-test 以保證 cursor:none 生效 */
+#cursor-shield{
+  position: fixed;
+  inset: 0;
+  cursor: var(--cursor-none) !important;  /* 一律隱藏系統游標 */
+  pointer-events: none;                   /* 平常不擋點擊/滑動 */
+  z-index: 9998;                          /* 低於自訂游標 #cursor */
+}
+
+/* 「捲動中」短暫啟用命中（只影響游標命中，不會影響滾動） */
+#cursor-shield.cover{
+  pointer-events: auto;                   /* 讓它成為命中元素，游標就不會被下面原生控件奪回 */
+}
+
+</style>
 </head>
 <body>
+  <div id="cursor-shield"></div>
+<div id="cursor"><div class="cursor-img"></div></div>
+<div class="header-bar">
   <a class="back-home" href="user.html">← 返回個人主頁</a>
   <div class="search-bar">
     <input id="ioInput" class="search-input" type="text" placeholder="輸入 IO 號碼，例如：IO202408240001">
     <button class="btn primary" onclick="searchByIO()">查詢</button>
     <div class="menu-wrap">
-  <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
-  <div id="menuDrop" class="dropdown" role="menu">
+      <button id="menuBtn" class="menu-btn" aria-expanded="false" onclick="toggleMenu()">%</button>
+      <div id="menuDrop" class="dropdown" role="menu">
     <!-- 第一個選項：切換模式 -->
     <button class="item" onclick="toggleTheme()" id="modeItem">切換模式：夜間</button>
      <button class="item" onclick="location.href='../index.html'">主頁</button>
@@ -144,10 +277,13 @@ html[data-theme="dark"] .none{ background:#1e1f3a; color:#cfd3ff; }
     <button class="item" onclick="location.href='Grove.Legislative-Yuan.html'">Legislative</button>
     <button class="item" onclick="location.href='vote.html'">投票專區</button>
     <button class="item" onclick="location.href='constitution.html'">網站申明</button>
+        </div>
+    </div>
   </div>
+  </div>
+  <div class="hint-under">
+  小技巧：網址可用 <code>?io=你的IO號</code> 直接打開查詢
 </div>
-  </div>
-  <div class="hint-under">小技巧：網址可用 <code>?io=你的IO號</code> 直接打開查詢</div>
 
   <div class="wrap">
     <div class="card">
@@ -316,6 +452,7 @@ async function searchByIO(){
 })();
 </script>
 <script src="im.js"></script>
+<script src="lioc.js?v=0.1.1"></script>
 <!--=================-->
 <p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
   🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>

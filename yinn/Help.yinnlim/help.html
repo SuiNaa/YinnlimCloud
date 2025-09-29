@@ -350,10 +350,15 @@ body {
   opacity: 1;
 }
 
+/* 標題列工具鍵 */
 .modal-head{
-  display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;
+  display:flex; align-items:center; gap:10px; justify-content:space-between;
 }
 .modal-head h3{ margin:0; font-size:1.1rem; }
+
+
+/* 讓 input/select 維持妳原來的磨砂膠囊風格（沿用你已注入的 .glass-pill） */
+
 .modal-close{
   background:transparent; border:0; color:currentColor; font-size:20px; cursor:pointer;
 }
@@ -554,6 +559,183 @@ body.dark {
   width:100%;
 }
 </style>
+<style>
+  /* ===== 共用：彈窗容器 ===== */
+#modal-convert .modal-box{
+  width: clamp(340px, 92vw, 720px);
+  max-height: min(86vh, 820px);
+  overflow: auto;
+  border-radius: 16px;
+  padding: 0;                /* 內容在 .modal-body 控制 */
+  color: #1f1f24;
+  font-family: -apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC",system-ui,sans-serif;
+}
+#modal-convert .modal-head{
+  display:flex; align-items:center; gap:12px;
+  height: 48px; padding: 0 14px;
+  border-top-left-radius: 16px; border-top-right-radius: 16px;
+}
+#modal-convert .modal-head h3{ margin:0; font-weight:700; font-size: clamp(15px,2.4vw,16px); }
+#modal-convert .modal-body{ padding: clamp(12px, 2.6vw, 16px); }
+#modal-convert .toolbar{ margin-left:auto; display:flex; gap:8px; }
+
+/* —— 圓角矩形輸入群 —— */
+#modal-convert .form-row{
+  display:grid; gap: clamp(10px, 2vw, 14px);
+  grid-template-columns: 1fr 1fr;
+  margin: clamp(10px, 2.2vw, 14px) 0;
+}
+@media (max-width:560px){ #modal-convert .form-row{ grid-template-columns:1fr; } }
+#modal-convert .field label{
+  display:block; font-size:.85rem; opacity:.75; margin:0 0 6px 6px;
+}
+
+/* 統一把 input/select 改成「細邊圓角卡片」 */
+#modal-convert input,
+#modal-convert select{
+  width:100%; padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.55) !important;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid rgba(0,0,0,.08) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+  color:#2b2b2f !important;
+  outline: none;
+  appearance: none;
+}
+
+/* 結果條 */
+#modal-convert #result{
+  margin-top: 6px;
+  font-weight: 700;
+  background: rgba(255,255,255,.60);
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: clamp(14px, 2.5vw, 16px);
+}
+#modal-convert .note{ margin-top:6px; color:#666a74; font-size: clamp(12px, 2.2vw, 14px); }
+
+/* 工具列按鈕（右上） */
+#modal-convert .toolbtn{
+  height:30px; padding:0 12px; border-radius:10px;
+  border:1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.65);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:13px; color:#3a3a3d; cursor:pointer;
+  transition: transform .12s ease, filter .18s ease;
+}
+#modal-convert .toolbtn:hover{ transform: translateY(-1px); filter:brightness(1.05); }
+
+/* 左邊紅點（hover 變 X，點一下關閉） */
+#modal-convert .close-dot{
+  width:12px;height:12px;border-radius:50%;
+  background: radial-gradient(circle at 30% 30%, #ff7b73, #ff5f57);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.10);
+  position:relative; cursor:pointer;
+}
+#modal-convert .close-dot::after{
+  content:""; position:absolute; inset:0; display:grid; place-items:center;
+  color:#fff; font-weight:700; font-size:10px; opacity:0; transition:.12s;
+}
+#modal-convert .close-dot:hover::after{ content:"×"; opacity:1; }
+
+/* ===== 主題 1：macOS Glass ===== */
+#modal-convert .modal--mac{
+  background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.18));
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid rgba(255,255,255,.42);
+  box-shadow: 0 24px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.35);
+}
+#modal-convert .modal--mac .modal-head{
+  border-bottom: 1px solid rgba(255,255,255,.36);
+  background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.10));
+}
+
+/* ===== 主題 2：iOS Sheet ===== */
+#modal-convert .modal--sheet{
+  background: rgba(250,250,252,.85);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0,0,0,.08);
+  box-shadow: 0 30px 70px rgba(0,0,0,.30);
+}
+#modal-convert .modal--sheet .modal-head{
+  background: transparent;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+/* ===== 主題 3：Material Elevation ===== */
+#modal-convert .modal--material{
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.08);
+  box-shadow: 0 16px 40px rgba(0,0,0,.30);
+}
+#modal-convert .modal--material .modal-head{
+  background: #fafafa;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+/* ==================== */
+/* —— 修正激素彈窗會外溢：取消縮放、鎖寬、圓角裁切 —— */
+#modal-convert .modal-box{
+  transform: none !important;             /* 不再整體放大 */
+  width: clamp(340px, 92vw, 720px);
+  max-height: min(86vh, 820px);
+  box-sizing: border-box;
+  overflow: hidden;                        /* 內容不超出圓角 */
+}
+
+/* 內容區 padding 與格線：不擠破外框 */
+#modal-convert .modal-body{ 
+  padding: clamp(12px, 2.6vw, 16px);
+}
+#modal-convert .form-row{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(10px, 2vw, 14px);
+}
+@media (max-width:560px){
+  #modal-convert .form-row{ grid-template-columns: 1fr; }
+}
+
+/* 輸入框/下拉為圓角卡片，滿寬且不撐爆 */
+#modal-convert input,
+#modal-convert select{
+  width: 100%;
+  max-width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0,0,0,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+  color: #2b2b2f;
+  outline: none;
+  appearance: none;
+  box-sizing: border-box;
+}
+
+/* 單位左右切換那個外殼，避免箭頭把寬度撐爆 */
+#modal-convert .unit-pill{ overflow: hidden; }
+#modal-convert .unit-pill > select{
+  padding-left: 36px !important;
+  padding-right: 36px !important;
+}
+
+/* 結果條也用圓角卡片樣式 */
+#modal-convert #result{
+  margin-top: 6px;
+  font-weight: 700;
+  background: rgba(255,255,255,.60);
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: clamp(14px, 2.5vw, 16px);
+}
+</style>
 </head>
 <header class="topbar">
   <div class="topbar-content">
@@ -730,30 +912,47 @@ body.dark {
   </div>
 </div>
   <!-- 激素換算 Modal -->
+<!-- 激素換算 Modal（可切換主題：modal--mac / modal--sheet / modal--material） -->
 <div class="modal" id="modal-convert" aria-hidden="true" role="dialog" aria-label="激素換算">
-  <div class="modal-box">
+  <div class="modal-box modal--mac">  <!-- 想換風格改這裡的 class -->
     <div class="modal-head">
+      <span class="close-dot" id="convClose" aria-label="關閉"></span>
       <h3>🍄 激素換算</h3>
-      <button class="modal-close" data-close="convert" aria-label="關閉">×</button>
+
+      <div class="toolbar">
+        <button class="toolbtn" id="swapUnits" title="交換單位">⇄ 交換</button>
+        <button class="toolbtn" id="copyResult" title="複製結果">⧉ 複製</button>
+      </div>
     </div>
 
-    <div class="form-row">
-      <select id="hormone">
-        <option value="E2">雌二醇（E2）</option>
-        <option value="T">睪酮（T）</option>
-      </select>
-      <input id="value" class="input" type="number" step="any" placeholder="數值">
-    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="field">
+          <label for="hormone">項目</label>
+          <select id="hormone"></select>
+        </div>
+        <div class="field">
+          <label for="value">數值</label>
+          <input id="value" type="number" step="any" placeholder="請輸入數值">
+        </div>
+      </div>
 
-    <div class="form-row">
-      <select id="unitFrom"></select>
-      <select id="unitTo"></select>
-    </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="unitFrom">原單位</label>
+          <select id="unitFrom"></select>
+        </div>
+        <div class="field">
+          <label for="unitTo">目標單位</label>
+          <select id="unitTo"></select>
+        </div>
+      </div>
 
-    <div class="result" id="result">結果會顯示在這裡</div>
-    <div class="note" id="note">
-      參考：E2 pg/mL ⇄ pmol/L 係數 3.671；T ng/dL ⇄ nmol/L 係數 0.0347。  
-      醫療決策請以臨床檢驗報告與醫囑為準。
+      <div class="result" id="result">結果會顯示在這裡</div>
+      <div class="note" id="note">
+        參考：E2 pg/mL ⇄ pmol/L ×3.671；T ng/dL ⇄ nmol/L ×0.0347；P4 ng/mL ⇄ nmol/L ×3.18。<br>
+        醫療決策請以臨床檢驗報告與醫囑為準。
+      </div>
     </div>
   </div>
 </div>

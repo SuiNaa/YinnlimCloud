@@ -128,8 +128,59 @@ html[data-theme="dark"] textarea{
 /* 小縮圖邊框在暗色 */
 html[data-theme="dark"] .thumb{ background:#1e1930; border:1px solid var(--card-border); }
 </style>
+<style>
+  /*游標*/
+/* 透明 1x1 游標（資料URI），比單純 none 更不會被瀏覽器臨時覆蓋 */
+:root{
+  --cursor-none: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAEklEQVQImWNgYGBgYAAAAAQAARV7J8EAAAAASUVORK5CYII=') 0 0, none;
+}
+
+/* 徹底套用到所有盒與偽元素 */
+html, body, *, *::before, *::after{
+  cursor: var(--cursor-none) !important;
+}
+
+/* 任何原本會把游標改成 pointer / text 的元素，強制繼承就不會跳回原生樣式 */
+a, button, [role="button"], label, summary,
+input, textarea, select, option, details, svg, canvas{
+  cursor: inherit !important;
+}
+
+/* 你的自訂游標外層（不變） */
+#cursor{
+  position: fixed; left:0; top:0; width:0; height:0;
+  pointer-events: none; will-change: transform; z-index: 9999;
+}
+/* 內層圖片（不變） */
+#cursor .cursor-img{
+  width:24px; height:24px;
+  background: url('../open.png') center/contain no-repeat;
+  transform: translate(-8px,-12px) scale(1);
+  transition: transform .12s ease; 
+  will-change: transform;
+}
+#cursor.down .cursor-img{ 
+  transform: translate(-8px,-12px) scale(.9); 
+}
+/* 透明遮罩：預設不擋互動，但在捲動瞬間短暫接手 hit-test 以保證 cursor:none 生效 */
+#cursor-shield{
+  position: fixed;
+  inset: 0;
+  cursor: var(--cursor-none) !important;  /* 一律隱藏系統游標 */
+  pointer-events: none;                   /* 平常不擋點擊/滑動 */
+  z-index: 9998;                          /* 低於自訂游標 #cursor */
+}
+
+/* 「捲動中」短暫啟用命中（只影響游標命中，不會影響滾動） */
+#cursor-shield.cover{
+  pointer-events: auto;                   /* 讓它成為命中元素，游標就不會被下面原生控件奪回 */
+}
+
+</style>
 </head>
 <body>
+  <div id="cursor-shield"></div>
+<div id="cursor"><div class="cursor-img"></div></div>
   <div class="topbar">
     <div class="menu-wrap">
        <a href="user.html">← 返回個人主頁</a>
@@ -754,6 +805,7 @@ setInterval(async ()=>{
 function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
 </script>
 <script src="im.js"></script>
+<script src="lioc.js?v=0.1.1"></script>
 <!--=================-->
 <p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
   🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>

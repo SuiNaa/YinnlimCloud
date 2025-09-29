@@ -6,9 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
         <title>可愛表情包</title>
           <style>
-    body {
-      background-color: #fb84ff; /* 淡淡粉紅 💞 */
-    }
+    
 
     .emoji-pack {
       display: flex;
@@ -16,17 +14,22 @@
       gap: 10px;
       max-width: 460px;
     }
+    /* 全局可愛漸層背景（靜態） */
+html, body{
+  height: 100%;
+}
 
+body{
+  /* 柔和粉彩：粉 ➜ 淡粉 ➜ 紫霧 ➜ 冰藍 */
+  background: linear-gradient(135deg, #ffe6f7 0%, #ffd9ec 30%, #e9d7ff 65%, #d6f0ff 100%);
+  background-attachment: fixed;   /* 捲動時背景不動，視差更柔和 */
+  margin: 0;                      /* 保證貼滿視窗 */
+}
     .emoji-pack img {
       width: 80px;
       border-radius: 10px;
     }
-    body {
-  background-image: url("IMG_3900.JPG");
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-}
+    
   h1 {
     text-align: center;
   }
@@ -240,6 +243,93 @@ button.edit-btn:hover {
   color: #888; /* 或你想用的顏色 */
 }
 </style>
+<style>
+  /* === 等大方格 + 相框 === */
+.emoji-pack {width: 100%; max-width: 960px; margin: 0 auto;
+  /* 舊容器保留，裡面會被 JS 改造成 .emoji-grid */
+}
+
+/* 新的自動生成容器 */
+.emoji-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* 螢幕夠就多欄，不夠自動換行 */
+  gap: 12px;
+  max-width: min(1000px, 96vw);
+  margin: 0 auto;
+}
+
+/* 單張卡片 */
+.emoji-tile{
+  background: rgba(255,255,255,.85);
+  border: 2px solid rgba(255,182,193,.6);   /* 淡粉相框邊 */
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  box-shadow: 0 6px 16px rgba(0,0,0,.08);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.emoji-tile:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0,0,0,.12);
+}
+
+/* 這一格是圖片展示區（等大正方形） */
+.emoji-frame{
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;            /* ← 固定正方形，等大 */
+  border-radius: 10px;
+  background:
+    linear-gradient(145deg, #fff, #ffe6f2); /* 相框底色 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255,182,193,.5);   /* 內框線 */
+}
+
+/* 圖片：永遠完整顯示（不拉伸），不足就留白，像放在相框裡 */
+.emoji-frame img{
+  max-width: 100%;
+  max-height: 100%;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain;
+  display: block;
+}
+
+/* 下載鈕（原本的 a.emo）放到卡片底部，滿版好點 */
+.emoji-caption{
+  margin-top: 8px;
+}
+.emoji-caption .emo{
+  display: block;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  text-decoration: none;
+  color: #fff;
+  background: linear-gradient(135deg,#ff8bd1,#ff69b4);
+  box-shadow: 0 4px 10px rgba(255,105,180,.3);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.emoji-caption .emo:hover{
+  transform: scale(1.03);
+  box-shadow: 0 8px 18px rgba(255,105,180,.38);
+}
+
+/* 小螢幕時，卡片最小變 100px，間距縮小一點 */
+@media (max-width: 480px){
+  .emoji-grid{
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
+  }
+}
+</style>
 <!--主圖-->
   <div class="emoji-pack">
   <div class="emoji-item">
@@ -263,12 +353,36 @@ button.edit-btn:hover {
   <P><a href="./IMG_4085.JPG" download class="emo">豬豬討厭</a></P>
   <img src="IMG_4108.JPG" alt="發呆豬豬" style="width: 99px; vertical-align:middle;">
   <P><a href="./IMG_4108.JPG" download class="emo">發呆豬豬</a></P>
-  <img src="IMG_4109.JPG" alt="按讚豬豬" style="width: 99px; vertical-align:middle;">
-  <P><a href="./IMG_4109.JPG" download class="emo">按讚豬豬</a></P>
+  <img src="./IMG_4109 2.JPG" alt="按讚豬豬" style="width: 99px; vertical-align:middle;">
+  <P><a href="./IMG_4109 2.JPG" download class="emo">按讚豬豬</a></P>
   </div>
   <div class="emoji-item">
   <img src="IMG_3910.jpeg" alt="抱抱貓貓" style="width: 99px; vertical-align:middle;">
   <P><a href="./IMG_3910.jpeg" download class="emo">抱抱貓貓</a></P>
+
+  <img src="./付款豬豬.JPG" alt="付款豬豬" style="width: 99px; vertical-align:middle;">
+      <P><a href="./付款豬豬.JPG" download class="emo">付款豬豬</a></P>
+
+      <img src="./友好豬豬.JPG" alt="友好豬豬" style="width: 99px; vertical-align:middle;">
+      <P><a href="./友好豬豬.JPG" download class="emo">友好豬豬</a></P>
+
+      <img src="./可愛貓貓.png" alt="可愛貓貓" style="width: 99px; vertical-align:middle;">
+      <P><a href="./可愛貓貓.png" download class="emo">可愛貓貓</a></P>
+
+      <img src="./喝水水.JPG" alt="喝水水" style="width: 99px; vertical-align:middle;">
+      <P><a href="./喝水水.JPG" download class="emo">喝水水</a></P>
+
+      <img src="./坦克豬豬.JPG" alt="坦克豬豬" style="width: 99px; vertical-align:middle;">
+      <P><a href="./坦克豬豬.JPG" download class="emo">坦克豬豬</a></P>
+
+      <img src="./撞擊豬豬.JPG" alt="撞擊豬豬" style="width: 99px; vertical-align:middle;">
+      <P><a href="./撞擊豬豬.JPG" download class="emo">撞擊豬豬</a></P>
+
+      <img src="./活躍豬豬.GIF" alt="活躍豬豬" style="width: 99px; vertical-align:middle;">
+      <P><a href="./活躍豬豬.GIF" download class="emo">活躍豬豬</a></P>
+
+      <img src="./超熱豬豬.PNG" alt="超熱豬豬" style="width: 99px; vertical-align:middle;">
+      <P><a href="./超熱豬豬.PNG" download class="emo">超熱豬豬</a></P>
   </div>
   </div>
   <!-- 🌸 漢堡按鈕 -->
@@ -475,6 +589,69 @@ function updateLimNickname() {
     alert("更新失敗：" + err.message);
   });
 }
+
+
+/* 將既有 <img> 與其後的下載 <a> 合併成「等大卡片」，自動排成響應式方格 */
+(function(){
+  const pack = document.querySelector('.emoji-pack');
+  if(!pack) return;
+
+  // 1) 把舊內容抓出來（所有圖片以及跟在圖片後面的 <a.emo>）
+  const imgs = Array.from(pack.querySelectorAll('img'));
+
+  // 2) 建一個新的網格容器
+  const grid = document.createElement('div');
+  grid.className = 'emoji-grid';
+
+  imgs.forEach(img=>{
+    // 找圖片後面最近的一個包含 <a.emo> 的 <p>
+    let captionP = img.nextElementSibling;
+    let link = null;
+    if(captionP && captionP.tagName === 'P'){
+      link = captionP.querySelector('a.emo');
+    }
+
+    // 建立卡片
+    const tile = document.createElement('div');
+    tile.className = 'emoji-tile';
+
+    // 相框（固定正方形）
+    const frame = document.createElement('div');
+    frame.className = 'emoji-frame';
+
+    // 把圖片搬進相框（去掉內聯寬度，避免干擾）
+    img.removeAttribute('style');
+    frame.appendChild(img);
+
+    // 標題/下載按鈕區
+    const caption = document.createElement('div');
+    caption.className = 'emoji-caption';
+
+    if(link){
+      // 把原本的 <a.emo> 移過來
+      caption.appendChild(link);
+      // 移除原本的 <p>（空了就不留）
+      captionP.remove();
+    }else{
+      // 沒找到就用圖片的 alt 當顯示文字並建一個下載連結
+      const a = document.createElement('a');
+      a.className = 'emo';
+      a.href = img.getAttribute('src') || '#';
+      a.setAttribute('download', '');
+      a.textContent = img.getAttribute('alt') || '下載';
+      caption.appendChild(a);
+    }
+
+    // 組裝卡片
+    tile.appendChild(frame);
+    tile.appendChild(caption);
+    grid.appendChild(tile);
+  });
+
+  // 3) 用新網格替換舊內容
+  pack.innerHTML = '';
+  pack.appendChild(grid);
+})();
 </script>
 <p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
   🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>

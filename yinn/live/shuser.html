@@ -31,7 +31,16 @@
   .chip.active{border-color:var(--brand);box-shadow:0 0 0 3px rgba(108,78,247,.15)}
   .pay{margin-top:10px}
   .pay img{max-width:220px;border:1px solid #eee;border-radius:10px;background:#fff}
-  .desc{margin-top:16px;background:#fff;border:1px solid #eee;border-radius:14px;padding:14px;line-height:1.7}
+  .desc{margin-top:16px;
+    background:#fff;
+    border:1px solid #eee;
+    border-radius:14px;
+    padding:14px;
+    line-height:1.7;
+    white-space: pre-wrap;   /* 保留空格 & 換行 */
+    word-wrap: break-word;   /* 長字也能換行 */
+    line-height: 1.7;
+  }
   .btn{padding:12px 16px;border-radius:12px;border:1px solid #ddd;background:#fff;font-weight:800;cursor:pointer}
   .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
   .actions{margin-top:14px;display:flex;gap:10px}
@@ -597,8 +606,120 @@ html[data-theme="dark"] .menu-btn {
   color: rgb(255, 255, 255);
 }
 </style>
+<style>
+  /*游標*/
+/* 透明 1x1 游標（資料URI），比單純 none 更不會被瀏覽器臨時覆蓋 */
+:root{
+  --cursor-none: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAEklEQVQImWNgYGBgYAAAAAQAARV7J8EAAAAASUVORK5CYII=') 0 0, none;
+}
+
+/* 徹底套用到所有盒與偽元素 */
+html, body, *, *::before, *::after{
+  cursor: var(--cursor-none) !important;
+}
+
+/* 任何原本會把游標改成 pointer / text 的元素，強制繼承就不會跳回原生樣式 */
+a, button, [role="button"], label, summary,
+input, textarea, select, option, details, svg, canvas{
+  cursor: inherit !important;
+}
+
+/* 你的自訂游標外層（不變） */
+#cursor{
+  position: fixed; left:0; top:0; width:0; height:0;
+  pointer-events: none; will-change: transform; z-index: 9999;
+}
+/* 內層圖片（不變） */
+#cursor .cursor-img{
+  width:32px; height:32px;
+  background: url('../shoing.png') center/contain no-repeat;
+  transform: translate(-8px,-12px) scale(1);
+  transition: transform .12s ease; 
+  will-change: transform;
+}
+#cursor.down .cursor-img{ 
+  transform: translate(-8px,-12px) scale(.9); 
+}
+/* 透明遮罩：預設不擋互動，但在捲動瞬間短暫接手 hit-test 以保證 cursor:none 生效 */
+#cursor-shield{
+  position: fixed;
+  inset: 0;
+  cursor: var(--cursor-none) !important;  /* 一律隱藏系統游標 */
+  pointer-events: none;                   /* 平常不擋點擊/滑動 */
+  z-index: 9998;                          /* 低於自訂游標 #cursor */
+}
+
+/* 「捲動中」短暫啟用命中（只影響游標命中，不會影響滾動） */
+#cursor-shield.cover{
+  pointer-events: auto;                   /* 讓它成為命中元素，游標就不會被下面原生控件奪回 */
+}
+
+</style>
+<style>
+  /* ========== Gallery 響應式 ========== */
+
+/* 主圖：預設以「完整顯示」為主，不裁切；高度不超過視窗 70vh */
+.g-main{
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+  aspect-ratio: auto;           /* 取消固定 1:1，讓圖片自己決定比例 */
+  display: block;
+}
+
+/* 寬螢幕（平板/桌機）才回到方形框，視覺更整齊 */
+@media (min-width: 768px){
+  .g-main{
+    aspect-ratio: 1 / 1;
+    max-height: none;
+    object-fit: cover;          /* 這時候方框內裁切一些比較好看 */
+  }
+}
+
+/* 縮圖列：在小螢幕縮小尺寸，避免擠壓 */
+.g-strip{ gap: 6px; }
+.g-thumb{ width: 64px; height: 64px; }
+@media (max-width: 480px){
+  .g-thumb{ width: 52px; height: 52px; }
+}
+
+/* 兩欄版面：手機一欄直排，避免左右擠壓 */
+@media (max-width: 768px){
+  .top{ flex-direction: column; }
+  .gallery, .meta{ flex: 1 1 100%; }
+}
+
+/* 箭頭：行動裝置沒有 hover，直接常駐顯示、稍微縮小 */
+@media (hover: none){
+  .gallery .g-arrow{
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+@media (max-width: 480px){
+  .gallery .g-arrow{ width: 34px; height: 34px; font-size: 20px; }
+}
+
+/* 內文區的圖片：一律自適應容器寬，不要固定 500px */
+.desc img{
+  display: block;
+  max-width: 100% !important;
+  width: 100% !important;
+  height: auto !important;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  margin: 8px 0;
+}
+
+/* 如果你有放其他賣家商品的卡片圖，也保底一下 */
+.card img{ width: 100%; height: auto; object-fit: cover; }
+</style>
 </head>
 <body>
+  <div id="cursor-shield"></div>
+<div id="cursor"><div class="cursor-img"></div></div>
+
 
   <div class="wrap">
     <div class="menu-wrap">
@@ -871,16 +992,16 @@ function renderMeta(p){
 function buildDetailHTML(p){
   const desc  = (p.description || '');
   const lines = desc.split(/\r?\n/);
-  const imgs  = p.detailImages || [];
+  const imgs  = (p.detailImages || []).map(String);
 
   const imgsHTML = imgs.map(u => `
-    <img src="${u}" alt="" style="max-width: 500px;height:auto;border:1px solid #eee;border-radius:10px;margin:8px 0">
-  `).join('');
+    <img src="${u}" alt="">
+  `).join('');   // 交給上面的 .desc img CSS 控制寬高
 
   const lineHTML = lines.map(s => `<p>${s || '&nbsp;'}</p>`).join('');
-  const pos = (p.detailImagePos || 'top').toLowerCase();
+  const pos = String(p.detailImagePos || 'top').toLowerCase();
 
-  if (pos === 'bottom') return lineHTML + imgsHTML;
+  if (pos.includes('bottom')) return lineHTML + imgsHTML;
   return imgsHTML + lineHTML; // 預設 top
 }
 
@@ -1685,6 +1806,7 @@ if (isPanelOpen()) rebuildFullList();
 loadComments();
 </script>
 <script src="im.js"></script>
+<script src="lioc.js?v=0.1.1"></script>
 <!--=================-->
 <p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
   🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>

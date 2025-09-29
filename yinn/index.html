@@ -419,9 +419,58 @@ text-shadow: 0 0 8px rgba(255, 200, 255, 0.3);
   margin-top: -10px;
 }
 </style>
+<style>/*游標*/
+/* 透明 1x1 游標（資料URI），比單純 none 更不會被瀏覽器臨時覆蓋 */
+:root{
+  --cursor-none: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAEklEQVQImWNgYGBgYAAAAAQAARV7J8EAAAAASUVORK5CYII=') 0 0, none;
+}
+
+/* 徹底套用到所有盒與偽元素 */
+html, body, *, *::before, *::after{
+  cursor: var(--cursor-none) !important;
+}
+
+/* 任何原本會把游標改成 pointer / text 的元素，強制繼承就不會跳回原生樣式 */
+a, button, [role="button"], label, summary,
+input, textarea, select, option, details, svg, canvas{
+  cursor: inherit !important;
+}
+
+/* 你的自訂游標外層（不變） */
+#cursor{
+  position: fixed; left:0; top:0; width:0; height:0;
+  pointer-events: none; will-change: transform; z-index: 9999;
+}
+/* 內層圖片（不變） */
+#cursor .cursor-img{
+  width:32px; height:32px;
+  background: url('Cute.png') center/contain no-repeat;
+  transform: translate(-8px,-12px) scale(1);
+  transition: transform .12s ease; 
+  will-change: transform;
+}
+#cursor.down .cursor-img{ 
+  transform: translate(-8px,-12px) scale(.9); 
+}
+/* 透明遮罩：預設不擋互動，但在捲動瞬間短暫接手 hit-test 以保證 cursor:none 生效 */
+#cursor-shield{
+  position: fixed;
+  inset: 0;
+  cursor: var(--cursor-none) !important;  /* 一律隱藏系統游標 */
+  pointer-events: none;                   /* 平常不擋點擊/滑動 */
+  z-index: 9998;                          /* 低於自訂游標 #cursor */
+}
+
+/* 「捲動中」短暫啟用命中（只影響游標命中，不會影響滾動） */
+#cursor-shield.cover{
+  pointer-events: auto;                   /* 讓它成為命中元素，游標就不會被下面原生控件奪回 */
+}
+</style>
+
 </head>
 <body>
-
+<div id="cursor-shield"></div>
+<div id="cursor"><div class="cursor-img"></div></div>
   <!--暱稱顯示-->
 <!-- ✅ 新版：會跟著畫面滑動 -->
 <div id="userArea" class="user-area">
@@ -1035,6 +1084,62 @@ function toggleIntro() {
       intro.style.display = 'none';
     }
   }
+</script>
+<script>//游標
+const cursor = document.getElementById('cursor');
+let lastX = 0, lastY = 0, ticking = false;
+
+function onPointerMove(e){
+  lastX = e.clientX; lastY = e.clientY;
+  if (!ticking){
+    requestAnimationFrame(()=>{
+      cursor.style.transform = `translate3d(${lastX}px, ${lastY}px, 0)`;
+      ticking = false;
+    });
+    ticking = true;
+  }
+}
+function onScroll(){
+  cursor.style.transform = `translate3d(${lastX}px, ${lastY}px, 0)`;
+}
+function onDown(){ cursor.classList.add('down'); }
+function onUp(){   cursor.classList.remove('down'); }
+function forceHideNative(){
+  document.documentElement.style.setProperty('cursor','var(--cursor-none)','important');
+  document.body.style.setProperty('cursor','var(--cursor-none)','important');
+}
+window.addEventListener('focus', forceHideNative);
+document.addEventListener('visibilitychange', ()=> { if (!document.hidden) forceHideNative(); });
+document.addEventListener('mouseenter', forceHideNative);
+document.addEventListener('pointermove', onPointerMove, { passive:true });
+document.addEventListener('pointerdown', onDown);
+document.addEventListener('pointerup',   onUp);
+document.addEventListener('scroll',      onScroll, { passive:true });
+document.addEventListener('wheel',       onScroll, { passive:true });
+
+// --- 防止滾輪/捲動時冒出原生游標：短暫開啟 shield 命中 ---
+const shield = document.getElementById('cursor-shield');
+let shieldTimer = null;
+
+// 啟用遮罩一小段時間
+function coverShield(ms = 180){
+  if (!shield) return;
+  shield.classList.add('cover');
+  clearTimeout(shieldTimer);
+  shieldTimer = setTimeout(()=> shield.classList.remove('cover'), ms);
+}
+
+// 在會出現閃爍的時機啟用（wheel/scroll/gesture）
+document.addEventListener('wheel',  () => coverShield(0), {passive:true});
+document.addEventListener('scroll', () => coverShield(0), {passive:true});
+
+// 使用者一旦按下或進入頁面，就關掉遮罩避免擋互動
+document.addEventListener('pointerdown', () => shield.classList.remove('cover'), {passive:true});
+document.addEventListener('mouseenter',  () => shield.classList.remove('cover'), {passive:true});
+
+// 再保險：視窗回焦或可見時，重新蓋一次 none（你已經有 forceHideNative 也OK）
+window.addEventListener('focus', () => coverShield(120));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) coverShield(120); });
 </script>
 <!--=================-->
 <p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">

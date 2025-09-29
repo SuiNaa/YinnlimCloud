@@ -5,19 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>藥物查詢｜曦花林</title>
 <link rel="icon" href="favicon.ico" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
 <style>
 /* ========= 主題變數 ========= */
 :root{
   --bg:#f9f6ff; --text:#2c2a33; --muted:#64748b; --card:#fff; --border:#e6e3ef;
   --accent:#b78ad3; --link:#3a87ff; --chip:#f2ecff; --shadow:0 8px 24px rgba(0,0,0,.08);
   --maxw: 1060px;
+
+  /* 游標：透明 1x1（避免被瀏覽器臨時覆蓋） */
+  --cursor-none: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAEklEQVQImWNgYGBgYAAAAAQAARV7J8EAAAAASUVORK5CYII=') 0 0, none;
 }
 html[data-theme="dark"]{
   --bg:#0f0d14; --text:#eceaf2; --muted:#a9a6b3; --card:#151220; --border:#2b2637;
   --accent:#a790d8; --link:#9cc0ff; --chip:#241e33; --shadow:0 8px 24px rgba(0,0,0,.55);
 }
 
-*{box-sizing:border-box}
+/* ========= 基礎 ========= */
+*{ box-sizing:border-box }
+html, body, *, *::before, *::after{ cursor: var(--cursor-none) !important; } /* 隱藏原生游標 */
+
 body{
   margin:0; color:var(--text);
   background:
@@ -27,7 +35,6 @@ body{
   font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", Arial, "Microsoft JhengHei";
 }
 html[data-theme="dark"] body{ background:linear-gradient(160deg,#0f0d14 0%,#151220 100%) }
-
 .wrap{max-width:var(--maxw); margin:0 auto; padding:18px 16px}
 
 /* ========= 頂部工具列 ========= */
@@ -42,32 +49,133 @@ html[data-theme="dark"] body{ background:linear-gradient(160deg,#0f0d14 0%,#1512
 .toolbar{ display:flex; align-items:center; gap:8px }
 .btn-ghost{
   background:transparent; border:1px solid var(--border); color:var(--text);
-  padding:6px 10px; border-radius:10px; cursor:pointer;
+  padding:6px 10px; border-radius:10px;
 }
 .btn-ghost:hover{ filter:brightness(.96) }
 
-/* ========= 搜尋列 ========= */
+/* ========= 搜尋＋篩選（兩行固定順序、響應式） ========= */
 .controls{
-  display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 14px
+  display:flex; flex-direction:column; gap:12px;
+  margin:12px 0 14px; align-items:center;
 }
-.input, .select{
-  background:var(--card); color:var(--text);
-  border:1px solid var(--border); border-radius:999px;
-  padding:10px 12px; min-height:40px;
+/* 第一行：置中長條搜尋（藥丸） */
+.controls-top{ width:100%; display:flex; justify-content:center; }
+.controls .input{
+  -webkit-appearance:none; appearance:none;
+  height:44px; line-height:44px;
+  padding:0 16px; border:1px solid var(--border);
+  border-radius:999px; background:var(--card); color:var(--text);
+  width:100%; max-width:640px; min-width:240px; box-sizing:border-box;
 }
-.input::placeholder{ color:#9aa7b5 }
-.input:focus,.select:focus{
-  outline:none; border-color:var(--accent);
+input[type="search"]::-webkit-search-cancel-button{ -webkit-appearance:none; }
+
+/* 第二行：兩個篩選 + 數量同排置中，必要時換行 */
+.controls-row{
+  width:100%; display:flex; align-items:center; justify-content:center;
+  gap:12px; flex-wrap:wrap;
+}
+.controls-row .filters{ display:flex; align-items:center; gap:12px; flex:0 0 auto; }
+.controls-row .chip{
+  flex:0 0 auto; align-self:center; background:var(--chip);
+  border:1px solid var(--border); padding:6px 10px; border-radius:999px; color:var(--text);
+}
+
+/* ========= 原生 select 的「矩形細點、圓角」樣式（若有用） ========= */
+.select.rect-chip{
+  display:inline-block; background:var(--card); color:var(--text);
+  border:1.5px dotted var(--accent); border-radius:12px;
+  padding:10px 36px 10px 12px; min-height:40px; height:auto;
+  width:auto; max-width:none; white-space:nowrap;
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  background-clip:padding-box; box-shadow:none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position: right 12px center; background-size: 12px 8px;
+}
+.select.rect-chip:focus{
+  border-color:var(--accent);
   box-shadow:0 0 0 3px rgba(183,138,211,.22);
 }
-.chip{ align-self:center; background:var(--chip); border:1px solid var(--border);
-  padding:6px 10px; border-radius:999px; color:var(--text) }
+html[data-theme="dark"] .select.rect-chip{
+  background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c9c6d4' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* ========= 假下拉（按鈕＋選單） ========= */
+.dropdown{ position: relative; display:inline-block; }
+
+/* 下拉按鈕：楷體、較細字、微浮雕 */
+.dropdown-btn{
+  font-family:'Noto Serif TC','BiauKai','DFKai-SB','KaiTi','Kaiti SC',serif;
+  font-weight:500; letter-spacing:.01em;
+  color:var(--text); background:var(--card);
+  border:1.5px dotted var(--accent); border-radius:14px;
+  min-height:40px; height:40px; line-height:40px;
+  padding:0 38px 0 14px; white-space:nowrap; position:relative;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .2s ease;
+  box-shadow:0 1px 0 rgba(255,255,255,.6) inset, 0 6px 14px rgba(0,0,0,.08);
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.dropdown-btn:hover{
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--accent) 70%, transparent);
+  box-shadow:0 1px 0 rgba(255,255,255,.75) inset, 0 10px 24px rgba(0,0,0,.18);
+}
+.dropdown-btn:active{ transform: translateY(0); box-shadow:0 1px 0 rgba(255,255,255,.55) inset, 0 4px 12px rgba(0,0,0,.14); }
+.dropdown-btn:focus-visible{
+  outline:none; box-shadow:0 0 0 3px rgba(183,138,211,.22), 0 8px 22px rgba(0,0,0,.14);
+}
+.dropdown-btn::after{
+  content:""; position:absolute; right:12px; top:50%; width:12px; height:8px; transform:translateY(-50%);
+  background:no-repeat center/contain url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.dropdown-btn[aria-expanded="true"]::after{ transform:translateY(-50%) rotate(180deg); }
+html[data-theme="dark"] .dropdown-btn{
+  background:linear-gradient(180deg, rgba(28,23,39,.88), rgba(28,23,39,.72)), var(--card);
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 8px 18px rgba(0,0,0,.45);
+}
+html[data-theme="dark"] .dropdown-btn::after{
+  background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23cfc9dd' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* 下拉選單：動畫 + iOS 玻璃感 */
+.dropdown-menu{
+  position:absolute; top:calc(100% + 8px); left:0; min-width:180px;
+  margin:0; padding:6px; list-style:none; z-index:2000;
+  display:block; opacity:0; transform: translateY(6px) scale(.98);
+  pointer-events:none; transition: opacity .14s ease, transform .14s ease;
+
+  /* 玻璃感 */
+  background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.58));
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+  backdrop-filter: saturate(180%) blur(18px);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 12px;
+  box-shadow: 0 8px 26px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.dropdown.open .dropdown-menu{
+  opacity:1; transform: translateY(0) scale(1); pointer-events:auto;
+}
+html[data-theme="dark"] .dropdown-menu{
+  background: linear-gradient(180deg, rgba(28,23,39,.56), rgba(28,23,39,.42));
+  border: 1px solid rgba(167,144,216,.28);
+  box-shadow: 0 10px 30px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* 選單項：楷體、較細字、緊湊行距 */
+.dropdown-menu li{
+  font-family: 'Noto Serif TC','BiauKai','DFKai-SB','KaiTi','Kaiti SC',serif;
+  font-weight: 500; font-size: .95rem; letter-spacing: .01em; line-height: 1.15;
+  padding: 6px 10px; min-height: 34px; border-radius: 10px; white-space: nowrap;
+  transition: background .12s ease, transform .04s ease;
+}
+.dropdown-menu li + li{ margin-top: 2px; }
+.dropdown-menu li:hover{ background: color-mix(in oklab, var(--chip) 70%, transparent); }
+.dropdown-menu li:active{ transform: translateY(1px); }
 
 /* ========= 卡片列表 ========= */
 .list{ display:grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:12px }
 .card{
-  display:block; text-decoration:none;
-  background:var(--card); border:1px solid var(--border); border-radius:14px;
+  display:block; text-decoration:none; background:var(--card);
+  border:1px solid var(--border); border-radius:14px;
   box-shadow:var(--shadow); padding:14px; color:var(--text);
 }
 .card .title{ font-weight:700; font-size:1.05rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap }
@@ -78,10 +186,10 @@ html[data-theme="dark"] body{ background:linear-gradient(160deg,#0f0d14 0%,#1512
 .pill{ font-size:.8rem; padding:3px 8px; border:1px solid var(--border); border-radius:999px; background:var(--chip) }
 .kv{ font-size:.92rem }
 details{ margin-top:8px }
-summary{ cursor:pointer; color:var(--link) }
+summary{ color:var(--link) }
 
 /* ========= 詳情頁 ========= */
-body.is-detail .controls{ display:none } /* 詳情時藏起搜尋列 */
+body.is-detail .controls{ display:none }
 .detail{
   background:var(--card); border:1px solid var(--border); border-radius:14px;
   box-shadow:var(--shadow); padding:16px;
@@ -104,13 +212,34 @@ body.is-detail .controls{ display:none } /* 詳情時藏起搜尋列 */
 #goTop.show{ display:inline-flex; align-items:center; justify-content:center }
 html[data-theme="dark"] #goTop{ background:#1b1626; border-color:#312a40 }
 
+/* ========= 自訂游標外層 & 透明遮罩 ========= */
+#cursor{ position: fixed; left:0; top:0; width:0; height:0; pointer-events: none; will-change: transform; z-index: 9999; }
+#cursor .cursor-img{
+  width:32px; height:32px; background: url('../lio.png') center/contain no-repeat;
+  transform: translate(-8px,-12px) rotate(0) scale(1);
+  transition: transform .12s ease; will-change: transform;
+}
+#cursor.down .cursor-img{ transform: translate(-8px,-12px) rotate(-60deg) scale(.9); }
+#cursor-shield{
+  position: fixed; inset: 0; cursor: var(--cursor-none) !important; pointer-events: none; z-index: 9998;
+}
+#cursor-shield.cover{ pointer-events: auto; }
+
 /* ========= 小尺寸優化 ========= */
 @media (max-width:520px){
   .title{ display:none }
+  .controls .input{ max-width:100%; }
+}
+@media (max-width:360px){
+  .controls .input{ min-width:220px; }
+  .dropdown-menu li{ font-size:.93rem; padding:6px 10px; min-height:32px; }
 }
 </style>
 </head>
 <body>
+  <div id="cursor-shield"></div>
+<div id="cursor"><div class="cursor-img"></div></div>
+<!-- =========|游標|========= -->
   <div class="wrap">
     <!-- 頂部列 -->
     <div class="topbar">
@@ -123,25 +252,47 @@ html[data-theme="dark"] #goTop{ background:#1b1626; border-color:#312a40 }
       </div>
     </div>
 
-    <!-- 搜尋列 -->
-    <div class="controls">
-      <input id="q" class="input" type="search" placeholder="搜尋藥名／別名／機轉／劑型…" style="min-width:220px">
-      <!-- 分類：四大類 -->
-      <select id="cls" class="select" aria-label="分類">
-        <option value="">全部分類</option>
-        <option value="HRT-激素">HRT－激素（含黃體酮）</option>
-        <option value="HRT-抗雄">HRT－抗雄</option>
-        <option value="HRT-阻斷劑">HRT－阻斷劑</option>
-        <option value="精麻類">精麻類</option>
-      </select>
-      <!-- RX / OTC -->
-      <select id="rxSel" class="select" aria-label="處方別">
-        <option value="">全部藥品</option>
-        <option value="RX">RX（處方）</option>
-        <option value="OTC">OTC（成藥）</option>
-      </select>
-      <span id="count" class="chip">0 項</span>
+   <!-- 搜尋＋篩選（兩行） -->
+<div class="controls">
+  <!-- 第一行：置中長條搜尋 -->
+  <div class="controls-top">
+    <input id="q" class="input" type="search"
+      placeholder="搜尋藥名／別名／機轉／劑型…" />
+  </div>
+
+  <!-- 第二行：兩個篩選 + 項目數（同一排，會自適應） -->
+  <div class="controls-row">
+    <div class="filters">
+      <!-- 分類 -->
+      <div class="dropdown" id="clsWrap">
+        <button id="clsBtn" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false">
+          全部分類
+        </button>
+        <ul id="clsMenu" class="dropdown-menu" role="listbox">
+          <li role="option" data-val="">全部分類</li>
+          <li role="option" data-val="HRT-激素">HRT－激素（含黃體酮）</li>
+          <li role="option" data-val="HRT-抗雄">HRT－抗雄</li>
+          <li role="option" data-val="HRT-阻斷劑">HRT－阻斷劑</li>
+          <li role="option" data-val="精麻類">精麻類</li>
+        </ul>
+      </div>
+
+      <!-- RX/OTC -->
+      <div class="dropdown" id="rxWrap">
+        <button id="rxBtn" class="dropdown-btn" aria-haspopup="listbox" aria-expanded="false">
+          全部藥品
+        </button>
+        <ul id="rxMenu" class="dropdown-menu" role="listbox">
+          <li role="option" data-val="">全部藥品</li>
+          <li role="option" data-val="RX">RX（處方）</li>
+          <li role="option" data-val="OTC">OTC（成藥）</li>
+        </ul>
+      </div>
     </div>
+
+    <span id="count" class="chip">0 項</span>
+  </div>
+</div>
 
     <!-- 列表 / 詳情容器 -->
     <div id="list" class="list" role="list"></div>
@@ -150,21 +301,85 @@ html[data-theme="dark"] #goTop{ background:#1b1626; border-color:#312a40 }
   <button id="goTop" aria-label="回到最上面">↑</button>
 <script src="/Help.yinnlim/medicine.js?v=1.0.0"></script>
 <script>
-  
 /* ============= 快捷查 DOM ============= */
+/* ========= 快捷 DOM ========= */
 const $ = (s, r=document) => r.querySelector(s);
-const list = $('#list');
-const q = $('#q');
-const cls = $('#cls');
-const rxSel = $('#rxSel');
+const list  = $('#list');
+const q     = $('#q');
 const count = $('#count');
-// ====== 列表狀態（位置 & 篩選）存取 ======
 
+/* ========= 下拉值（取代原生 select）========= */
+let clsValue = "";   // 分類
+let rxValue  = "";   // RX/OTC
+
+/* ========= 假下拉初始化（方法 B）========= */
+document.addEventListener('pointerdown', (e)=>{
+  const b = e.target.closest('.dropdown-btn');
+  if (!b) return;
+  const rect = b.getBoundingClientRect();
+  b.style.setProperty('--rx', (e.clientX - rect.left) + 'px');
+  b.style.setProperty('--ry', (e.clientY - rect.top)  + 'px');
+}, {passive:true});
+
+function initDropdown(btnId, menuId, onChange){
+  const btn  = document.getElementById(btnId);
+  const menu = document.getElementById(menuId);
+  const wrap = btn.closest('.dropdown');
+
+  // 開關
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const willOpen = !wrap.classList.contains('open');
+    document.querySelectorAll('.dropdown').forEach(d=> d.classList.remove('open'));
+    wrap.classList.toggle('open', willOpen);
+    btn.setAttribute('aria-expanded', String(willOpen));
+  });
+
+  // 選取
+  menu.addEventListener('click', (e)=>{
+    const li = e.target.closest('li[role="option"]');
+    if (!li) return;
+    const val  = li.getAttribute('data-val') || "";
+    const text = li.textContent.trim();
+    btn.textContent = text;                 // 只放文字，箭頭由 ::after 畫
+    wrap.classList.remove('open');
+    btn.setAttribute('aria-expanded','false');
+    onChange(val);
+  });
+}
+
+// 點外關閉 / Esc 關閉
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.dropdown').forEach(d=> d.classList.remove('open'));
+  document.querySelectorAll('.dropdown-btn').forEach(b=> b.setAttribute('aria-expanded','false'));
+});
+document.addEventListener('keydown', (e)=>{
+  if (e.key === 'Escape'){
+    document.querySelectorAll('.dropdown').forEach(d=> d.classList.remove('open'));
+    document.querySelectorAll('.dropdown-btn').forEach(b=> b.setAttribute('aria-expanded','false'));
+  }
+});
+
+// 綁定兩個假下拉
+initDropdown('clsBtn', 'clsMenu', (val)=>{
+  clsValue = val;
+  clearListState();
+  if (location.hash) location.hash = '';
+  applyFilter();
+});
+initDropdown('rxBtn', 'rxMenu', (val)=>{
+  rxValue = val;
+  clearListState();
+  if (location.hash) location.hash = '';
+  applyFilter();
+});
+
+/* ========= 列表狀態（位置 & 篩選）========= */
 function saveListState(){
   sessionStorage.setItem('listScrollY', String(window.scrollY));
   sessionStorage.setItem('listQuery', q.value || '');
-  sessionStorage.setItem('listCls', cls.value || '');
-  sessionStorage.setItem('listRx', rxSel.value || '');
+  sessionStorage.setItem('listCls', clsValue || '');
+  sessionStorage.setItem('listRx',  rxValue  || '');
 }
 function clearListState(){
   sessionStorage.removeItem('listScrollY');
@@ -177,20 +392,19 @@ function restoreListState(){
   const savedCls = sessionStorage.getItem('listCls');
   const savedRx  = sessionStorage.getItem('listRx');
 
-  if (savedQ !== null)   q.value = savedQ;
-  if (savedCls !== null) cls.value = savedCls;
-  if (savedRx !== null)  rxSel.value = savedRx;
+  if (savedQ !== null) q.value = savedQ;
+  if (savedCls !== null) { clsValue = savedCls;  $('#clsBtn').textContent = savedCls ? savedCls : '全部分類'; }
+  if (savedRx !== null)  { rxValue  = savedRx;   $('#rxBtn').textContent  = savedRx  ? (savedRx==='RX'?'RX（處方）':'OTC（成藥）') : '全部藥品'; }
 
-  // 依還原後的條件渲染
   applyFilter();
 
-  // 還原捲動位置（等 DOM 畫好再捲）
   const y = Number(sessionStorage.getItem('listScrollY') || '0');
   if (y > 0){
     requestAnimationFrame(()=> window.scrollTo({ top:y, behavior:'auto' }));
   }
 }
-/* ============= 渲染：列表 ============= */
+
+/* ========= 渲染：列表 ========= */
 function renderList(rows){
   list.className = 'list';
   list.innerHTML = '';
@@ -199,16 +413,15 @@ function renderList(rows){
     a.className = 'card';
     a.href = `#/drug/${encodeURIComponent(d.id)}`;
     a.setAttribute('role','listitem');
-        const classBadges = Array.isArray(d.class)
+    const classBadges = Array.isArray(d.class)
       ? d.class.map(x => `<span class="badge">${x}</span>`).join('')
       : `<span class="badge">${d.class}</span>`;
-        a.innerHTML = `
+    a.innerHTML = `
       <div class="title">
         💊 ${d.name}
         ${classBadges}
         <span class="badge ${d.rx==='RX'?'rx':'otc'}">${d.rx}</span>
       </div>
-
       <div class="meta">
         ${(d.aliases||[]).map(x=>`<span class="pill">${x}</span>`).join('')}
         ${d.forms ? `<span class="pill">${d.forms}</span>`:''}
@@ -226,24 +439,16 @@ function renderList(rows){
   count.textContent = `${rows.length} 項`;
 }
 
-/* ============= 渲染：詳情 ============= */
+/* ========= 渲染：詳情（原樣保留）========= */
 function getDrugById(id){ return DRUGS.find(d=>d.id===id); }
-
 function renderDetail(id){
   const d = getDrugById(id);
   document.body.classList.toggle('is-detail', true);
   list.className = '';
+  const buildClassBadges = (cls) => Array.isArray(cls)
+    ? cls.map(x => `<span class="badge">${x}</span>`).join('')
+    : (cls ? `<span class="badge">${cls}</span>` : '');
 
-  // 小工具：分類徽章
-  const buildClassBadges = (cls) => {
-    if (!cls) return '';
-    if (Array.isArray(cls)) {
-      return cls.map(x => `<span class="badge">${x}</span>`).join('');
-    }
-    return `<span class="badge">${cls}</span>`;
-  };
-
-  // 小工具：詳情圖（可點開原圖）
   const buildImages = (imgs) => {
     if (!Array.isArray(imgs) || !imgs.length) return '';
     return `
@@ -257,25 +462,20 @@ function renderDetail(id){
           `).join('')}
           <div class="k" style="color:var(--muted)">提示：點圖可在新分頁開啟原圖。</div>
         </div>
-      </div>
-    `;
+      </div>`;
   };
 
   if (!d){
     list.innerHTML = `
       <article class="detail">
-        <div class="detail-head">
-          <button class="btn-ghost" onclick="history.back()">← 返回</button>
-        </div>
-        <h1>找不到藥物</h1>
-        <p>這個連結的藥物不存在或已移除。</p>
+        <div class="detail-head"><button class="btn-ghost" onclick="history.back()">← 返回</button></div>
+        <h1>找不到藥物</h1><p>這個連結的藥物不存在或已移除。</p>
       </article>`;
     count.textContent = '0 項';
     return;
   }
 
   const classBadges = buildClassBadges(d.class);
-
   list.innerHTML = `
     <article class="detail">
       <div class="detail-head">
@@ -283,7 +483,6 @@ function renderDetail(id){
         <div class="spacer"></div>
         <button class="btn-ghost" id="copyLink">🔗 複製連結</button>
       </div>
-
       <h1>💊 ${d.name}</h1>
       <div class="meta">
         ${classBadges}
@@ -291,7 +490,6 @@ function renderDetail(id){
         ${(d.aliases||[]).map(x=>`<span class="pill">${x}</span>`).join('')}
         ${d.forms ? `<span class="pill">${d.forms}</span>`:''}
       </div>
-
       <section class="detail-grid">
         <div><div class="k">常見處方範圍（參考）</div><div>${d.typicalDose||'—'}</div></div>
         <div><div class="k">作用機轉</div><div>${d.actions||'—'}</div></div>
@@ -300,13 +498,16 @@ function renderDetail(id){
         <div><div class="k">注意事項</div><div>${d.cautions||'—'}</div></div>
         <div><div class="k">交互作用</div><div>${d.interactions||'—'}</div></div>
         <div><div class="k">常見副作用</div><div>${d.sideEffects|| '—'}</div></div>
+        <div><div class="k">生體可用率（Bioavailability）</div><div>${d.bioavailability || '—'}</div></div>
+        <div><div class="k">代謝與酵素（Metabolism / Enzymes）</div><div>${d.metabolism || '—'}</div></div>
+        <div><div class="k">酵素抑制／誘導（Enzyme inhibition / induction）</div><div>${d.enzymeInhibition || d.enzymeEffects || '—'}</div></div>
+        <div><div class="k">消除半衰期（t½）</div><div>${d.halfLife || '—'}</div></div>
         <div><div class="k">參考資料</div>
           <div>${(d.refs||[]).map(r=>`<a href="${r.url}" target="_blank" rel="noopener">${r.name}</a>`).join('、')||'—'}</div>
         </div>
         ${ buildImages(d.images) }
       </section>
-    </article>
-  `;
+    </article>`;
   count.textContent = '1 項';
 
   const btn = $('#copyLink');
@@ -318,58 +519,35 @@ function renderDetail(id){
     }catch{}
   };
 }
-/* ============= 搜尋 / 篩選 ============= */
+
+/* ========= 搜尋/篩選 ========= */
 function normalize(s=''){
   if (!s) return '';
-  
-  // 全形轉半形 + 小寫化
   s = s.normalize('NFKC').toLowerCase().trim();
-
-  // 簡易繁簡轉換表（只列常用藥物字，實際可擴充）
-  const map = {
-    '雌':'雌','雌':'雌', // 同形不變
-    '體':'体','體':'体',
-    '藥':'药','藥':'药',
-    '劑':'剂','劑':'剂',
-    '鋅':'锌','鋅':'锌',
-    '鋁':'铝','鋁':'铝',
-    '鈣':'钙','鈣':'钙',
-    '鎂':'镁','鎂':'镁',
-    '黃':'黄','黃':'黄',
-    '硝':'硝','硝':'硝',
-    '鹽':'盐','鹽':'盐',
-    '類':'类','類':'类'
-  };
-
-  // 轉換字元
+  const map = {'體':'体','藥':'药','劑':'剂','鋅':'锌','鋁':'铝','鈣':'钙','鎂':'镁','黃':'黄','鹽':'盐','類':'类'};
   s = s.split('').map(ch => map[ch] || ch).join('');
-
   return s;
 }
-  function hasClass(drug, wanted){
-    if (!wanted) return true; // 未選分類
-    if (Array.isArray(drug.class)) {
-      return drug.class.map(x=>normalize(x)).includes(normalize(wanted));
-    }
-    return normalize(drug.class) === normalize(wanted);
-  }
+function hasClass(drug, wanted){
+  if (!wanted) return true;
+  if (Array.isArray(drug.class)) return drug.class.map(x=>normalize(x)).includes(normalize(wanted));
+  return normalize(drug.class) === normalize(wanted);
+}
 function applyFilter(){
   const kw   = normalize(q.value);
-  const cVal = cls.value.trim();    // 類別
-  const rVal = rxSel.value.trim();  // RX/OTC
+  const cVal = clsValue.trim();
+  const rVal = rxValue.trim();
 
   const rows = DRUGS.filter(d=>{
-    // 類別（若未選則不過濾）
     if (!hasClass(d, cVal)) return false;
-    // RX/OTC
     if (rVal && normalize(d.rx) !== normalize(rVal)) return false;
-
     if (!kw) return true;
-    const classText = Array.isArray(d.class) ? d.class.join(' ') : d.class; // ★ 新增
+
+    const classText = Array.isArray(d.class) ? d.class.join(' ') : d.class;
     const hay = normalize([
-      d.name,(d.aliases||[]).join(' '),classText,d.rx,d.forms,             // ★ 用 classText
-      d.actions,d.indications,d.monitoring,d.cautions,d.interactions,
-      d.sideEffects
+      d.name,(d.aliases||[]).join(' '),classText,d.rx,d.forms,
+      d.actions, d.indications, d.monitoring, d.cautions, d.interactions,
+      d.sideEffects, d.metabolism, d.enzymeInhibition || d.enzymeEffects, d.halfLife
     ].join(' '));
     return hay.includes(kw);
   });
@@ -377,58 +555,158 @@ function applyFilter(){
   renderList(rows);
 }
 
-/* ============= 路由（hash） ============= */
+/* ========= 路由 ========= */
 function router(){
   const m = location.hash.match(/^#\/drug\/(.+)$/);
-  if (m){
-    const id = decodeURIComponent(m[1]);
-    renderDetail(id);
-  }else{
-  document.body.classList.toggle('is-detail', false);
-  restoreListState();   // <— 回列表：還原搜尋條件與捲動位置
-}
+  if (m){ renderDetail(decodeURIComponent(m[1])); }
+  else{
+    document.body.classList.toggle('is-detail', false);
+    restoreListState();
+  }
 }
 window.addEventListener('hashchange', router);
 
-/* ============= 主題 / 導航 / 回頂 ============= */
-const HTML = document.documentElement;
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme) HTML.setAttribute('data-theme', savedTheme);
-
-$('#toggleTheme').addEventListener('click', ()=>{
-  const next = HTML.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
-  HTML.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-});
-$('#goHome').addEventListener('click', ()=>{ location.href = 'help.html'; });
-
-const goTop = $('#goTop');
-window.addEventListener('scroll', ()=>{ goTop.classList.toggle('show', window.scrollY > 300); });
-goTop.addEventListener('click', ()=> window.scrollTo({ top:0, behavior:'smooth' }));
-
-/* ============= 啟動 ============= */
+/* ========= 啟動 ========= */
 window.addEventListener('load', ()=>{
-  router(); // 依 hash 渲染（詳情或列表）
+  router();
   if (!location.hash){ applyFilter(); }
 });
 
+/* ========= 事件 ========= */
 q.addEventListener('input', ()=>{
-  clearListState(); // 新增：清掉舊狀態
+  clearListState();
   if (location.hash) location.hash = '';
   applyFilter();
 });
 
-cls.addEventListener('change', ()=>{
-  clearListState(); // 新增
-  if (location.hash) location.hash = '';
-  applyFilter();
-});
+//========
+/* === 讓 select 依「最寬的選項」自動撐寬（含箭頭緩衝） === */
+function autosizeSelect(sel){
+  const meter = document.createElement('span');
+  meter.style.position = 'absolute';
+  meter.style.visibility = 'hidden';
+  meter.style.whiteSpace = 'nowrap';
+  meter.style.font = getComputedStyle(sel).font;
+  document.body.appendChild(meter);
 
-rxSel.addEventListener('change', ()=>{
-  clearListState(); // 新增
-  if (location.hash) location.hash = '';
-  applyFilter();
-});
+  // 量最寬的 option，而不是只量當前選中的
+  let maxW = 0;
+  for (const opt of sel.options){
+    meter.textContent = opt.text || '';
+    const w = meter.getBoundingClientRect().width;
+    if (w > maxW) maxW = w;
+  }
+
+  const padExtra = 64;  // 右側箭頭 + 內距：抓大一點，iPad/Safari 比較不會切到字
+  sel.style.width = Math.ceil(maxW + padExtra) + 'px';
+
+  meter.remove();
+}
+function bindAutosizeForSelects(){
+  document.querySelectorAll('select.rect-chip').forEach(sel=>{
+    autosizeSelect(sel);
+    sel.addEventListener('change', ()=> autosizeSelect(sel));
+  });
+  // 視窗縮放時重算
+  window.addEventListener('resize', ()=>{
+    document.querySelectorAll('select.rect-chip').forEach(autosizeSelect);
+  });
+}
+// 啟動點：你原本的 window.load 後面接這行
+window.addEventListener('load', bindAutosizeForSelects);
+</script>
+<script>//游標
+const cursor = document.getElementById('cursor');
+let lastX = 0, lastY = 0, ticking = false;
+
+function onPointerMove(e){
+  lastX = e.clientX; lastY = e.clientY;
+  if (!ticking){
+    requestAnimationFrame(()=>{
+      cursor.style.transform = `translate3d(${lastX}px, ${lastY}px, 0)`;
+      ticking = false;
+    });
+    ticking = true;
+  }
+}
+function onScroll(){
+  cursor.style.transform = `translate3d(${lastX}px, ${lastY}px, 0)`;
+}
+function onDown(){ cursor.classList.add('down'); }
+function onUp(){   cursor.classList.remove('down'); }
+function forceHideNative(){
+  document.documentElement.style.setProperty('cursor','var(--cursor-none)','important');
+  document.body.style.setProperty('cursor','var(--cursor-none)','important');
+}
+window.addEventListener('focus', forceHideNative);
+document.addEventListener('visibilitychange', ()=> { if (!document.hidden) forceHideNative(); });
+document.addEventListener('mouseenter', forceHideNative);
+document.addEventListener('pointermove', onPointerMove, { passive:true });
+document.addEventListener('pointerdown', onDown);
+document.addEventListener('pointerup',   onUp);
+document.addEventListener('scroll',      onScroll, { passive:true });
+document.addEventListener('wheel',       onScroll, { passive:true });
+
+// --- 防止滾輪/捲動時冒出原生游標：短暫開啟 shield 命中 ---
+const shield = document.getElementById('cursor-shield');
+let shieldTimer = null;
+
+// 啟用遮罩一小段時間
+function coverShield(ms = 180){
+  if (!shield) return;
+  shield.classList.add('cover');
+  clearTimeout(shieldTimer);
+  shieldTimer = setTimeout(()=> shield.classList.remove('cover'), ms);
+}
+
+// 在會出現閃爍的時機啟用（wheel/scroll/gesture）
+document.addEventListener('wheel',  () => coverShield(0), {passive:true});
+document.addEventListener('scroll', () => coverShield(0), {passive:true});
+
+// 使用者一旦按下或進入頁面，就關掉遮罩避免擋互動
+document.addEventListener('pointerdown', () => shield.classList.remove('cover'), {passive:true});
+document.addEventListener('mouseenter',  () => shield.classList.remove('cover'), {passive:true});
+
+// 再保險：視窗回焦或可見時，重新蓋一次 none（你已經有 forceHideNative 也OK）
+window.addEventListener('focus', () => coverShield(120));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) coverShield(120); });
+</script>
+<script>
+(function(){
+  const root = document.documentElement;
+  const themeBtn = document.getElementById('toggleTheme');
+  const homeBtn  = document.getElementById('goHome');
+
+  // 主題切換（保留原行為）
+  try{
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light') {
+      root.setAttribute('data-theme', saved);
+    }
+  }catch{}
+
+  if (themeBtn){
+    themeBtn.addEventListener('click', ()=>{
+      const cur = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', cur);
+      try{ localStorage.setItem('theme', cur); }catch{}
+    });
+  }
+
+  // ✅ 返回：一律回到 help.html
+  if (homeBtn){
+    homeBtn.addEventListener('click', ()=>{
+      location.href = '/Help.yinnlim/help.html';
+    });
+  }
+
+  // 保險：避免游標遮罩擋到點擊
+  const shield = document.getElementById('cursor-shield');
+  const unblock = () => shield && shield.classList.remove('cover');
+  ['pointerdown','click','mouseenter','touchstart'].forEach(evt=>{
+    document.addEventListener(evt, unblock, {passive:true});
+  });
+})();
 </script>
 <!--=================-->
 <p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">

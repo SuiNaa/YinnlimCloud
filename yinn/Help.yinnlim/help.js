@@ -1,346 +1,3 @@
-
-/* ====== 下拉 → 開啟激素換算視窗（保留你的開關行為） ====== */
-const convertModal = document.getElementById('modal-convert');
-function openConvertModal() {
-  convertModal.classList.add('show');
-  convertModal.setAttribute('aria-hidden', 'false');
-  populateUnits();
-  calc();
-}
-function closeConvertModal() {
-  convertModal.classList.remove('show');
-  convertModal.setAttribute('aria-hidden', 'true');
-}
-document.querySelectorAll('.tool-item[data-tool="convert"]').forEach(btn=>{
-  btn.addEventListener('click', openConvertModal);
-});
-convertModal.querySelectorAll('[data-close="convert"]').forEach(btn=>{
-  btn.addEventListener('click', closeConvertModal);
-});
-convertModal.addEventListener('click', (e)=>{ if(e.target===convertModal) closeConvertModal(); });
-
-/* ====== 單位與換算（擴充版）====== */
-/* 說明：
-   - 每個 hormone 都定義可用單位與 convert() 實作
-   - 盡量沿用你原本 UI：左/右兩個 select 選單 + 數值輸入
-   - 內建因子：
-       Estradiol(E2):  pg/mL ↔ pmol/L  ×3.671
-       Testosterone(T): ng/dL ↔ nmol/L ×0.0347
-       Progesterone(P4): ng/mL ↔ nmol/L ×3.18
-     甲狀腺素群：nmol/L ↔ pmol/L（×1000 / ÷1000）
-     促性腺/促甲：IU/L、mIU/mL、mIU/L（1 IU/L = 1 mIU/mL；1 IU/L = 1000 mIU/L）
-*/
-
-// 共用小工具
-const round = (x, d=3) => Number.isFinite(x) ? Number(x.toFixed(d)) : x;
-
-// 通用：nmol/L ↔ pmol/L
-const nmolL_to_pmolL = v => v * 1000;
-const pmolL_to_nmolL = v => v / 1000;
-
-// 通用：IU/L、mIU/mL、mIU/L 互換
-// 1 IU/L = 1 mIU/mL = 1000 mIU/L
-function convIU(v, from, to){
-  // 先轉到 IU/L
-  let iuL = v;
-  if (from === 'IU/L') iuL = v;
-  else if (from === 'mIU/mL') iuL = v;              // 1:1
-  else if (from === 'mIU/L') iuL = v / 1000;
-
-  // 再轉成目標
-  if (to === 'IU/L') return iuL;
-  if (to === 'mIU/mL') return iuL;                  // 1:1
-  if (to === 'mIU/L') return iuL * 1000;
-  return v;
-}
-
-// 各激素定義
-const hormoneDefs = {
-  // 雌二醇
-  E2: {
-    label: '雌二醇（E2）',
-    units: ['pg/mL','pmol/L'],
-    convert(v, from, to){
-      const f = 3.671; // pg/mL → pmol/L
-      if (from === to) return v;
-      return (from === 'pg/mL' && to === 'pmol/L') ? v * f : v / f;
-    }
-  },
-
-  // 睪酮
-  T: {
-    label: '睪酮（T）',
-    units: ['ng/dL','nmol/L'],
-    convert(v, from, to){
-      const f = 0.0347; // ng/dL → nmol/L
-      if (from === to) return v;
-      return (from === 'ng/dL' && to === 'nmol/L') ? v * f : v / f;
-    }
-  },
-
-  // 孕酮（黃體素、P4）
-  P4: {
-    label: '孕酮（P4）',
-    units: ['ng/mL','nmol/L'],
-    convert(v, from, to){
-      const f = 3.18; // ng/mL → nmol/L（≈1000/314.46）
-      if (from === to) return v;
-      return (from === 'ng/mL' && to === 'nmol/L') ? v * f : v / f;
-    }
-  },
-
-  // 甲狀腺素群（多為物質量單位，彼此只差 10^3 倍）
-  T3:   { label: '三碘甲狀腺原氨酸（T3）',  units: ['nmol/L','pmol/L'],
-          convert:(v,f,t)=> f===t ? v : (f==='nmol/L'? nmolL_to_pmolL(v): pmolL_to_nmolL(v)) },
-  FT3:  { label: '游離三碘甲狀腺原氨酸（FT3）', units: ['nmol/L','pmol/L'],
-          convert:(v,f,t)=> f===t ? v : (f==='nmol/L'? nmolL_to_pmolL(v): pmolL_to_nmolL(v)) },
-  T4:   { label: '甲狀腺素（T4）',           units: ['nmol/L','pmol/L'],
-          convert:(v,f,t)=> f===t ? v : (f==='nmol/L'? nmolL_to_pmolL(v): pmolL_to_nmolL(v)) },
-  FT4:  { label: '游離甲狀腺素（FT4）',       units: ['nmol/L','pmol/L'],
-          convert:(v,f,t)=> f===t ? v : (f==='nmol/L'? nmolL_to_pmolL(v): pmolL_to_nmolL(v)) },
-
-  // 促甲狀腺激素 / 促性腺激素（常見活性單位）
-  TSH:  { label: '促甲狀腺激素（TSH）', units: ['IU/L','mIU/mL','mIU/L'],
-          convert:(v,f,t)=> convIU(v,f,t) },
-  FSH:  { label: '卵泡刺激素（FSH）',   units: ['IU/L','mIU/mL','mIU/L'],
-          convert:(v,f,t)=> convIU(v,f,t) },
-  LH:   { label: '黃體生成素（LH）',     units: ['IU/L','mIU/mL','mIU/L'],
-          convert:(v,f,t)=> convIU(v,f,t) },
-};
-
-// 取 DOM
-const selHormone = document.getElementById('hormone');
-const selFrom    = document.getElementById('unitFrom');
-const selTo      = document.getElementById('unitTo');
-const inpValue   = document.getElementById('value');
-const outResult  = document.getElementById('result');
-
-// 用 JS 把「激素列表」灌進去（不用改 HTML）
-(function fillHormoneOptions(){
-  selHormone.innerHTML = '';
-  Object.entries(hormoneDefs).forEach(([key, def])=>{
-    selHormone.add(new Option(def.label, key));
-  });
-  selHormone.value = 'E2'; // 預設顯示 E2
-})();
-
-function populateUnits(){
-  const def = hormoneDefs[ selHormone.value ];
-  selFrom.innerHTML = '';
-  selTo.innerHTML   = '';
-  def.units.forEach(u=>{
-    selFrom.add(new Option(u, u));
-    selTo.add(new Option(u, u));
-  });
-  selTo.selectedIndex = Math.min(1, def.units.length-1); // 預設選第2個
-}
-
-// 計算
-function calc(){
-  const val = parseFloat(inpValue.value);
-  if(isNaN(val)){ outResult.textContent = '請輸入數值'; return; }
-
-  const hKey = selHormone.value;
-  const def  = hormoneDefs[hKey];
-  const u1   = selFrom.value;
-  const u2   = selTo.value;
-
-  const ans = def.convert(val, u1, u2);
-  outResult.textContent = `${val} ${u1} ≈ ${round(ans)} ${u2}`;
-}
-
-// 綁事件
-selHormone.addEventListener('change', ()=>{ populateUnits(); calc(); });
-[inpValue, selFrom, selTo].forEach(el=> el.addEventListener('input', calc));
-
-// 初始
-populateUnits();
-calc();
-
-
-/* ---------- 你的下拉選單 hover/點擊行為：原樣保留 ---------- */
-(function(){
-  const menu = document.querySelector('.menu');
-  if(!menu) return;
-  const btn  = menu.querySelector('.menu-btn');
-  const list = menu.querySelector('.menu-list');
-
-  btn.setAttribute('role','button');
-  btn.setAttribute('tabindex','0');
-  btn.setAttribute('aria-expanded','false');
-
-  let hideTimer;
-
-  function openMenu(){
-    clearTimeout(hideTimer);
-    menu.classList.add('is-open');
-    btn.setAttribute('aria-expanded','true');
-  }
-  function closeMenu(){
-    hideTimer = setTimeout(()=>{
-      menu.classList.remove('is-open');
-      btn.setAttribute('aria-expanded','false');
-    }, 150);
-  }
-
-  menu.addEventListener('mouseenter', openMenu);
-  menu.addEventListener('mouseleave', (e)=>{
-    const to = e.relatedTarget;
-    if (!menu.contains(to)) closeMenu();
-  });
-
-  btn.addEventListener('click', (e)=>{
-    e.preventDefault();
-    if(menu.classList.contains('is-open')) closeMenu(); else openMenu();
-  });
-
-  btn.addEventListener('keydown', (e)=>{
-    if(e.key === 'Enter' || e.key === ' '){
-      e.preventDefault();
-      if(menu.classList.contains('is-open')) closeMenu(); else openMenu();
-    }
-    if(e.key === 'Escape'){ closeMenu(); }
-  });
-  list.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeMenu(); btn.focus(); } });
-
-  document.addEventListener('click', (e)=>{
-    if(!menu.contains(e.target)) { menu.classList.remove('is-open'); btn.setAttribute('aria-expanded','false'); }
-  });
-  document.addEventListener('touchstart', (e)=>{
-    if(!menu.contains(e.target)) { menu.classList.remove('is-open'); btn.setAttribute('aria-expanded','false'); }
-  }, {passive:true});
-})();
-
-// 動態注入藥丸+磨砂+放大
-// === 1) 注入樣式（藥丸 + 磨砂 + 放大） ===
-(function injectGlassStyles(){
-  const css = `
-    /* 放大整個彈窗盒 */
-    #modal-convert .modal-box{
-      transform: translateY(0) scale(1.28) !important;
-    }
-
-    /* 外層藥丸殼（做磨砂） */
-    #modal-convert .glass-pill{
-      display:flex; align-items:center;
-      gap:8px;
-      padding:6px 12px;
-      border-radius:9999px;
-      background: rgba(255,255,255,.22);
-      -webkit-backdrop-filter: blur(10px);
-      backdrop-filter: blur(10px);
-      border:1px solid rgba(255,255,255,.35);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.2),
-                  0 8px 28px rgba(0,0,0,.18);
-    }
-
-    /* 讓原生控制項透明、貼合外殼 */
-    #modal-convert .glass-pill > input,
-    #modal-convert .glass-pill > select{
-      flex:1 1 auto;
-      width:100%;
-      background: transparent !important;
-      border: none !important;
-      outline: none !important;
-      color: inherit !important;
-      font-size: 1.05rem !important;
-      line-height: 1.2;
-      padding: 6px 2px !important;
-      /* 拿掉 iOS/Safari 原生樣式，才能吃到圓角與自訂背景 */
-      -webkit-appearance: none;
-      appearance: none;
-      border-radius: 9999px; /* 藥丸 */
-    }
-
-    /* 統一下拉選單外觀：加一個小箭頭 */
-    #modal-convert .glass-pill.select{
-      position: relative;
-      padding-right: 38px; /* 騰出箭頭空間 */
-    }
-    #modal-convert .glass-pill.select::after{
-      content: "";
-      position:absolute;
-      right:12px; top:50%;
-      width: 8px; height: 8px;
-      border-right:2px solid rgba(0,0,0,.45);
-      border-bottom:2px solid rgba(0,0,0,.45);
-      transform: translateY(-50%) rotate(45deg);
-      pointer-events: none;
-      opacity:.85;
-    }
-
-    /* 讓結果區域更清楚 */
-    #modal-convert #result{
-      margin-top:10px;
-      font-weight:700;
-      background: rgba(255,255,255,.14);
-      -webkit-backdrop-filter: blur(6px);
-      backdrop-filter: blur(6px);
-      border-radius: 12px;
-      padding: 10px 12px;
-    }
-
-    #modal-convert .glass-pill > input,
-#modal-convert .glass-pill > select {
-  flex:1 1 auto;
-  width:100%;
-  background: transparent !important;
-  border: none !important;
-  outline: none !important;
-  color: #84d9daff !important; /* 深橘色（巧克力色系） */
-  font-size: 1.05rem !important;
-  line-height: 1.2;
-  padding: 6px 2px !important;
-  -webkit-appearance: none;
-  appearance: none;
-  border-radius: 9999px; /* 藥丸 */
-}
-  `;
-  const s = document.createElement('style');
-  s.textContent = css;
-  document.head.appendChild(s);
-})();
-
-// === 2) 在彈窗開啟時，把控制項包進「玻璃藥丸外殼」 ===
-function applyGlassPills(){
-  const box = document.querySelector('#modal-convert .modal-box');
-  if(!box) return;
-
-  // 要處理的欄位：select／input
-  const targets = box.querySelectorAll('select, input[type="number"], input[type="text"]');
-
-  targets.forEach(el=>{
-    // 已經包過就跳過
-    if(el.parentElement && el.parentElement.classList.contains('glass-pill')) return;
-
-    // 建外殼
-    const wrap = document.createElement('div');
-    wrap.className = 'glass-pill' + (el.tagName === 'SELECT' ? ' select' : '');
-
-    // 把原元素移進外殼
-    el.parentElement.insertBefore(wrap, el);
-    wrap.appendChild(el);
-  });
-}
-
-// === 3) 擴充：在你原本「打開彈窗」那段後面，呼叫 applyGlassPills() ===
-(function hookOpenModal(){
-  const modal = document.getElementById('modal-convert');
-  if(!modal) return;
-
-  // 監聽 class 變化，只要彈窗變成 show 就套樣式
-  const obs = new MutationObserver(muts=>{
-    muts.forEach(m=>{
-      if(m.attributeName === 'class'){
-        if(modal.classList.contains('show')){
-          // 彈窗剛打開
-          applyGlassPills();
-        }
-      }
-    });
-  });
-  obs.observe(modal, { attributes:true });
-})();
 /* ===================== 罩杯計算（JS-only，不動 HTML/CSS） ===================== */
 
 // 1) 攔截頂欄「罩杯計算」連結
@@ -513,6 +170,8 @@ function openCupModal(){
     out.textContent = `推測罩杯：${cup} Cup（差值：${d} cm）`;
   }
 }
+
+
 //=======晝夜＝＝＝＝
 
 // ============ 「設定」→ 夜/晝模式切換下拉 ============
@@ -693,3 +352,171 @@ helpModal.querySelectorAll('.help-btn').forEach(btn=>{
     if (key === 'support'){ closeHelpModal(); location.href='command.html'; }
   });
 });
+/* ===================== 激素單位轉換器 ===================== */
+/* ---------- 開/關激素彈窗 ---------- */
+const convertModal = document.getElementById('modal-convert');
+const convBox      = convertModal.querySelector('.modal-box');
+const closeDot     = convertModal.querySelector('.close-dot'); // 你新HTML有這顆紅點
+function openConvertModal(){
+  convertModal.classList.add('show');
+  convertModal.setAttribute('aria-hidden','false');
+  populateHormonesOnce();
+  populateUnits();
+  mountUnitCyclers();
+  calc();
+}
+function closeConvertModal(){
+  convertModal.classList.remove('show');
+  convertModal.setAttribute('aria-hidden','true');
+}
+document.querySelectorAll('.tool-item[data-tool="convert"]').forEach(btn=>{
+  btn.addEventListener('click', e=>{ e.preventDefault(); openConvertModal(); });
+});
+convertModal.addEventListener('click', e=>{ if(e.target===convertModal) closeConvertModal(); });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && convertModal.classList.contains('show')) closeConvertModal(); });
+closeDot && closeDot.addEventListener('click', closeConvertModal);
+
+/* ---------- 單位與換算（分子量版） ---------- */
+const round = (x,d=3)=> Number.isFinite(x)? Number(x.toFixed(d)) : x;
+const withComma = n => (Number.isFinite(n) ? n.toLocaleString() : n);
+
+const uFactor = {
+  'pg/mL': { mass:1e-12, vol:1e-3 }, 'ng/L':{ mass:1e-9, vol:1 },
+  'ng/dL': { mass:1e-9,  vol:1e-2 }, 'ng/mL':{ mass:1e-9, vol:1e-3 },
+  'µg/L' : { mass:1e-6,  vol:1 },    'pmol/L':{ mol:1e-12 }, 'nmol/L':{ mol:1e-9 }
+};
+function massConc_to_molL(v,unit,MW){ const f=uFactor[unit]; return (v*(f.mass/f.vol))/MW; }
+function molL_to_massConc(m,unit,MW){ const f=uFactor[unit]; const gL=m*MW; return gL*(f.vol/f.mass); }
+function amount_to_molL(v,u){ return u==='pmol/L'? v*1e-12 : u==='nmol/L'? v*1e-9 : v; }
+function molL_to_amount(m,u){ return u==='pmol/L'? m*1e12  : u==='nmol/L'? m*1e9  : m; }
+function convertByMW(v,from,to,MW){
+  if(from===to) return v;
+  const amt = ['pmol/L','nmol/L'];
+  const A = amt.includes(from), B = amt.includes(to);
+  if(A&&B)   return molL_to_amount(amount_to_molL(v,from), to);
+  if(!A&&!B) return molL_to_massConc(massConc_to_molL(v,from,MW), to, MW);
+  if(A&&!B)  return molL_to_massConc(amount_to_molL(v,from), to, MW);
+  return molL_to_amount(massConc_to_molL(v,from,MW), to);
+}
+
+const H = {
+  E2:{ label:'雌二醇（E2）', MW:272.38, units:['pg/mL','pmol/L','nmol/L','ng/mL','µg/L','ng/dL','ng/L'],
+       convert(v,f,t){ return convertByMW(v,f,t,this.MW); } },
+  T :{ label:'睪酮（T）',    MW:288.42, units:['ng/dL','nmol/L','ng/mL','µg/L','ng/L','pmol/L'],
+       convert(v,f,t){ return convertByMW(v,f,t,this.MW); } },
+  P4:{ label:'孕酮（P4）',   MW:314.46, units:['ng/mL','nmol/L','ng/dL','µg/L','ng/L','pmol/L'],
+       convert(v,f,t){ return convertByMW(v,f,t,this.MW); } },
+  T3 :{ label:'三碘甲狀腺原氨酸（T3）',  units:['nmol/L','pmol/L'], convert:(v,f,t)=> f===t?v : (f==='nmol/L'? v*1000 : v/1000) },
+  FT3:{ label:'游離三碘甲狀腺原氨酸（FT3）',units:['nmol/L','pmol/L'], convert:(v,f,t)=> f===t?v : (f==='nmol/L'? v*1000 : v/1000) },
+  T4 :{ label:'甲狀腺素（T4）',           units:['nmol/L','pmol/L'], convert:(v,f,t)=> f===t?v : (f==='nmol/L'? v*1000 : v/1000) },
+  FT4:{ label:'游離甲狀腺素（FT4）',       units:['nmol/L','pmol/L'], convert:(v,f,t)=> f===t?v : (f==='nmol/L'? v*1000 : v/1000) },
+  TSH:{ label:'促甲狀腺激素（TSH）',       units:['IU/L','mIU/mL','mIU/L'], convert:convIU },
+  FSH:{ label:'卵泡刺激素（FSH）',         units:['IU/L','mIU/mL','mIU/L'], convert:convIU },
+  LH :{ label:'黃體生成素（LH）',           units:['IU/L','mIU/mL','mIU/L'], convert:convIU },
+};
+function convIU(v,from,to){
+  let iuL = (from==='mIU/L')? v/1000 : v; // IU/L 與 mIU/mL 一樣視為 1:1
+  if (to==='IU/L' || to==='mIU/mL') return iuL;
+  if (to==='mIU/L') return iuL*1000;
+  return v;
+}
+
+/* ---------- DOM 綁定 ---------- */
+const selH = document.getElementById('hormone');
+const uFrom = document.getElementById('unitFrom');
+const uTo   = document.getElementById('unitTo');
+const vIn   = document.getElementById('value');
+const out   = document.getElementById('result');
+const swapBtn = document.getElementById('swapUnits');
+const copyBtn = document.getElementById('copyResult');
+
+function populateHormonesOnce(){
+  if (selH.options.length) return;
+  Object.entries(H).forEach(([k,d])=> selH.add(new Option(d.label,k)));
+  selH.value='E2';
+}
+function populateUnits(){
+  const def = H[ selH.value ];
+  uFrom.innerHTML=''; uTo.innerHTML='';
+  def.units.forEach(u=>{ uFrom.add(new Option(u,u)); uTo.add(new Option(u,u)); });
+  uTo.selectedIndex = Math.min(1, def.units.length-1);
+}
+function calc(){
+  const v = parseFloat(vIn.value);
+  if (isNaN(v)){ out.textContent = '請輸入數值'; return; }
+  const def = H[ selH.value ];
+  const ans = def.convert(v, uFrom.value, uTo.value);
+  out.textContent = `${withComma(v)} ${uFrom.value} ≈ ${withComma(round(ans,3))} ${uTo.value}`;
+}
+selH.addEventListener('change', ()=>{ populateUnits(); calc(); });
+[vIn,uFrom,uTo].forEach(el=> el.addEventListener('input', calc));
+swapBtn.addEventListener('click', ()=>{ const i=uFrom.selectedIndex; uFrom.selectedIndex=uTo.selectedIndex; uTo.selectedIndex=i; calc(); });
+copyBtn.addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText(out.textContent.trim());
+       const old=copyBtn.textContent; copyBtn.textContent='✓ 已複製'; setTimeout(()=> copyBtn.textContent=old,1000);
+  }catch(e){}
+});
+
+/* ---------- 單位選單左右「點一下」切換（保留原生 select） ---------- */
+function mountUnitCyclers(){
+  ['unitFrom','unitTo'].forEach(id=>{
+    const sel = document.getElementById(id);
+    if(!sel || sel.closest('.unit-pill')) return;  // 已裝過
+    const wrap = document.createElement('div');
+    wrap.className = 'glass-pill select unit-pill';
+    sel.parentElement.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+    const L = Object.assign(document.createElement('button'), {type:'button', className:'unit-btn left',  textContent:'‹'});
+    const R = Object.assign(document.createElement('button'), {type:'button', className:'unit-btn right', textContent:'›'});
+    wrap.append(L,R);
+    const step = dir=>{
+      const list = H[ selH.value ].units;
+      let i = Math.max(0, list.indexOf(sel.value));
+      i = (i + dir + list.length) % list.length;
+      sel.value = list[i]; calc();
+    };
+    L.addEventListener('click', ()=> step(-1));
+    R.addEventListener('click', ()=> step(+1));
+  });
+}
+
+(function stickyMenu(){
+  const menu = document.querySelector('.menu');
+  if(!menu) return;
+  const btn  = menu.querySelector('.menu-btn');
+  const list = menu.querySelector('.menu-list');
+
+  let hideTimer = null;
+
+  function openNow(){
+    clearTimeout(hideTimer);
+    menu.classList.add('is-open');
+    btn.setAttribute('aria-expanded','true');
+  }
+  function scheduleHide(){
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(()=>{
+      menu.classList.remove('is-open');
+      btn.setAttribute('aria-expanded','false');
+    }, 150); // 給手移動時間
+  }
+
+  // 滑鼠/觸控都穩定
+  menu.addEventListener('mouseenter', openNow);
+  menu.addEventListener('mouseleave', scheduleHide);
+  list.addEventListener('mouseenter', openNow);
+  list.addEventListener('mouseleave', scheduleHide);
+
+  // 點擊可固定展開（iPad/觸控友善）
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    if(menu.classList.contains('is-open')) scheduleHide(); else openNow();
+  });
+
+  // 點外面就關
+  document.addEventListener('click', (e)=>{
+    if(!menu.contains(e.target)) scheduleHide();
+  }, {passive:true});
+})();
+
