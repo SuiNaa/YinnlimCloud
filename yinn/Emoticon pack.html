@@ -81,19 +81,7 @@ body{
   transition: right 0.4s ease;
   z-index: 2000;
 }
-/*釀*/
-.side-menu a:hover {
-  display: inline-block;
-  background: linear-gradient(to right, #ce63ee, #ff68eb);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  transform: scale(1.05);
-text-shadow: 0 0 8px rgba(255, 200, 255, 0.3);
-}
+
 /* 🌸 點擊後滑出 */
 .side-menu.open {
   right: 0;
@@ -109,13 +97,58 @@ text-shadow: 0 0 8px rgba(255, 200, 255, 0.3);
 .side-menu li {
   margin: 20px 0;
 }
-
+/* 🌸 側邊選單連結 */
 .side-menu a {
   text-decoration: none;
   font-weight: bold;
-  color: #ff66a5;
   font-size: 18px;
+  position: relative;
+  display: inline-block;
+  color: transparent;  /* 先隱藏文字色 */
+  background: linear-gradient(90deg, #ff66a5, #fcb045); /* 漸層字 */
+  -webkit-background-clip: text;
+  background-clip: text;
+  transition: all 0.35s ease;
+  font-weight: 500;
 }
+/* 🍓登入、💖Hub：固定顏色 */
+.side-menu a.login-btn,
+.side-menu a.hub-btn {
+  color: #ff4d88 !important;   /* 🍓 Strawberry 粉紅 */
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+
+/* 💖 Grove Hub 可以給專屬顏色 */
+.side-menu a.hub-btn {
+  color: #e60073 !important;   /* 💖 比較濃的粉紅紅 */
+}
+/* 🌸 漸層底線 */
+.side-menu a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;   /* 底線距離文字的高度 */
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #ff66a5, #9b5de5, #00bbf9);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s ease;
+}
+
+/* 🌸 滑過效果：字距微展開，底線跑出來 */
+.side-menu a:hover {
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.side-menu a:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
 </style>   
     </head>
 <body>
@@ -397,10 +430,13 @@ button.edit-btn:hover {
   <ul>
     <li><a href="/index.html">首頁Home page</a></li>
     <li>
-      <a href="javascript:void(0);" onclick="showTownLoginModal()"><span class="lim-town-label">
-        <span class="lim">Yinn</span>
-        <span class="town">Lim</span>
-      </span>🍓 登入／註冊<sup>Town</sup></a></li>
+  <a href="javascript:void(0);" onclick="showTownLoginModal()" class="login-btn">
+    <span class="lim-town-label">
+      <span class="lim">Yinn</span>
+      <span class="town">Lim</span>
+    </span>🍓 登入／註冊
+  </a>
+</li>
     <a href="/Diverse/misseng.html"><span class="lim-town-label">
       <span class="lim">Yinn</span>
       <span class="town">Town</span>
@@ -416,7 +452,7 @@ button.edit-btn:hover {
     曦花林<sup>NEW</sup>
   </a>
 </li>
-    <li><a href="/Help.yinnlim/help.html">Grove Hub<sup>💖</sup></a></li>
+    <li><a href="/Help.yinnlim/help.html" class="hub-btn">Grove Hub<sup>💖</sup></a></li>
     <li><a href="/live/shopping.html">Grove Store</a></li>
     <li><a href="/live/constitution.html">網站申明</a></li>
     <li><a href="About thisn site.html">責任申明</a></li>

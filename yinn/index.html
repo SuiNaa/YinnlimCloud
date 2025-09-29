@@ -9,6 +9,12 @@
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC&display=swap" rel="stylesheet">
   <link href="https://fonts.loli.net/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+  <!-- 楷體：霞鶩文楷（LXGW WenKai），有繁中收字，很接近楷書 -->
+<link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai&display=swap" rel="stylesheet">
+<!-- 草書 / 行書：知孟行 & Ma Shan Zheng（皆支援中日韓常用漢字） -->
+<link href="https://fonts.googleapis.com/css2?family=Zhi+Mang+Xing&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<!-- 你本來就有的繁中字體也可保留：Noto Serif TC -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC&display=swap" rel="stylesheet">
   <title>曦花林</title>
   <style>
     .site-declaration{
@@ -21,7 +27,6 @@
     }
     h1 {
       color: #800080;
-      font-family:  'Noto Serif TC', serif;
       margin-top: -10px;
     }
     
@@ -138,18 +143,7 @@
   transition: right 0.4s ease;
   z-index: 2000;
 }
-.side-menu a:hover {
-  display: inline-block;
-  background: linear-gradient(to right, #ce63ee, #ff68eb);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  transform: scale(1.05);
-text-shadow: 0 0 8px rgba(255, 200, 255, 0.3);
-}
+
 /* 🌸 點擊後滑出 */
 .side-menu.open {
   right: 0;
@@ -165,13 +159,58 @@ text-shadow: 0 0 8px rgba(255, 200, 255, 0.3);
 .side-menu li {
   margin: 20px 0;
 }
-
+/* 🌸 側邊選單連結 */
 .side-menu a {
   text-decoration: none;
   font-weight: bold;
-  color: #ff66a5;
   font-size: 18px;
+  position: relative;
+  display: inline-block;
+  color: transparent;  /* 先隱藏文字色 */
+  background: linear-gradient(90deg, #ff66a5, #fcb045); /* 漸層字 */
+  -webkit-background-clip: text;
+  background-clip: text;
+  transition: all 0.35s ease;
+  font-weight: 500;
 }
+/* 🍓登入、💖Hub：固定顏色 */
+.side-menu a.login-btn,
+.side-menu a.hub-btn {
+  color: #ff4d88 !important;   /* 🍓 Strawberry 粉紅 */
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+
+/* 💖 Grove Hub 可以給專屬顏色 */
+.side-menu a.hub-btn {
+  color: #e60073 !important;   /* 💖 比較濃的粉紅紅 */
+}
+/* 🌸 漸層底線 */
+.side-menu a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;   /* 底線距離文字的高度 */
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #ff66a5, #9b5de5, #00bbf9);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s ease;
+}
+
+/* 🌸 滑過效果：字距微展開，底線跑出來 */
+.side-menu a:hover {
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.side-menu a:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
 /*0000000000000000000*/
 .scroll-banner {
   width: 360px;
@@ -466,7 +505,68 @@ input, textarea, select, option, details, svg, canvas{
   pointer-events: auto;                   /* 讓它成為命中元素，游標就不會被下面原生控件奪回 */
 }
 </style>
+<style>
+  /* 全站字體變數（好管理） */
+  :root{
+    /* 楷體主字體（Web + 本機 + 系統備援，依序嘗試） */
+    --font-kai: 
+      "LXGW WenKai",        /* Web 楷書（免費、含繁中） */
+      "DFKai-SB",           /* Windows 繁中：標楷體 */
+      "BiauKai",            /* macOS 繁中：儷中黑/標楷 */
+      "KaiTi", "STKaiti",   /* Windows/老 macOS 楷體 */
+      "Kaiti TC", "Kaiti SC",  /* 蘋果新楷體族 */
+      "Noto Serif TC",      /* Google 繁中明體備援 */
+      "PingFang TC", "Heiti TC", "Microsoft JhengHei", "PMingLiU",
+      "Hiragino Mincho ProN", "MS Mincho", "SimSun", serif;
 
+    /* 草書 / 行書優先，用不到時退回楷體 */
+    --font-cursive:
+      "Zhi Mang Xing", "Ma Shan Zheng",
+      "LXGW WenKai",
+      "DFKai-SB", "BiauKai",
+      "KaiTi", "STKaiti",
+      "Kaiti TC", "Kaiti SC",
+      "Noto Serif TC", serif;
+  }
+
+  /* 🔧 全局套楷體（覆蓋常見可輸入元素；放最後一個 <style> 才有用） */
+  html, body, button, input, select, textarea {
+    font-family: var(--font-kai) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 標題想更有楷味可以加粗一點（自選） */
+  h1, h2, h3, h4, h5, h6 { font-weight: 700; }
+
+  /* 🌿 需要草書/手寫感時，用這個 class 套上就好 */
+  .cursive { font-family: var(--font-cursive) !important; }
+
+  /* 如果你有英文段落，希望英文也保持優雅，可以補這個（可選） */
+  .latin { font-feature-settings: "liga","clig","kern"; }
+</style>
+<style>
+  .brand-title.cursive{
+    font-family: var(--font-cursive) !important;
+    font-weight: 700;               /* 看起來更有份量；覺得太粗可改 600 */
+    font-synthesis-weight: auto;    /* 沒有 bold 權重時允許合成 */
+    letter-spacing: .01em;          /* 草書字距稍收斂 */
+    line-height: 1.1;               /* 讓筆畫不擠 */
+  }
+  /* 全局楷體強制正常粗細 */
+html, body, button, input, select, textarea {
+  font-family: var(--font-kai) !important;
+  font-weight: 500 !important;   /* 正常粗細 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 標題可以再加一點粗，讓層次感更好 */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600 !important;   /* 不要太黑，剛好有份量 */
+}
+</style>
 </head>
 <body>
 <div id="cursor-shield"></div>
@@ -488,7 +588,7 @@ input, textarea, select, option, details, svg, canvas{
 <div style="display: flex; align-items: center; gap: 10px; margin-top: -20px;">
 <img src="可愛貓貓.png" alt="圖示" style="width: auto; height: 69px;">
 <div>
-  <h1 style="margin-top: 13px;">曦花林</h1>
+  <h1 class="brand-title cursive" style="margin-top:13px;">曦花林</h1>
   <p style="font-family: 'Georgia', serif; font-size: 18px; color: #663399; margin-top: -25px; margin-left: 1px;">
   Sunlit Grove
 </p>
@@ -779,10 +879,14 @@ button.edit-btn:hover {
   <ul>
     <li><a href="index.html">首頁Home page</a></li>   
     <li>
-      <a href="javascript:void(0);" onclick="showTownLoginModal()"><span class="lim-town-label">
-        <span class="lim">Yinn</span>
-        <span class="town">Lim</span>
-      </span>🍓 登入／註冊<sup>Town</sup></a></li>
+  <a href="javascript:void(0);" onclick="showTownLoginModal()" class="login-btn">
+    <span class="lim-town-label">
+      <span class="lim">Yinn</span>
+      <span class="town">Lim</span>
+    </span>🍓 登入／註冊
+  </a>
+</li>
+
     <a href="/Diverse/misseng.html"><span class="lim-town-label">
       <span class="lim">Yinn</span>
       <span class="town">Town</span>
@@ -797,7 +901,7 @@ button.edit-btn:hover {
     </span>
     曦花林<sup>NEW</sup>
   </a></li>
-  <li><a href="/Help.yinnlim/help.html">Grove Hub<sup>💖</sup></a></li>
+  <li><a href="/Help.yinnlim/help.html" class="hub-btn">Grove Hub<sup>💖</sup></a></li>
     <li><a href="/live/shopping.html">Grove Store</a></li>
     <li><a href="/live/constitution.html">網站申明</a></li>
     <li><a href="About thisn site.html">責任申明</a></li>
