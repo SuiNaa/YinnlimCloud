@@ -6,17 +6,38 @@
 <title>購物首頁</title>
 <style>
   :root{
-    --glass-bg: rgba(255,255,255,.55);
-    --glass-border: rgba(255,255,255,.7);
-    --brand:#6c4ef7; --text:#222; --muted:#777; --accent:#e91e63;
-  }
-  *{box-sizing:border-box}
-  body{
+  --glass-bg: rgba(255,255,255,.55);
+  --glass-border: rgba(255,255,255,.7);
+  --brand:#6c4ef7; --text:#222; --muted:#777; --accent:#e91e63;
+
+  /* 分開保存：亮色與夜間的主背景 */
+  --page-bg-light: linear-gradient(120deg,#f6d365 0%,#fda085 25%,#fbc2eb 55%,#a6c1ee 100%);
+  --page-bg-dark:  #0f0b1a;
+
+  /* 真正套用到頁面的背景（預設亮色）*/
+  --page-bg: var(--page-bg-light);
+}
+
+*{box-sizing:border-box}
+body{
   margin:0;
   font-family:"DFKai-SB","KaiTi","標楷體","BiauKai",serif;
-  background:#fafafa;
+  background: var(--page-bg);
   color:var(--text);
   padding-top:72px;
+  background-attachment: fixed;
+}
+:root[data-theme="dark"]{
+  --page-bg: var(--page-bg-dark);
+}
+body::before{
+  content:"";
+  position:fixed; inset:0; pointer-events:none;
+  background-image:url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'>\
+<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 0 .04 0'/></feComponentTransfer></filter>\
+<rect width='120' height='120' filter='url(%23n)'/></svg>");
+  opacity:.5;
 }
   .navbar{ position:fixed; inset:0 0 auto 0; height:72px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:var(--glass-bg); backdrop-filter: blur(12px) saturate(120%); -webkit-backdrop-filter: blur(12px) saturate(120%); border-bottom:1px solid var(--glass-border); z-index:1000; }
   /* 讓搜尋列可以相對 brand 絕對定位 */
@@ -56,12 +77,97 @@
   margin: 16px auto 0;
   padding: 0 16px;
 }
-.hero-frame {
+/* === iOS 玻璃感：Hero === */
+.hero-frame{
   position: relative;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #eee;
-  aspect-ratio: 16/6;  /* 自動等比高度，手機也好看 */
+  border-radius: 18px;
+  overflow: clip;                 /* 防止子層溢出 */
+  aspect-ratio: 16/6;
+
+  /* 霧面玻璃：半透明底＋強模糊＋高飽和 */
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.28), rgba(255,255,255,.10)) ,
+    rgba(255,255,255,.18);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+
+  /* 外邊框＋柔影 */
+  border: 1px solid rgba(255,255,255,.35);
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.10),
+    0 2px 8px rgba(0,0,0,.06);
+
+  /* 讓內層定位更直覺 */
+  isolation: isolate;
+}
+
+/* 內發光高光圈（上緣微亮、下緣微暗） */
+.hero-frame::before{
+  content:"";
+  position:absolute; inset:0;
+  border-radius: inherit;
+  pointer-events:none;
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(255,255,255,.55), rgba(255,255,255,0) 60%),
+    linear-gradient(180deg, rgba(255,255,255,.25), rgba(0,0,0,0) 40%, rgba(0,0,0,.06));
+  mix-blend-mode: screen;
+  opacity:.9;
+}
+
+/* 超淡噪點顆粒，更像磨砂玻璃 */
+.hero-frame::after{
+  content:"";
+  position:absolute; inset:0;
+  border-radius: inherit;
+  pointer-events:none;
+  background-image:
+    url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'>\
+<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 0 .06 0'/></feComponentTransfer></filter>\
+<rect width='120' height='120' filter='url(%23n)'/>\
+</svg>");
+  opacity:.8;
+}
+
+/* 讓圖片背景透出玻璃，不要實色墊底 */
+.hero-slide img{
+  width:100%; height:100%;
+  object-fit:contain;
+  background: transparent !important;   /* 取代原本的 #ddd */
+}
+
+/* 手機比例維持 */
+@media (max-width:600px){
+  .hero-frame{ aspect-ratio:16/9; }
+}
+
+/* === 夜間主題：玻璃調暗、改紫黑調 === */
+:root[data-theme="dark"] .hero-frame{
+  background:
+    linear-gradient(135deg, rgba(26,20,44,.55), rgba(26,20,44,.35)),
+    rgba(26,20,44,.35);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(163,143,255,.22);
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.40),
+    0 2px 8px rgba(0,0,0,.32);
+}
+:root[data-theme="dark"] .hero-frame::before{
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(255,255,255,.18), rgba(255,255,255,0) 60%),
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,0) 40%, rgba(0,0,0,.18));
+  mix-blend-mode: screen;
+  opacity: .9;
+}
+:root[data-theme="dark"] .hero-btn{
+  border-color: rgba(163,143,255,.25);
+  background: rgba(36,30,56,.55);
+  box-shadow: 0 8px 22px rgba(0,0,0,.45);
+}
+:root[data-theme="dark"] .hero-dot{
+  background: rgba(255,255,255,.45);
+  border-color: rgba(255,255,255,.18);
 }
 .hero-track {
   display: flex;
@@ -75,13 +181,7 @@
   height: 100%;
   position: relative;
 }
-.hero-slide img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;  /* 改成 contain */
-  background: #ddd;     /* 留底色，避免空白 */
-}
-.hero-slide a { display:block; width:100%; height:100%; }
+
 .hero-dots {
   position: absolute; left:50%; bottom:10px; transform:translateX(-50%);
   display:flex; gap:8px; z-index:5;
@@ -101,9 +201,7 @@
   background:rgba(255,255,255,.75); backdrop-filter:blur(6px);
   display:grid; place-items:center; margin:0 6px; cursor:pointer; font-weight:900;
 }
-@media (max-width:600px){
-  .hero-frame{ aspect-ratio: 16/9; }
-}
+
 /* 廣告板右下角投放廣告按鈕 */
 .ad-fab {
   position: absolute;
@@ -164,9 +262,6 @@
   transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease;
 }
 .search-btn:hover{ transform: translateY(-1px); box-shadow:0 6px 14px rgba(0,0,0,.08); }
-
-/* ▶ 讓 .brand 裡的內容能水平排、並預留空間 */
-.brand{ position:relative; display:flex; align-items:center; gap:0; font-weight:700; color:var(--brand); }
 
 /* ▶ 搜尋列「從左邊（🔍）往右展開」，不會覆蓋 hero */
 /* ▶ 搜尋列「從左邊（🔍）往右展開」，不會覆蓋 hero */
@@ -276,15 +371,6 @@
 
   --shadow: 0 10px 28px rgba(0,0,0,.45);
 }
-/* 夜間：廣告板底色要暗 */
-:root[data-theme="dark"] .hero-frame {
-  background: #612a84;   /* 深紫黑底，避免白色刺眼 */
-}
-
-/* 夜間：廣告圖沒填滿（object-fit: contain 時）露出的背景 */
-:root[data-theme="dark"] .hero-slide img {
-  background: #74268c;
-}
 
 /* ===== 全站覆寫：讓顏色跟著變數走 ===== */
 :root[data-theme="dark"] body{
@@ -342,10 +428,6 @@
   transform:translateY(-3px);
   box-shadow:0 16px 40px rgba(0,0,0,.55);
 }
-
-/* 商品縮圖底色、hero 底色 */
-:root[data-theme="dark"] .thumb{ background:#1e1930; }
-:root[data-theme="dark"] .hero-frame{ background:#1e1930; }
 
 /* 商品資訊 */
 :root[data-theme="dark"] .price{ color:var(--accent); }
@@ -443,9 +525,6 @@
   padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:800; line-height:1;
   border:1px solid #ddd; background:#fff; color:#222;
 }
-:root[data-theme="dark"] .menu-btn{
-  border-color:var(--btn-border); background:var(--btn-bg); color:var(--btn-text);
-}
 
 .dropdown{
   position:absolute; right:0; top:calc(100% + 8px);
@@ -471,14 +550,6 @@
 }
 .dropdown .item:hover{ background:rgba(108,78,247,.12); }
 
-/* 讓搜尋下拉/搜尋列在夜間也暗色（可選） */
-:root[data-theme="dark"] .search-bar{
-  background:var(--card-bg); border:1px solid var(--card-border); color:var(--text);
-}
-:root[data-theme="dark"] .search-input{ color:var(--text); }
-:root[data-theme="dark"] .suggest-box{
-  background:var(--card-bg); border:1px solid var(--card-border); color:var(--text);
-}
 /* 夜間模式：找回/重置密碼 */
 :root[data-theme="dark"] .btm a {
   color: #bb86fc !important;  /* 紫外線色 */
@@ -574,6 +645,293 @@ input, textarea, select, option, details, svg, canvas{
   pointer-events: auto;                   /* 讓它成為命中元素，游標就不會被下面原生控件奪回 */
 }
 
+
+
+/* === 嵌入式玻璃（不要漂浮） === */
+/* 讓外部光暈能露出來 */
+.hero-frame{
+  overflow: visible;                  /* 原本是 clip -> 讓外擴光暈可見 */
+  background: transparent !important; /* 仍維持嵌入式玻璃 */
+  border: 0 !important;
+  box-shadow: none !important;
+  position: relative;
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+}
+
+/* 內側的細髮絲與微內陰影（嵌入感） */
+.hero-frame::before{
+  content:"";
+  position:absolute; inset:0;
+  border-radius: inherit; pointer-events:none;
+  background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 60%);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.30),
+    inset 0 -1px rgba(0,0,0,.06);
+  mix-blend-mode: normal;
+}
+
+/* 外圈彩色光暈：旋轉的錐形漸層 + 面具挖空中間，形成「發光邊框」 */
+.hero-frame::after {
+  content:"";
+  position:absolute; inset:-3px;
+  border-radius: inherit;
+  pointer-events:none;
+  background: conic-gradient(
+    from 0deg,
+    #ff6b6b, #ffd93d, #1dd1a1, #54a0ff, #a66cff, #ff6b6b
+  );
+  animation: sg-rainbow 8s linear infinite;
+  z-index:-1;
+  filter: blur(10px) saturate(140%);
+  opacity:.75;
+}
+
+/* 夜間：降低光暈亮度、偏冷色調一點（可依喜好調） */
+:root[data-theme="dark"] .hero-frame::after{
+  opacity: .6;
+  filter: blur(12px) saturate(160%);
+}
+
+/* 讓點點與左右鍵不要太「浮」 */
+.hero-btn{
+  background: rgba(255,255,255,.20);
+  border: 1px solid rgba(255,255,255,.25);
+  box-shadow: none;
+}
+:root[data-theme="dark"] .hero-btn{
+  background: rgba(36,30,56,.45);
+  border-color: rgba(163,143,255,.22);
+}
+
+/* 尊重使用者減少動畫的偏好 */
+@media (prefers-reduced-motion: reduce){
+  .hero-frame::after{ animation: none; }
+}
+
+</style>
+<style>
+  /* ===== 主題面板（按鈕＋彈出匡）====== */
+
+/* 開啟時「果凍」感 */
+/* ✅ 從按鈕正下方彈出，帶果凍靈動感 */
+.theme-panel.show{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform: translateY(0) scale(1);
+  animation: jelly-drop .42s cubic-bezier(.25,1.3,.3,1);
+}
+
+@keyframes jelly-drop{
+  0%   { opacity:0; transform: translateY(12px) scale(.85); }
+  55%  { opacity:1; transform: translateY(-4px) scale(1.05); }
+  75%  { transform: translateY(2px)  scale(.97); }
+  100% { transform: translateY(0)    scale(1); }
+}
+
+/* 關閉小叉叉 */
+.theme-close{
+  position:absolute; top:8px; right:10px; font-size:18px; cursor:pointer; color:#bfa6ff;
+}
+
+.theme-title{
+  font-weight:900; margin:2px 0 10px; letter-spacing:.02em;
+}
+
+/* 每一顆主題 chip */
+.theme-grid{
+  display:grid; grid-template-columns: 1fr 1fr; gap:10px;
+}
+.theme-chip{
+  display:flex; align-items:center; gap:10px;
+  padding:10px; border-radius:12px;
+  border:1px dashed rgba(164,140,255,.35);
+  background: rgba(255,255,255,.10);
+  cursor:pointer; transition: transform .12s ease, box-shadow .18s ease, background .18s ease;
+}
+.theme-chip:hover{ transform: translateY(-2px); box-shadow:0 10px 22px rgba(0,0,0,.16); background: rgba(255,255,255,.16); }
+.theme-chip.active{ outline:2px solid #a48cff; box-shadow:0 0 0 4px rgba(164,140,255,.22) inset; }
+
+.theme-dot{
+  width:36px; height:36px; border-radius:10px; border:1px solid rgba(0,0,0,.12);
+  flex:0 0 36px;
+}
+
+/* 夜間：仍維持紫黑系 */
+:root[data-theme="dark"] .theme-trigger{ background:rgba(36,30,56,.55); border-color:rgba(163,143,255,.35); color:#cfc3ff; }
+:root[data-theme="dark"] .theme-panel{ background:rgba(20,16,34,.55); border-color:rgba(163,143,255,.28); color:#cfc3ff; }
+
+/* 小開關（夜間模式） */
+.switch{
+  position:relative; width:44px; height:24px; border-radius:999px;
+  background:rgba(164,140,255,.35); border:1px solid rgba(164,140,255,.45);
+}
+.switch i{
+  position:absolute; left:2px; top:2px; width:20px; height:20px; border-radius:50%;
+  background:#fff; transition:left .18s ease;
+}
+input[type=checkbox].toggle{ display:none; }
+input.toggle:checked + .switch i{ left:22px; }
+
+/* === 主題按鈕／面板（以 hero 為定位，面板在按鈕下方）=== */
+:root{
+  --theme-trigger-left: -110px;  /* 按鈕距離 hero 左邊的位移（負值=在外側） */
+  --theme-trigger-top:  0px;     /* 與 hero 上緣對齊位置 */
+  --theme-btn-h:        40px;    /* 按鈕高度 */
+  --theme-gap:           8px;    /* 按鈕與面板之間的垂直距離 */
+}
+
+.hero{ position:relative; }
+
+/* 按鈕：固定在 hero 左側 */
+.theme-trigger{
+  position:absolute;
+  top: var(--theme-trigger-top);
+  left: var(--theme-trigger-left);
+  height: var(--theme-btn-h);
+  padding:10px 12px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:12px;
+  border:1px solid rgba(164,140,255,.5);
+  background: rgba(255,255,255,.18);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+  font-weight:900; font-family:"DFKai-SB","KaiTi","標楷體","BiauKai",serif;
+  color:#a48cff; cursor:pointer; z-index:30; box-shadow:0 8px 18px rgba(0,0,0,.12);
+  user-select:none;
+}
+
+/* 面板：直接在按鈕正下方（不是右邊） */
+.theme-panel{
+  position:absolute;
+  left: var(--theme-trigger-left);  /* 與按鈕左邊對齊 */
+  top:  calc(var(--theme-trigger-top) + var(--theme-btn-h) + var(--theme-gap));
+
+  width:min(340px,92vw);
+  padding:12px; border-radius:16px;
+  background:rgba(255,255,255,.12);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  border:1px solid rgba(164,140,255,.35);
+  box-shadow:0 18px 48px rgba(0,0,0,.22);
+  z-index:40;
+
+  /* 初始收起：往上微移，透明 */
+  opacity:0; visibility:hidden; pointer-events:none;
+  transform: translateY(-12px) scale(.98);
+  transform-origin: top left;
+  transition:
+    opacity .18s ease,
+    transform .24s cubic-bezier(.2,.9,.2,1),
+    visibility 0s linear .24s;
+}
+.theme-panel.show{
+  opacity:1; visibility:visible; pointer-events:auto;
+  transform: translateY(0) scale(1);   /* 下滑展開 */
+}
+
+/* 小箭頭：在面板頂端，對齊面板左側內 16px 位置 */
+.theme-panel::before,
+.theme-panel::after{
+  content:""; position:absolute; top:-8px; left:16px; width:0; height:0; border-style:solid; border-width:8px;
+}
+.theme-panel::before{ border-color: transparent transparent rgba(164,140,255,.35) transparent; }
+.theme-panel::after { top:-7px;  border-color: transparent transparent rgba(255,255,255,.12) transparent; }
+
+/* 夜間配色（沿用你原本的） */
+:root[data-theme="dark"] .theme-trigger{
+  background:rgba(36,30,56,.55); border-color:rgba(163,143,255,.35); color:#cfc3ff;
+}
+:root[data-theme="dark"] .theme-panel{
+  background:rgba(20,16,34,.55); border-color:rgba(163,143,255,.28); color:#cfc3ff;
+}
+:root[data-theme="dark"] .theme-panel::after{
+  border-color: transparent transparent rgba(20,16,34,.55) transparent;
+}
+
+/* RWD：窄螢幕把按鈕收回 hero 內，面板仍貼在下方 */
+@media (max-width: 720px){
+  :root{
+    --theme-trigger-left: 12px;
+    --theme-trigger-top:  -10px;
+  }
+}
+  </style>
+  <style>
+    /* 只允許點「圖片本身」，不要讓整個 slide 都是超連結 */
+.hero-slide a{
+  pointer-events: none;           /* 先關掉 <a> 的命中 */
+}
+.hero-slide a img{
+  pointer-events: auto;           /* 只有圖片區域可以點到連結 */
+}
+
+/* 保險：讓控制元件一定蓋在最上層且不被底下連結吃掉 */
+.hero-nav, .hero-dots{
+  position: absolute;
+  z-index: 5;
+}
+
+
+/* 內層遮罩，把滑動內容整個包起來裁邊 */
+.hero-viewport{
+  position:absolute;
+  inset:0;
+  border-radius: inherit;
+  overflow: hidden;         /* 關鍵：裁掉推出去的一瞬間 */
+  z-index: 1;               /* 在光暈之上、控制鈕之下 */
+}
+
+/* 讓控制元件浮在遮罩上方 */
+#adHero .hero-nav,
+#adHero .hero-dots,
+#adHero .ad-fab,
+#adHero .theme-trigger,
+#adHero #themePanel{
+  position: absolute;
+  z-index: 2;
+}
+
+/* 手機版：把「切換主題風格」做成上方長條按鈕，面板跟在下方 */
+/* === 手機版：主題按鈕浮在 hero 右下角，面板覆蓋 hero === */
+@media (max-width: 720px){
+  /* hero 當錨點 */
+  .hero{
+    position: relative;
+  }
+
+  /* 主題按鈕：浮在 hero 的右下角（跟＋差不多） */
+  .theme-trigger{
+    position: absolute !important;
+    right: 12px;
+    bottom: 12px;
+    transform: none !important;
+    height: 36px;
+    padding: 0 12px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    z-index: 50;   /* 高於 hero 圖片 */
+  }
+
+  /* 主題面板：覆蓋 hero，從下往上展開 */
+  .theme-panel{
+    position: absolute !important;
+    left: 0; right: 0;
+    bottom: 0;
+    width: 100%;
+    margin: 0;
+    transform: none;
+    z-index: 60;   /* 蓋住 hero 和按鈕 */
+  }
+
+  /* 隱藏狀態 */
+  .theme-panel[aria-hidden="true"]{ display:none !important; }
+  .theme-panel.show{ display:block !important; }
+
+  /* 去掉三角形箭頭 */
+  .theme-panel::before, .theme-panel::after{ display:none !important; }
+}
 </style>
 </head>
 <body>
@@ -625,8 +983,30 @@ input, textarea, select, option, details, svg, canvas{
   </div>
   <div class="nav-right" id="navRight">…</div>
 </nav>
+
     <!-- 首頁滑動廣告板 -->
+<!-- 首頁滑動廣告板（唯一一個 hero） -->
 <section class="hero">
+  <!-- 把按鈕＋面板包在一起 -->
+  <div class="theme-anchor">
+    <button id="openThemePanel" class="theme-trigger" title="切換主題風格">切換主題風格</button>
+
+    <div id="themePanel" class="theme-panel" aria-hidden="true">
+      <div class="theme-title">晝間背景樣式</div>
+      <div id="bgChoices" class="theme-grid"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px;">
+        <div style="font-weight:900;">夜間模式</div>
+        <label style="display:inline-flex;align-items:center;gap:8px;">
+          <input id="darkToggle" class="toggle" type="checkbox">
+          <span class="switch"><i></i></span>
+        </label>
+      </div>
+      <div id="closeThemePanel" class="theme-close" aria-label="關閉">×</div>
+    </div>
+  </div>
+
+  <!-- hero 本體不動 -->
+  <!-- 真正的廣告板（唯一一個 adHero） -->
   <div class="hero-frame" id="adHero">
     <div class="hero-track" id="adTrack"></div>
     <div class="hero-dots" id="adDots"></div>
@@ -634,10 +1014,10 @@ input, textarea, select, option, details, svg, canvas{
       <div class="hero-btn" onclick="adPrev()">‹</div>
       <div class="hero-btn" onclick="adNext()">›</div>
     </div>
-    <!-- ✅ 浮動投放廣告按鈕（預設隱藏，登入才顯示） -->
     <button class="ad-fab" id="adCreateBtn" style="display:none" onclick="openAdModal()">＋</button>
   </div>
 </section>
+
 <h5 class="section-title">Sunlit Grove商品</h5>
   <main class="container">
     <div class="product-grid" id="productGrid"></div>
@@ -736,7 +1116,145 @@ function switchToRegister(){ closeModal('loginModal'); openRegister(); }
 function switchToLogin(){ closeModal('registerModal'); openLogin(); }
 function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
 function fileToBase64(file){ return new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onload=()=>resolve(fr.result.split(',')[1]); fr.onerror=reject; fr.readAsDataURL(file); }); }
+/* ====== 主題（晝/夜＋晝間漸變背景 0~5） ====== */
 
+/* 晝間主題清單（名字要顯示在面板上） */
+const LIGHT_THEMES = [
+  { name: '0 白色',     bg: 'linear-gradient(0deg,#ffffff,#ffffff)' },
+  { name: '1 夢幻極光', bg: 'linear-gradient(135deg,#a1c4fd 0%,#c2e9fb 38%,#fbc2eb 70%,#a18cd1 100%)' },
+  { name: '2 棉花糖斜角', bg:'linear-gradient(120deg,#f6d365 0%,#fda085 25%,#fbc2eb 55%,#a6c1ee 100%)' },
+  { name: '3 薄荷海鹽', bg:'linear-gradient(135deg,#d4fc79 0%,#96e6a1 35%,#a1ffef 70%,#a8edea 100%)' },
+  { name: '4 晨曦藍粉', bg:'linear-gradient(135deg,#89f7fe 0%,#66a6ff 45%,#fbc2eb 100%)' },
+  { name: '5 糖果極光', bg:'linear-gradient(135deg,#a78bfa 0%,#fbe4ff 33%,#fff3bf 66%,#c6f6a7 100%)' }
+];
+
+const LS_BG = 'sg_light_bg_idx';   // 晝間背景 index
+const LS_THEME = 'sg_theme';       // 'light' | 'dark'
+
+
+// ✅ 新增：把實際的背景 CSS 字串也存起來，其他頁就不用知道有哪些主題
+const LS_LIGHT_CSS = 'sg_light_bg_css';
+
+function applyLightBackground(idx){
+  idx = Math.max(0, Math.min(LIGHT_THEMES.length-1, Number(idx)||0));
+  const light = LIGHT_THEMES[idx].bg;
+
+  // 更新變數
+  document.documentElement.style.setProperty('--page-bg-light', light);
+
+  // 存 index 也存 CSS
+  localStorage.setItem(LS_BG, String(idx));
+  localStorage.setItem(LS_LIGHT_CSS, light);
+
+  // 面板 chip 標記（保留）
+  document.querySelectorAll('.theme-chip').forEach((el,i)=>el.classList.toggle('active', i===idx));
+}
+
+/* 切換/設定主題（會寫到 <html data-theme="...">） */
+function setTheme(mode){
+  const m = (mode==='dark') ? 'dark' : 'light';
+  const root = document.documentElement;
+
+  root.setAttribute('data-theme', m);
+  localStorage.setItem(LS_THEME, m);
+
+  // ✅ 讓 --page-bg 回到正確來源（避免被舊的 inline 值卡住）
+  if (m === 'dark') {
+    root.style.setProperty('--page-bg', 'var(--page-bg-dark)');
+  } else {
+    root.style.setProperty('--page-bg', 'var(--page-bg-light)');
+  }
+
+  // 面板同步
+  const darkToggle = document.getElementById('darkToggle');
+  if(darkToggle) darkToggle.checked = (m==='dark');
+  const modeItem = document.getElementById('modeItem');
+  if(modeItem) modeItem.textContent = '切換模式：' + (m==='dark' ? '晝間' : '夜間');
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  setTheme(cur==='dark' ? 'light' : 'dark');
+}
+
+/* 彈出面板：渲染 0~5 的 named chips，並附動作 */
+function closeThemePanel(){
+  const panel = document.getElementById('themePanel');
+  panel.classList.remove('show');
+  panel.setAttribute('aria-hidden','true');
+}
+function buildThemePanel(){
+  const chipsBox = document.getElementById('bgChoices');
+  if(!chipsBox) return;
+
+  chipsBox.innerHTML = LIGHT_THEMES.map((t,i)=>`
+    <div class="theme-chip" data-idx="${i}" title="${t.name}">
+      <div class="theme-dot" style="background:${t.bg};"></div>
+      <div style="font-weight:800">${t.name}</div>
+    </div>
+  `).join('');
+
+  chipsBox.querySelectorAll('.theme-chip').forEach(el=>{
+    el.addEventListener('click', ()=> applyLightBackground(el.dataset.idx));
+  });
+
+  // 開/關面板 + 果凍感
+  const panel = document.getElementById('themePanel');
+  const openBtn = document.getElementById('openThemePanel');
+  const closeBtn = document.getElementById('closeThemePanel');
+  
+  // 點 hero（空白處）也會關
+  // 開面板
+openBtn?.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  if(panel.classList.contains('show')){
+    closeThemePanel();   // 已開 → 關閉
+  }else{
+    panel.classList.add('show');
+    panel.setAttribute('aria-hidden','false');
+  }
+});
+
+// 關面板（叉叉）
+closeBtn?.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  closeThemePanel();
+});
+
+// 點面板內部不要冒泡到 document
+panel.addEventListener('click', e=> e.stopPropagation());
+
+// 點擊任何空白（面板外）就關
+document.addEventListener('click', (e)=>{
+  const openBtn = document.getElementById('openThemePanel');
+  const panel = document.getElementById('themePanel');
+  if(panel.classList.contains('show') &&
+     !panel.contains(e.target) &&
+     !openBtn.contains(e.target)){
+    closeThemePanel();
+  }
+});
+
+// Esc 也能關
+window.addEventListener('keydown', e=>{
+  if(e.key === 'Escape') closeThemePanel();
+});
+
+  // 夜間切換
+  const darkToggle = document.getElementById('darkToggle');
+  darkToggle?.addEventListener('change', ()=> setTheme(darkToggle.checked ? 'dark' : 'light'));
+}
+
+/* 啟動：載入儲存的主題與背景 */
+(function(){
+  const savedTheme = localStorage.getItem(LS_THEME) || 'light';
+  setTheme(savedTheme);
+
+  const savedIdx = localStorage.getItem(LS_BG);
+  applyLightBackground(savedIdx ?? 1);   // 預設給你 1 夢幻極光
+
+  // 面板 DOM 就緒後再建
+  window.addEventListener('DOMContentLoaded', buildThemePanel);
+})();
 /** ====== 導覽列 ====== */
 function renderNav(){
   const navRight=$('#navRight');
@@ -796,7 +1314,6 @@ async function loadProducts(){
     });
     const data=await res.json();
     if(!res.ok){ console.warn('loadProducts error:',data); return; }
-    PRODUCTS = data.results || [];   // ← 新增
 
     const gridAll=document.getElementById('productGrid');
     const gridCheap=document.getElementById('cheapGrid');
@@ -1395,7 +1912,6 @@ async function loadAds(){
     renderAds();
   }catch(e){ console.warn(e); }
 }
-
 function renderAds(){
   const track = document.getElementById('adTrack');
   const dots  = document.getElementById('adDots');
@@ -1405,30 +1921,11 @@ function renderAds(){
   dots.innerHTML  = '';
 
   if(!AD_LIST.length){
-  const empty = document.createElement('div');
-  empty.className = 'hero-slide';
+    // 這裡省略：沒廣告的情況不動
+    return;
+  }
 
-  const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="420">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#eee"/>
-        <stop offset="1" stop-color="#ddd"/>
-      </linearGradient>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#g)"/>
-    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
-          font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif"
-          font-size="36" fill="#888">廣告位（尚無投放）</text>
-  </svg>`.trim();
-
-  const dataUri = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
-  empty.innerHTML = `<img src="${dataUri}" alt="廣告位（尚無投放）">`;
-  track.appendChild(empty);
-  clearInterval(AD_TIMER); AD_TIMER=null;
-  return;
-}
-
+  // 1) 正常廣告
   AD_LIST.forEach((ad,i)=>{
     const slide = document.createElement('div');
     slide.className = 'hero-slide';
@@ -1439,28 +1936,84 @@ function renderAds(){
     track.appendChild(slide);
 
     const dot = document.createElement('div');
-    dot.className = 'hero-dot' + (i===AD_IDX?' active':'');
+    dot.className = 'hero-dot' + (i===0?' active':'');
     dot.onclick = ()=>adGo(i);
     dots.appendChild(dot);
   });
 
-  adGo(AD_IDX||0, true);
+  // 2) ✅ 在最後補一張「第一張複製」
+  const firstClone = document.createElement('div');
+  firstClone.className = 'hero-slide';
+  firstClone.innerHTML = `
+    <a href="${AD_LIST[0].linkUrl}" target="_blank" rel="noopener noreferrer">
+      <img src="${AD_LIST[0].imageUrl}" alt="${escapeHTML(AD_LIST[0].title||'廣告')}">
+    </a>`;
+  track.appendChild(firstClone);
+
+  AD_IDX = 0;
+  adGo(0,true);
   adAutoplay();
 }
+// 把 adTrack 動態塞進「內層遮罩」裡，避免外溢
+(function ensureHeroViewport(){
+  const frame = document.getElementById('adHero');
+  const track = document.getElementById('adTrack');
+  if (!frame || !track) return;
 
+  let vp = frame.querySelector('.hero-viewport');
+  if (!vp) {
+    vp = document.createElement('div');
+    vp.className = 'hero-viewport';
+    // 放在 frame 的最前面，確保 dots/nav 還在上方
+    frame.insertBefore(vp, frame.firstChild);
+  }
+  if (track.parentElement !== vp) {
+    vp.appendChild(track);
+  }
+})();
 function adGo(idx, noAnim=false){
   if(!AD_LIST.length) return;
-  AD_IDX = (idx + AD_LIST.length) % AD_LIST.length;
   const track = document.getElementById('adTrack');
   const dots  = [...document.querySelectorAll('.hero-dot')];
-  if(noAnim) track.style.transition='none'; else track.style.transition='transform .45s ease';
+  const total = AD_LIST.length;
+
+  // 👉 如果移動到「假最後一張」（等於 total）
+  if(idx === total){
+    // 先正常移動到 clone
+    track.style.transition = 'transform .45s ease';
+    track.style.transform = `translateX(${-idx*100}%)`;
+
+    // 動畫播完後，瞬間跳回真正第一張
+    setTimeout(()=>{
+      track.style.transition = 'none';
+      track.style.transform = `translateX(0)`;
+    }, 460);
+
+    AD_IDX = 0;
+    dots.forEach((d,i)=>d.classList.toggle('active', i===AD_IDX));
+    return;
+  }
+
+  // 一般情況
+  AD_IDX = idx;
+  if(noAnim) track.style.transition='none'; 
+  else track.style.transition='transform .45s ease';
   track.style.transform = `translateX(${-AD_IDX*100}%)`;
   dots.forEach((d,i)=>d.classList.toggle('active', i===AD_IDX));
-  // 之後的動畫要恢復
-  if(noAnim){ requestAnimationFrame(()=>track.style.transition='transform .45s ease'); }
 }
 function adNext(){ adGo(AD_IDX+1); }
-function adPrev(){ adGo(AD_IDX-1); }
+function adPrev(){
+  const total = AD_LIST.length;
+  if(AD_IDX===0){
+    // 從第一張往回時，跳到最後一張
+    AD_IDX = total-1;
+    const track = document.getElementById('adTrack');
+    track.style.transition='none';
+    track.style.transform = `translateX(${-AD_IDX*100}%)`;
+  }else{
+    adGo(AD_IDX-1);
+  }
+}
 function adAutoplay(){
   if(AD_TIMER) clearInterval(AD_TIMER);
   AD_TIMER = setInterval(adNext, 4000);
@@ -1578,7 +2131,7 @@ document.addEventListener('click', (e)=>{
 });
 </script>
 <script src="im.js?v=0.1.2"></script>
-<script src="lioc.js?v=0.1.1"></script>
+<script src="lioc.js?v=0.1.2"></script>
 <!--=================-->
 <p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
   🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>

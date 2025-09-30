@@ -271,7 +271,7 @@ input, textarea, select, option, details, svg, canvas{
 }
 /* 內層圖片（不變） */
 #cursor .cursor-img{
-  width:32px; height:32px;
+  width:24px; height:24px;
   background: url('../love.png') center/contain no-repeat;
   transform: translate(-8px,-12px) scale(1);
   transition: transform .12s ease; 
@@ -292,6 +292,95 @@ input, textarea, select, option, details, svg, canvas{
 /* 「捲動中」短暫啟用命中（只影響游標命中，不會影響滾動） */
 #cursor-shield.cover{
   pointer-events: auto;                   /* 讓它成為命中元素，游標就不會被下面原生控件奪回 */
+}
+</style>
+<style>
+  /* 基本：dialog 高度不超窗、內容可捲 */
+.dlg,.pb{
+  width:min(820px,96vw);
+  max-height:92vh;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.dlg header,.pb header{
+  position:sticky; top:0; z-index:2;
+  background:var(--card-bg); border-bottom:1px solid var(--border);
+}
+.dlg .actions,.pb .actions{
+  position:sticky; bottom:0; z-index:2;
+  background:var(--card-bg); border-top:1px solid var(--border); padding:10px 16px;
+}
+.dlg .body,.pb .body{ flex:1 1 auto; overflow:auto; -webkit-overflow-scrolling:touch; }
+
+/* 表單元件不撐爆框 */
+.pb .field,.dlg .field{ min-width:0; word-break:break-word; }
+.pb .input,.pb .file,.pb textarea,.dlg .input,.dlg .file{ min-width:0; width:100%; box-sizing:border-box; }
+
+/* 同價那一列允許折行 */
+#samePriceRow{ flex-wrap:wrap; row-gap:8px; }
+.pill{ flex-wrap:wrap; row-gap:6px; }
+
+/* 規格列（桌機）：名稱 / 價格 / 檔案+縮圖 / 刪除 */
+.spec-row{
+  display:grid;
+  grid-template-columns:1.2fr .6fr minmax(220px,1fr) auto;
+  gap:8px; align-items:center;
+}
+.sp-pay-wrap{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
+.sp-pay{ max-width:260px; }
+.sp-pay-prev,.sp-thumb{
+  width:56px; height:56px; object-fit:cover;
+  border:1px solid var(--border); border-radius:8px;
+}
+
+/* ===== 手機版（<=600px）：卡片式直排 + 霓虹虛線呼吸燈 ===== */
+@media (max-width:600px){
+  .pb{ width:96vw; } .dlg{ width:94vw; }
+
+  .pb .row,.dlg .row{ flex-direction:column; align-items:stretch; gap:10px; }
+  .pb .field,.dlg .field{ flex:1 1 100%; }
+
+  /* 一筆規格 = 一張卡片（紫外線虛線 + 呼吸光） */
+  .spec-row{
+    grid-template-columns:1fr !important;
+    row-gap:10px !important;
+    padding:12px;
+    margin-bottom:12px;
+    border-radius:12px;
+    border:1px dashed var(--brand) !important;  /* 紫外線色 */
+    background:var(--card-bg);
+    box-shadow:0 0 0 rgba(0,0,0,0);             /* 動畫初始 */
+    animation:neon-breathe 2.6s ease-in-out infinite;
+  }
+  /* 讓任何子元素都在框內，不會溢出 */
+  .spec-row, .spec-row *{ box-sizing:border-box; }
+  .spec-row > *{ min-width:0; }
+
+  /* 欄位滿寬 */
+  .spec-row .sp-name,
+  .spec-row .sp-price,
+  .spec-row .input,
+  .spec-row .file{ width:100%; display:block; }
+
+  /* 收款碼區可折行：file 先佔一行、縮圖在下一行或右側 */
+  .sp-pay-wrap{
+    width:100%;
+    display:flex; align-items:center; gap:8px;
+    flex-wrap:wrap;
+  }
+  .sp-pay{ flex:1 1 100%; max-width:100%; }
+  .sp-pay-prev,.sp-thumb{ width:68px; height:68px; flex:0 0 auto; }
+
+  /* 刪除鈕靠右 */
+  .spec-row .sp-del{ justify-self:end; }
+
+  /* 封面/輪播上傳區：直排 */
+  #publishDlg .body > .row:first-child .field{ flex:1 1 100%; }
+}
+
+/* 霓虹呼吸光暈（紫外線風格） */
+@keyframes neon-breathe{
+  0%,100% { box-shadow:0 0 0   rgba(164,140,255,0.0), 0 0 0 rgba(164,140,255,0.0); }
+  50%     { box-shadow:0 0 12px rgba(164,140,255,0.35), 0 0 22px rgba(164,140,255,0.22); }
 }
 </style>
 </head>
