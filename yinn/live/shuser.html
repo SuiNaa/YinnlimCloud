@@ -34,16 +34,23 @@
   .chip.active{border-color:var(--brand);box-shadow:0 0 0 3px rgba(108,78,247,.15)}
   .pay{margin-top:10px}
   .pay img{max-width:220px;border:1px solid #eee;border-radius:10px;background:#fff}
-  .desc{margin-top:16px;
-    background:#fff;
-    border:1px solid #eee;
-    border-radius:14px;
-    padding:14px;
-    line-height:1.7;
-    white-space: pre-wrap;   /* 保留空格 & 換行 */
-    word-wrap: break-word;   /* 長字也能換行 */
-    line-height: 1.7;
-  }
+  .desc{
+  margin-top:16px;
+  background:#fff;
+  border:1px solid #eee;
+  border-radius:14px;
+  padding:14px;
+  line-height:1.7;
+
+  /* ✅ 完整保留連續空格 / 行尾空格 / 換行 */
+  white-space: break-spaces;
+  word-break: break-word;     /* 長英文/URL 仍可換行 */
+}
+
+/* 老瀏覽器沒有 break-spaces 時回退 */
+@supports not (white-space: break-spaces){
+  .desc{ white-space: pre-wrap; }
+}
   .btn{padding:12px 16px;border-radius:12px;border:1px solid #ddd;background:#fff;font-weight:800;cursor:pointer}
   .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
   .actions{margin-top:14px;display:flex;gap:10px}
@@ -717,6 +724,15 @@ input, textarea, select, option, details, svg, canvas{
 
 /* 如果你有放其他賣家商品的卡片圖，也保底一下 */
 .card img{ width: 100%; height: auto; object-fit: cover; }
+/* shuser.html 補上這段（放在任何 CSS 區塊都可） */
+.desc-text{
+  white-space: break-spaces;
+  word-break: break-word;
+}
+/* 兼容回退 */
+@supports not (white-space: break-spaces){
+  .desc-text{ white-space: pre-wrap; }
+}
 </style>
 </head>
 <body>
@@ -938,7 +954,48 @@ function pickDetailImages(p){
   const arr = cand.find(a => Array.isArray(a) && a.length) || [];
   return arr.map(getFileUrl).filter(Boolean);
 }
+function mountDetail(p){
+  const host = document.getElementById('mDesc');
+  host.innerHTML = '';
 
+  let raw = String(p.description || '');
+// 如果第一個字不是空白，就在最前面補一個全形空白（U+2003）
+if (!/^\s/.test(raw)) raw = '\u2003' + raw;
+
+  // 改成：把「所有空格」轉成 &nbsp;，換行轉 <br>
+  const html = raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/ /g, "&nbsp;")   // ← 保留所有空格
+    .replace(/\n/g, "<br>");   // ← 保留換行
+
+  const txt = document.createElement('div');
+  txt.className = 'desc-text';
+  txt.innerHTML = html;   // 現在安全又能保留空格
+
+  host.appendChild(txt);
+
+  // 詳細圖片
+  const imgs = (pickDetailImages(p) || []).map(src=>{
+    const im = new Image();
+    im.src = src;
+    im.alt = '';
+    im.loading = 'lazy';
+    im.style.display = 'block';
+    im.style.width   = '100%';
+    im.style.height  = 'auto';
+    im.style.margin  = '8px 0';
+    return im;
+  });
+
+  const pos = normalizePos(p.detailImagePos);
+  if (pos === 'top'){
+    imgs.forEach(im => host.insertBefore(im, txt));
+  }else{
+    imgs.forEach(im => host.appendChild(im));
+  }
+}
 // 只允許 top / bottom；其它值一律當 top
 function normalizePos(pos){
   const s = String(pos||'top').toLowerCase();
@@ -991,30 +1048,8 @@ function renderMeta(p){
     box.appendChild(chip);
   });
 
-  // === 詳情：依擺位插圖 ===
-function buildDetailHTML(p){
-  const desc  = (p.description || '');
-  const lines = desc.split(/\r?\n/);
-  const imgs  = (p.detailImages || []).map(String);
-
-  const imgsHTML = imgs.map(u => `
-    <img src="${u}" alt="">
-  `).join('');   // 交給上面的 .desc img CSS 控制寬高
-
-  const lineHTML = lines.map(s => `<p>${s || '&nbsp;'}</p>`).join('');
-  const pos = String(p.detailImagePos || 'top').toLowerCase();
-
-  if (pos.includes('bottom')) return lineHTML + imgsHTML;
-  return imgsHTML + lineHTML; // 預設 top
-}
-
-// 取代你原本的三行
-document.getElementById('mDesc').innerHTML = buildDetailHTML(p);
-console.log({
-  detailImagePos:p.detailImagePos,
-  detailImageAfterLine:p.detailImageAfterLine,
-  pickedImages: pickDetailImages(p)
-});
+  // === 詳情（空格/換行完整保留 + 安全渲染）===
+mountDetail(p);
   updatePriceAndPay();
 }
 
@@ -1809,7 +1844,7 @@ if (isPanelOpen()) rebuildFullList();
 loadComments();
 </script>
 <script src="im.js"></script>
-<script src="lioc.js?v=0.1.1"></script>
+<script src="lioc.js?v=0.1.2"></script>
 <!--=================-->
 <p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
   🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>

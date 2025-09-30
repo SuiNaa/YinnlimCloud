@@ -382,6 +382,10 @@ input, textarea, select, option, details, svg, canvas{
   0%,100% { box-shadow:0 0 0   rgba(164,140,255,0.0), 0 0 0 rgba(164,140,255,0.0); }
   50%     { box-shadow:0 0 12px rgba(164,140,255,0.35), 0 0 22px rgba(164,140,255,0.22); }
 }
+.desc-text {
+  white-space: break-spaces;  /* 保留空格、換行 */
+  word-break: break-word;     /* 避免超長字串撐爆 */
+}
 </style>
 </head>
 <body>
@@ -1245,7 +1249,12 @@ async function createProduct(){
   const err = v => pbErr.textContent = v || ''; err('');
   const token = localStorage.getItem('sg_token');
   const me = JSON.parse(localStorage.getItem('sg_user')||'null');
-  const title = pbTitle.value.trim(), summary = pbSummary.value.trim(), detail = pbDetail.value.trim();
+ const title   = pbTitle.value.trim();
+const summary = pbSummary.value.trim();
+let detail    = pbDetail.value;
+
+// 保留首行空格：如果第一個字不是空白，就前面補一個全形空格
+if (!/^\s/.test(detail)) detail = '\u2003' + detail;
   if(!title){ err('請輸入商品標題'); return; }
 
   try{
@@ -1347,7 +1356,9 @@ async function updateProduct(){
     // 文字欄位
     const title   = document.getElementById('pbTitle').value.trim();
     const summary = document.getElementById('pbSummary').value.trim();
-    const detail  = document.getElementById('pbDetail').value.trim();
+   let detail = document.getElementById('pbDetail').value;
+// 保留首行空格
+if (!/^\s/.test(detail)) detail = '\u2003' + detail;
     if(!title){ err('請輸入商品標題'); return; }
 
     // 位置
