@@ -1,742 +1,515 @@
 <!DOCTYPE html>
 <html lang="zh-hant">
-    <head>
-        <meta charset="UTF-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-        <title>可愛表情包</title>
-          <style>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>可愛圖片牆｜YinnLim</title>
     
-
-    .emoji-pack {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      max-width: 460px;
+    <!-- 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+    <style>
+    /* 全局可愛漸層背景 */
+    html, body {
+      height: 100%;
     }
-    /* 全局可愛漸層背景（靜態） */
-html, body{
-  height: 100%;
-}
 
-body{
-  /* 柔和粉彩：粉 ➜ 淡粉 ➜ 紫霧 ➜ 冰藍 */
-  background: linear-gradient(135deg, #ffe6f7 0%, #ffd9ec 30%, #e9d7ff 65%, #d6f0ff 100%);
-  background-attachment: fixed;   /* 捲動時背景不動，視差更柔和 */
-  margin: 0;                      /* 保證貼滿視窗 */
-}
-    .emoji-pack img {
-      width: 80px;
+    body {
+      background: linear-gradient(135deg, #ffe6f7 0%, #ffd9ec 30%, #e9d7ff 65%, #d6f0ff 100%);
+      background-attachment: fixed;
+      margin: 0;
+      font-family: "BiauKai", "Kaiti TC", "STKaiti", "KaiTi", serif;
+    }
+
+    /* 🌸 漢堡選單樣式 */
+    .menu-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 30px;
+      height: 24px;
+      cursor: pointer;
+      z-index: 3000;
+      background: transparent;
+      border: none;
+    }
+
+    .menu-toggle span {
+      display: block;
+      height: 3px;
+      margin: 5px 0;
+      background-color: #ff66a5;
+      transition: all 0.3s ease;
+    }
+
+    .menu-toggle.active span:nth-child(1) {
+      transform: translateY(8px) rotate(45deg);
+    }
+    .menu-toggle.active span:nth-child(2) {
+      opacity: 0;
+    }
+    .menu-toggle.active span:nth-child(3) {
+      transform: translateY(-8px) rotate(-45deg);
+    }
+
+    .side-menu {
+      position: fixed;
+      top: 0;
+      right: -250px;
+      width: 250px;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+      transition: right 0.4s ease;
+      z-index: 2000;
+    }
+
+    .side-menu.open {
+      right: 0;
+    }
+
+    .side-menu ul {
+      list-style: none;
+      padding: 60px 20px;
+      margin: 0;
+    }
+
+    .side-menu li {
+      margin: 20px 0;
+    }
+
+    .side-menu a {
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 18px;
+      position: relative;
+      display: inline-block;
+      color: transparent;
+      background: linear-gradient(90deg, #ff66a5, #fcb045);
+      -webkit-background-clip: text;
+      background-clip: text;
+      transition: all 0.35s ease;
+      font-weight: 500;
+    }
+
+    .side-menu a.login-btn,
+    .side-menu a.hub-btn {
+      color: #ff4d88 !important;
+      background: none !important;
+      -webkit-background-clip: unset !important;
+      background-clip: unset !important;
+    }
+
+    .side-menu a.hub-btn {
+      color: #e60073 !important;
+    }
+
+    .side-menu a::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -4px;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, #ff66a5, #9b5de5, #00bbf9);
+      transform: scaleX(0);
+      transform-origin: right;
+      transition: transform 0.35s ease;
+    }
+
+    .side-menu a:hover {
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+
+    .side-menu a:hover::after {
+      transform: scaleX(1);
+      transform-origin: left;
+    }
+
+    /* 標題樣式 */
+    h1 {
+      color: #f2eaf5;
+      text-shadow: 2px 2px 5px rgba(176, 60, 226, 0.6);
+      text-align: center;
+      margin-top: 60px;
+    }
+
+    /* 圖片牆網格樣式 */
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    }
+
+    .card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card .cap {
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card .dl {
+      background: linear-gradient(135deg, #ff8bd1, #ff69b4);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 14px;
+      transition: transform 0.2s ease;
+    }
+
+    .card .dl:hover {
+      transform: scale(1.05);
+    }
+
+    /* 用戶區域樣式 */
+    #userArea {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      font-weight: bold;
+      color: #663399;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .edit-btn, .logout-btn {
+      border: none;
+      background: none;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px 8px;
+      color: #663399;
+      transition: transform 0.2s ease;
+    }
+
+    .edit-btn:hover, .logout-btn:hover {
+      transform: scale(1.2);
+    }
+
+    .lim-town-label {
+      display: inline-flex;
+      flex-direction: column;
+      line-height: 1;
+      margin-right: 4px;
+      align-items: center;
+      font-weight: bold;
+      font-size: 12px;
+      vertical-align: middle;
+    }
+
+    .lim-town-label .lim {
+      font-size: 14px;
+    }
+
+    .lim-town-label .town {
+      font-size: 10px;
+      color: #888;
+    }
+
+    /* Lightbox 樣式 */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .lightbox.show {
+      display: flex;
+    }
+
+    .lb-inner {
+      max-width: 90vw;
+      max-height: 80vh;
+      position: relative;
+    }
+
+    .lb-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
       border-radius: 10px;
     }
-    
-  h1 {
-    text-align: center;
-  }
-</style>
-<style>
-  /* 🌸 漢堡按鈕容器，固定在右上角 */
-.menu-toggle {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 30px;
-  height: 24px;
-  cursor: pointer;
-  z-index: 3000;
-  background: transparent;
-  border: none;
-}
 
-/* 🌸 漢堡三條線條樣式 */
-.menu-toggle span {
-  display: block;
-  height: 3px;
-  margin: 5px 0;
-  background-color: #ff66a5; /* 粉色 */
-  transition: all 0.3s ease;
-}
+    .lb-actions {
+      position: absolute;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+    }
 
-/* 🌸 點擊後的動畫變 X */
-.menu-toggle.active span:nth-child(1) {
-  transform: translateY(8px) rotate(45deg);
-}
-.menu-toggle.active span:nth-child(2) {
-  opacity: 0;
-}
-.menu-toggle.active span:nth-child(3) {
-  transform: translateY(-8px) rotate(-45deg);
-}
+    .btn {
+      background: #ff69b4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
 
-/* 🌸 側邊選單樣式，預設隱藏在右邊 */
-.side-menu {
-  position: fixed;
-  top: 0;
-  right: -250px; /* 隱藏在畫面外 */
-  width: 250px;
-  height: 100%;
-  background-color: rgba(255, 255, 255, 0.2); /* ✅磨砂 */
-  backdrop-filter: blur(10px);
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-  transition: right 0.4s ease;
-  z-index: 2000;
-}
-
-/* 🌸 點擊後滑出 */
-.side-menu.open {
-  right: 0;
-}
-
-/* 🌸 選單文字樣式 */
-.side-menu ul {
-  list-style: none;
-  padding: 60px 20px;
-  margin: 0;
-}
-
-.side-menu li {
-  margin: 20px 0;
-}
-/* 🌸 側邊選單連結 */
-.side-menu a {
-  text-decoration: none;
-  font-weight: bold;
-  font-size: 18px;
-  position: relative;
-  display: inline-block;
-  color: transparent;  /* 先隱藏文字色 */
-  background: linear-gradient(90deg, #ff66a5, #fcb045); /* 漸層字 */
-  -webkit-background-clip: text;
-  background-clip: text;
-  transition: all 0.35s ease;
-  font-weight: 500;
-}
-/* 🍓登入、💖Hub：固定顏色 */
-.side-menu a.login-btn,
-.side-menu a.hub-btn {
-  color: #ff4d88 !important;   /* 🍓 Strawberry 粉紅 */
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-}
-
-/* 💖 Grove Hub 可以給專屬顏色 */
-.side-menu a.hub-btn {
-  color: #e60073 !important;   /* 💖 比較濃的粉紅紅 */
-}
-/* 🌸 漸層底線 */
-.side-menu a::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -4px;   /* 底線距離文字的高度 */
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, #ff66a5, #9b5de5, #00bbf9);
-  transform: scaleX(0);
-  transform-origin: right;
-  transition: transform 0.35s ease;
-}
-
-/* 🌸 滑過效果：字距微展開，底線跑出來 */
-.side-menu a:hover {
-  letter-spacing: 1px;
-  font-weight: 600;
-}
-
-.side-menu a:hover::after {
-  transform: scaleX(1);
-  transform-origin: left;
-}
-
-</style>   
-    </head>
+    /* 頁腳樣式 */
+    footer {
+      text-align: center;
+      font-size: 13px;
+      color: #999;
+      margin: 40px 0 20px;
+      padding: 0 20px;
+    }
+    </style>
+</head>
 <body>
- <div>
-    <style>
-  h1 {
-    color: #f2edf5; /*  💖 */
-  }
-  h1 {
-  color: #f2eaf5;
-  text-shadow: 2px 2px 5px rgba(176, 60, 226, 0.6);
-}
-</style>
-</style>
-    <h1>
-        可愛表情包🥺
-    </h1>
-</div>
-<style>
-.emoji-pack {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  max-width: calc(5 * 80px + 4 * 10px); /* 每張寬 80px，間距10px，5個一行 */
-}
+    <!-- 用戶區域 -->
+    <div id="userArea">
+        <span id="userNickname" title="Yinn🪐帳號">暱稱加載中...</span>
+        <button class="edit-btn" onclick="showEditNicknameOptions()" title="修改暱稱">⌘</button>
+        <span id="cnNickname" title="Lim帳戶">載入中...</span>
+        <button class="logout-btn" onclick="showLogoutOptions()" title="登出">🍃登出</button>
+        <button class="logout-btn" onclick="redirectBasedOnLocation()" title="登入">🍓登入</button>
+    </div>
 
-.emoji-pack img {
-  width: 80px;
-  border-radius: 10px;
-}
-.emoji-pack img:hover {
-  transform: scale(1.1);
-  transition: 0.3s;
-  box-shadow: 0 0 8px pink;
-}
-.emo {
-  display: inline-block;
-  padding: 5px 10px;
-  background-color: #fb84ff;
-  color: white;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: bold;
-}
-/*修改暱稱*/
-button.edit-btn {
-  border: none;
-  background: none;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 0 4px;
-  color: #663399;
-  transition: transform 0.2s ease;
-}
-button.edit-btn:hover {
-  transform: scale(1.2);
-}
-/*登出*/
-.logout-btn {
-  background: transparent;
-  border: none;
-  color: #663399;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px 8px;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
+    <!-- 主標題 -->
+    <h1>可愛圖片牆 🎀</h1>
 
-.logout-btn:hover {
-  opacity: 0.8;
-}
+    <!-- 圖片牆容器 -->
+    <div id="grid" class="gallery"></div>
 
-.logout-btn:active {
-  transform: scale(1.15); /* 點擊時放大一點 */
-}
-/**/
-.logout-btn {
-  background: transparent;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  color: #663399;
-  transition: transform 0.2s ease;
-  padding: 0;
-}
+    <!-- 🌸 漢堡選單 -->
+    <div class="menu-toggle" onclick="toggleMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
 
-.logout-btn:hover {
-  transform: scale(1.2);
-  background: transparent; /* 確保懸停時不變色 */
-}
+    <nav class="side-menu" id="sideMenu">
+        <ul>
+            <li><a href="/index.html">首頁Home page</a></li>
+            <li>
+                <a href="javascript:void(0);" onclick="showTownLoginModal()" class="login-btn">
+                    <span class="lim-town-label">
+                        <span class="lim">Yinn</span>
+                        <span class="town">Lim</span>
+                    </span>🍓 登入／註冊
+                </a>
+            </li>
+            <li><a href="/Diverse/misseng.html">
+                <span class="lim-town-label">
+                    <span class="lim">Yinn</span>
+                    <span class="town">Town</span>
+                </span>
+                曦花林<sup>NEW</sup>
+            </a></li>
+            <li><a href="/Help.yinnlim/help.html" class="hub-btn">Grove Hub<sup>💖</sup></a></li>
+            <li><a href="/live/shopping.html">Grove Store</a></li>
+            <li><a href="/live/constitution.html">網站申明</a></li>
+            <li><a href="About thisn site.html">責任申明</a></li>
+            <li><a href="Emoticon pack.html">可愛表情</a></li>
+        </ul>
+    </nav>
 
-/*==================*/
-.logout-btn {
-  background: transparent;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  color: #663399;
-  transition: transform 0.2s ease;
-  padding: 0;
-}
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" aria-hidden="true">
+        <div class="lb-inner">
+            <img id="lbImg" class="lb-img" alt="">
+            <div class="lb-actions">
+                <a id="lbDownload" class="btn" download>下載</a>
+                <button id="lbClose" class="btn" style="background: #666;">關閉</button>
+            </div>
+        </div>
+    </div>
 
-.logout-btn:hover {
-  transform: scale(1.2);
-  background: transparent; /* 確保懸停時不變色 */
-}
+    <!-- 頁腳 -->
+    <footer>
+        🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
+        未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
+    </footer>
 
-.lim-town-label {
-  display: inline-flex;
-  flex-direction: column;
-  line-height: 1;
-  margin-right: 4px;
-  align-items: center;
-  font-weight: bold;
-  font-size: 12px;
-  vertical-align: middle;
-}
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    
+    <!-- LeanCloud -->
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-min.js"></script>
 
-.lim-town-label .lim {
-  font-size: 14px;
-}
+    <script>
+    // Firebase 配置
+    const firebaseConfig = {
+        apiKey: "AIzaSyBkLJKrOdTgk4uf58jpciJIHm9hEYQUFCw",
+        authDomain: "yinnlim-mgsg-wall.firebaseapp.com",
+        projectId: "yinnlim-mgsg-wall",
+        storageBucket: "yinnlim-mgsg-wall.firebasestorage.app",
+        messagingSenderId: "811614776183",
+        appId: "1:811614776183:web:d0b11607a54b5a4d8a0f72"
+    };
+    firebase.initializeApp(firebaseConfig);
 
-.lim-town-label .town {
-  font-size: 10px;
-  color: #888; /* 或你想用的顏色 */
-}
-</style>
-<style>
-  /* === 等大方格 + 相框 === */
-.emoji-pack {width: 100%; max-width: 960px; margin: 0 auto;
-  /* 舊容器保留，裡面會被 JS 改造成 .emoji-grid */
-}
-
-/* 新的自動生成容器 */
-.emoji-grid{
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* 螢幕夠就多欄，不夠自動換行 */
-  gap: 12px;
-  max-width: min(1000px, 96vw);
-  margin: 0 auto;
-}
-
-/* 單張卡片 */
-.emoji-tile{
-  background: rgba(255,255,255,.85);
-  border: 2px solid rgba(255,182,193,.6);   /* 淡粉相框邊 */
-  border-radius: 12px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: space-between;
-  box-shadow: 0 6px 16px rgba(0,0,0,.08);
-  transition: transform .18s ease, box-shadow .18s ease;
-}
-.emoji-tile:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(0,0,0,.12);
-}
-
-/* 這一格是圖片展示區（等大正方形） */
-.emoji-frame{
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;            /* ← 固定正方形，等大 */
-  border-radius: 10px;
-  background:
-    linear-gradient(145deg, #fff, #ffe6f2); /* 相框底色 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 1px solid rgba(255,182,193,.5);   /* 內框線 */
-}
-
-/* 圖片：永遠完整顯示（不拉伸），不足就留白，像放在相框裡 */
-.emoji-frame img{
-  max-width: 100%;
-  max-height: 100%;
-  width: auto !important;
-  height: auto !important;
-  object-fit: contain;
-  display: block;
-}
-
-/* 下載鈕（原本的 a.emo）放到卡片底部，滿版好點 */
-.emoji-caption{
-  margin-top: 8px;
-}
-.emoji-caption .emo{
-  display: block;
-  text-align: center;
-  padding: 8px 10px;
-  border-radius: 8px;
-  font-weight: 800;
-  text-decoration: none;
-  color: #fff;
-  background: linear-gradient(135deg,#ff8bd1,#ff69b4);
-  box-shadow: 0 4px 10px rgba(255,105,180,.3);
-  transition: transform .12s ease, box-shadow .12s ease;
-}
-.emoji-caption .emo:hover{
-  transform: scale(1.03);
-  box-shadow: 0 8px 18px rgba(255,105,180,.38);
-}
-
-/* 小螢幕時，卡片最小變 100px，間距縮小一點 */
-@media (max-width: 480px){
-  .emoji-grid{
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 10px;
-  }
-}
-</style>
-<!--主圖-->
-  <div class="emoji-pack">
-  <div class="emoji-item">
-    <img src="./IMG_4062.jpeg" alt="憂鬱小貓" style="width: 99px; vertical-align:middle;">
-      <P><a href="./IMG_4062.jpeg" download class="emo">憂鬱小貓</a></P>
-  <img src="./IMG_4067 (1).JPG" alt="委屈的豬豬" style="width: 99px; vertical-align:middle;">
-  <p><a href="./IMG_4067 (1).JPG" download class="emo">委屈的豬豬</a></p>
-  <img src="./IMG_4071.JPG" alt="拱拱豬豬" style="width: 99px; vertical-align:middle;">
-  <P><a href="./IMG_4071.JPG" download class="emo">拱拱豬豬</a></P>
-  <img src="./IMG_4072.JPG" alt="思考豬豬" style="width: 99px; vertical-align:middle;">
-  <P><a href="./IMG_4072.JPG" download class="emo">思考豬豬</a></P>
-  <img src="./IMG_4073.JPG" alt="驚嘆豬豬" style="width: 99px; vertical-align:middle;">
-  <P><a href="./IMG_4073.JPG" download class="emo">驚嘆豬豬</a></P>
-  </div>
-  <div class="emoji-item">
-  <img src="./IMG_4074.JPG" alt="起床豬豬" style="width: 99px; vertical-align:middle;">
-  <P><a download href="./IMG_4074.JPG" class="emo">起床豬豬</a></P>
-  <img src="./IMG_4075.JPG" alt="菜菜豬" style="width: 99px; vertical-align:middle;">
-  <P><a href="./IMG_4075.JPG" download class="emo">菜菜豬</a></P>
-  <img src="./IMG_4085.JPG" alt="豬豬討厭" style="width: 99px; vertical-align:middle;">
-  <P><a href="./IMG_4085.JPG" download class="emo">豬豬討厭</a></P>
-  <img src="IMG_4108.JPG" alt="發呆豬豬" style="width: 99px; vertical-align:middle;">
-  <P><a href="./IMG_4108.JPG" download class="emo">發呆豬豬</a></P>
-  <img src="./IMG_4109 2.JPG" alt="按讚豬豬" style="width: 99px; vertical-align:middle;">
-  <P><a href="./IMG_4109 2.JPG" download class="emo">按讚豬豬</a></P>
-  </div>
-  <div class="emoji-item">
-  <img src="IMG_3910.jpeg" alt="抱抱貓貓" style="width: 99px; vertical-align:middle;">
-  <P><a href="./IMG_3910.jpeg" download class="emo">抱抱貓貓</a></P>
-
-  <img src="./付款豬豬.JPG" alt="付款豬豬" style="width: 99px; vertical-align:middle;">
-      <P><a href="./付款豬豬.JPG" download class="emo">付款豬豬</a></P>
-
-      <img src="./友好豬豬.JPG" alt="友好豬豬" style="width: 99px; vertical-align:middle;">
-      <P><a href="./友好豬豬.JPG" download class="emo">友好豬豬</a></P>
-
-      <img src="./可愛貓貓.png" alt="可愛貓貓" style="width: 99px; vertical-align:middle;">
-      <P><a href="./可愛貓貓.png" download class="emo">可愛貓貓</a></P>
-
-      <img src="./喝水水.JPG" alt="喝水水" style="width: 99px; vertical-align:middle;">
-      <P><a href="./喝水水.JPG" download class="emo">喝水水</a></P>
-
-      <img src="./坦克豬豬.JPG" alt="坦克豬豬" style="width: 99px; vertical-align:middle;">
-      <P><a href="./坦克豬豬.JPG" download class="emo">坦克豬豬</a></P>
-
-      <img src="./撞擊豬豬.JPG" alt="撞擊豬豬" style="width: 99px; vertical-align:middle;">
-      <P><a href="./撞擊豬豬.JPG" download class="emo">撞擊豬豬</a></P>
-
-      <img src="./活躍豬豬.GIF" alt="活躍豬豬" style="width: 99px; vertical-align:middle;">
-      <P><a href="./活躍豬豬.GIF" download class="emo">活躍豬豬</a></P>
-
-      <img src="./超熱豬豬.PNG" alt="超熱豬豬" style="width: 99px; vertical-align:middle;">
-      <P><a href="./超熱豬豬.PNG" download class="emo">超熱豬豬</a></P>
-  </div>
-  </div>
-  <!-- 🌸 漢堡按鈕 -->
-<div class="menu-toggle" onclick="toggleMenu()">
-  <span></span>
-  <span></span>
-  <span></span>
-</div>
-
-<!-- 🌸 側邊透明選單 -->
-<nav class="side-menu" id="sideMenu">
-  <ul>
-    <li><a href="/index.html">首頁Home page</a></li>
-    <li>
-  <a href="javascript:void(0);" onclick="showTownLoginModal()" class="login-btn">
-    <span class="lim-town-label">
-      <span class="lim">Yinn</span>
-      <span class="town">Lim</span>
-    </span>🍓 登入／註冊
-  </a>
-</li>
-    <a href="/Diverse/misseng.html"><span class="lim-town-label">
-      <span class="lim">Yinn</span>
-      <span class="town">Town</span>
-    </span>
-    曦花林<sup>NEW</sup>
-  </a>
-</li>
-    <li>
-  <a href="/Lim/LimCn.html"><span class="lim-town-label">
-      <span class="lim">Lim</span>
-      <span class="town">Town</span>
-    </span>
-    曦花林<sup>NEW</sup>
-  </a>
-</li>
-    <li><a href="/Help.yinnlim/help.html" class="hub-btn">Grove Hub<sup>💖</sup></a></li>
-    <li><a href="/live/shopping.html">Grove Store</a></li>
-    <li><a href="/live/constitution.html">網站申明</a></li>
-    <li><a href="About thisn site.html">責任申明</a></li>
-     <li><a href="Emoticon pack.html">可愛表情</a></li>
-  </ul>
-</nav>
-<!--暱稱顯示-->
-<div id="userArea" style="position: fixed; top: 10px; left: 10px; font-weight: bold; color: #663399; display: flex; align-items: center; gap: 10px;">
-    <span id="userNickname" title="Yinn🪐帳號">暱稱加載中...</span>
-  <button class="edit-btn" onclick="showEditNicknameOptions()" title="修改暱稱">⌘</button>
-  <span id="cnNickname" title="Lim帳戶">載入中...</span>
-  <button class="logout-btn" onclick="showLogoutOptions()" title="登出">🍃登出</button>
-  <button class="logout-btn" onclick="redirectBasedOnLocation()" title="登入根據網際網路位置Yinn/Lim">🍓登入</button>
-</div>
-<!--------------------------------->
-<script>
-  function goToNicknameSettings() {
-    localStorage.setItem("previousPage", window.location.pathname);
-
-    // 根據目前頁面的位置來決定正確跳轉位置
-    const settingsPath = window.location.pathname.includes("/Diverse/")
-      ? "../settings.html"
-      : "settings.html";
-
-    window.location.href = settingsPath;
-  }
-</script>
-<!--F鏈接-->
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-<!------------------------------------->
-
-<script>
-function toggleMenu() {
-  document.querySelector('.menu-toggle').classList.toggle('active');
-  document.getElementById('sideMenu').classList.toggle('open');
-}
-/*暱稱控制*/
-const firebaseConfig = {
-  apiKey: "AIzaSyBkLJKrOdTgk4uf58jpciJIHm9hEYQUFCw",
-  authDomain: "yinnlim-mgsg-wall.firebaseapp.com",
-  projectId: "yinnlim-mgsg-wall",
-  storageBucket: "yinnlim-mgsg-wall.firebasestorage.app",
-  messagingSenderId: "811614776183",
-  appId: "1:811614776183:web:d0b11607a54b5a4d8a0f72"
-};
-firebase.initializeApp(firebaseConfig);
-/*初始化*/
-firebase.auth().onAuthStateChanged(user => {
-  if (user) {
-    document.getElementById("userNickname").textContent = user.displayName || "未設定暱稱";
-  } else {
-    document.getElementById("userNickname").textContent = "未登入";
-  }
-});
-// 👉 顯示登入彈窗
-function showTownLoginModal() {
-  document.getElementById("townLoginModal").style.display = "flex";
-}
-
-function hideTownLoginModal() {
-  document.getElementById("townLoginModal").style.display = "none";
-}
-//登出------------------------------------------------
-function logout() {
-  firebase.auth().signOut().then(() => {
-    alert("已登出！");
-    window.location.href = "/Diverse/login.html"; // ⬅️ 登出後導向登入頁，根據你實際檔案位置調整
-  }).catch((error) => {
-    alert("登出失敗：" + error.message);
-  });
-}
-//中國區
-function redirectBasedOnLocation() {
-  fetch("https://ipapi.co/json/")
-    .then(res => res.json())
-    .then(data => {
-      const country = data.country_code;
-      if (country === "CN") {
-        // 在中國 → 跳轉到子資料夾內的登入頁
-        window.location.href = "/Lim/limlongin/login.html";
-      } else {
-        // 其他國家 → 跳轉國際版登入頁
-        window.location.href = "/Diverse/login.html";
-      }
-    })
-    .catch(() => {
-      // 無法判斷位置時，預設跳國際版
-      window.location.href = "/Diverse/login.html";
+    // LeanCloud 配置
+    AV.init({
+        appId: "jxPF13ZiTBmbFt75fXRnYs42-gzGzoHsz",
+        appKey: "ydXYcG0fGtWLgWetR0szCygQ",
+        serverURL: "https://jxpf13zi.lc-cn-n1-shared.com"
     });
-}
-</script>
-<!-- 引入 LeanCloud -->
-<script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-min.js"></script>
-<script>
-  AV.init({
-    appId: "jxPF13ZiTBmbFt75fXRnYs42-gzGzoHsz",
-    appKey: "ydXYcG0fGtWLgWetR0szCygQ",
-    serverURL: "https://jxpf13zi.lc-cn-n1-shared.com"
-  });
 
-  // 嘗試取得目前使用者
-  const currentUser = AV.User.current();
-  if (currentUser) {
-    const nickname = currentUser.get("nickname") || "未設定暱稱";
-    document.getElementById("cnNickname").innerHTML = `<span style="font-size: 13px;"><sup>Lim</sup>⇢</span>${nickname}`;
-  } else {
-   document.getElementById("cnNickname").innerHTML = '<span style="font-size:13px;"><sup>Lim</sup>⇥未登入</span>';
-  }
-  //登出
-  function showLogoutOptions() {
-  document.getElementById("logoutOptions").style.display = "block";
-}
-
-function closeLogoutOptions() {
-  document.getElementById("logoutOptions").style.display = "none";
-}
-
-// ✅ 登出 Firebase (Yinn)
-function logoutYinn() {
-  firebase.auth().signOut().then(() => {
-    alert("Yinn🪐帳戶已登出！");
-    window.location.href = "/Diverse/login.html";
-  }).catch((error) => {
-    alert("Yinn登出失敗：" + error.message);
-  });
-}
-
-// ✅ 登出 LeanCloud (Lim)
-function logoutLim() {
-  AV.User.logOut();
-  alert("Lim🍓帳戶已登出！");
-  window.location.href = "/Lim/limlongin/login.html";
-}
-
-
-//暱稱
-function showEditNicknameOptions() {
-  document.getElementById("nicknameOptions").style.display = "block";
-}
-function closeNicknameOptions() {
-  document.getElementById("nicknameOptions").style.display = "none";
-}
-function editYinnNickname() {
-  window.location.href = "/Diverse/settings.html";
-}
-function showLimNicknameInput() {
-  document.getElementById("nicknameOptions").style.display = "none";
-  document.getElementById("limNicknameBox").style.display = "block";
-}
-function updateLimNickname() {
-  const newName = document.getElementById("newLimNickname").value.trim();
-  if (!newName) {
-    alert("請輸入新暱稱！");
-    return;
-  }
-
-  const currentUser = AV.User.current();
-  if (!currentUser) {
-    alert("尚未登入 Lim 🍓 帳戶");
-    return;
-  }
-
-  currentUser.set("nickname", newName);
-  currentUser.save().then(() => {
-    alert("Lim 🍓 暱稱已更新！");
-    document.getElementById("limNicknameBox").style.display = "none";
-    document.getElementById("cnNickname").innerHTML = `<span style="font-size: 13px;"><sup>Lim</sup>⇢</span>` + newName;
-  }).catch(err => {
-    alert("更新失敗：" + err.message);
-  });
-}
-
-
-/* 將既有 <img> 與其後的下載 <a> 合併成「等大卡片」，自動排成響應式方格 */
-(function(){
-  const pack = document.querySelector('.emoji-pack');
-  if(!pack) return;
-
-  // 1) 把舊內容抓出來（所有圖片以及跟在圖片後面的 <a.emo>）
-  const imgs = Array.from(pack.querySelectorAll('img'));
-
-  // 2) 建一個新的網格容器
-  const grid = document.createElement('div');
-  grid.className = 'emoji-grid';
-
-  imgs.forEach(img=>{
-    // 找圖片後面最近的一個包含 <a.emo> 的 <p>
-    let captionP = img.nextElementSibling;
-    let link = null;
-    if(captionP && captionP.tagName === 'P'){
-      link = captionP.querySelector('a.emo');
+    // 漢堡選單功能
+    function toggleMenu() {
+        document.querySelector('.menu-toggle').classList.toggle('active');
+        document.getElementById('sideMenu').classList.toggle('open');
     }
 
-    // 建立卡片
-    const tile = document.createElement('div');
-    tile.className = 'emoji-tile';
+    // 用戶狀態管理
+    firebase.auth().onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById("userNickname").textContent = user.displayName || "未設定暱稱";
+        } else {
+            document.getElementById("userNickname").textContent = "未登入";
+        }
+    });
 
-    // 相框（固定正方形）
-    const frame = document.createElement('div');
-    frame.className = 'emoji-frame';
-
-    // 把圖片搬進相框（去掉內聯寬度，避免干擾）
-    img.removeAttribute('style');
-    frame.appendChild(img);
-
-    // 標題/下載按鈕區
-    const caption = document.createElement('div');
-    caption.className = 'emoji-caption';
-
-    if(link){
-      // 把原本的 <a.emo> 移過來
-      caption.appendChild(link);
-      // 移除原本的 <p>（空了就不留）
-      captionP.remove();
-    }else{
-      // 沒找到就用圖片的 alt 當顯示文字並建一個下載連結
-      const a = document.createElement('a');
-      a.className = 'emo';
-      a.href = img.getAttribute('src') || '#';
-      a.setAttribute('download', '');
-      a.textContent = img.getAttribute('alt') || '下載';
-      caption.appendChild(a);
+    // LeanCloud 用戶狀態
+    const currentUser = AV.User.current();
+    if (currentUser) {
+        const nickname = currentUser.get("nickname") || "未設定暱稱";
+        document.getElementById("cnNickname").innerHTML = `<span style="font-size: 13px;"><sup>Lim</sup>⇢</span>${nickname}`;
+    } else {
+        document.getElementById("cnNickname").innerHTML = '<span style="font-size:13px;"><sup>Lim</sup>⇥未登入</span>';
     }
 
-    // 組裝卡片
-    tile.appendChild(frame);
-    tile.appendChild(caption);
-    grid.appendChild(tile);
-  });
+    // 圖片牆數據 - 從 Cloudflare Workers 加載
+    const WORKER_URL = 'https://yinncloud.suinaa852.workers.dev/';
 
-  // 3) 用新網格替換舊內容
-  pack.innerHTML = '';
-  pack.appendChild(grid);
-})();
-</script>
-<p style="text-align: center; font-size: 13px; color: #999; margin-top: 40px;">
-  🐾 © 2024 yinnlim的小宇宙｜內容與設計皆由糖糖本人用愛製作 💞<br>
-  未經授權請勿隨意使用、盜轉喔 🙅‍♀️ 謝謝你的尊重與溫柔 💌
-</p>
+    async function loadGallery() {
+        try {
+            const response = await fetch(WORKER_URL + '?v=' + Date.now(), { 
+                cache: 'no-store' 
+            });
+            
+            if (!response.ok) throw new Error('載入失敗');
+            
+            const { files } = await response.json();
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
 
-<!-- 🔐 登出選擇彈出視窗 -->
-<div id="logoutOptions" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); z-index:9999;">
-  <div style="background-color:#fffafc; max-width:320px; margin: 20% auto; padding: 20px; border-radius:12px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); text-align: center;">
-    <h3 style="color:#663399;">請選擇要登出的帳戶</h3>
-    <button onclick="logoutYinn()" style="margin:8px; padding:10px 18px; background-color:#dab6ff; color:white; border:none; border-radius:6px;">Yinn🪐帳戶</button>
-    <button onclick="logoutLim()" style="margin:8px; padding:10px 18px; background-color:#ffb6b6; color:white; border:none; border-radius:6px;">Lim🍓帳戶</button>
-    <br><br>
-    <button onclick="closeLogoutOptions()" style="padding:8px 12px; background-color:#ccc; color:#333; border:none; border-radius:6px;">取消</button>
-  </div>
-</div>
-<!--暱稱功能-->
-<!-- ✅ 暱稱修改彈窗 -->
-<div id="nicknameOptions" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999;">
-  <div style="background:#fff; max-width:300px; margin:20% auto; padding:20px; border-radius:12px; text-align:center;">
-    <h3 style="color:#663399;">請選擇要修改的帳戶暱稱</h3>
-    <button onclick="editYinnNickname()" style="margin:8px; padding:8px 14px; background:#dab6ff; color:#fff; border:none; border-radius:6px;">Yinn Town 🪐</button>
-    <button onclick="showLimNicknameInput()" style="margin:8px; padding:8px 14px; background:#ffb6b6; color:#fff; border:none; border-radius:6px;">Lim Town 🍓</button>
-    <br><br>
-    <button onclick="closeNicknameOptions()" style="padding:6px 10px; background:#ccc; border:none; border-radius:6px;">取消</button>
-  </div>
-</div>
+            // 按文件名排序
+            files.sort((a, b) => a.url.localeCompare(b.url));
 
-<!-- ✅ Lim 暱稱輸入彈窗 -->
-<div id="limNicknameBox" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000;">
-  <div style="background:#fff; max-width:300px; margin:25% auto; padding:20px; border-radius:12px; text-align:center;">
-    <h3 style="color:#663399;">修改 Lim 🍓 暱稱</h3>
-    <input type="text" id="newLimNickname" placeholder="輸入新暱稱" style="padding:8px; width:80%; border-radius:6px; margin-bottom:10px;">
-    <br>
-    <button onclick="updateLimNickname()" style="background:#ff88aa; color:white; border:none; padding:8px 12px; border-radius:6px;">送出</button>
-    <br><br>
-    <button onclick="document.getElementById('limNicknameBox').style.display='none'" style="padding:6px 10px; background:#ccc; border:none; border-radius:6px;">取消</button>
-  </div>
-</div>
-<!-- 🌈 登入選單彈窗 -->
-<div id="townLoginModal"
-  style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-  <div style="background: linear-gradient(135deg, #5BCEFA, #F5A9B8, #FFFFFF, #F5A9B8, #5BCEFA); padding: 20px; border-radius: 12px; text-align: center; max-width: 300px; width: 90%;">
-    <h2 style="margin-bottom: 16px; color: #663399;">請選擇登入的 Town</h2>
-    <button onclick="location.href='/Diverse/login.html'" style="margin: 10px; padding: 10px 20px; border-radius: 10px; border: none; background: white; color: #5BCEFA; font-weight: bold;">Yinn Town</button>
-    <button onclick="location.href='/Lim/limlongin/login.html'" style="margin: 10px; padding: 10px 20px; border-radius: 10px; border: none; background: white; color: #F5A9B8; font-weight: bold;">Lim Town</button>
-    <br><br>
-    <button onclick="hideTownLoginModal()" style="margin-top: 10px; font-size: 14px; background: none; border: none; color: #fff; text-decoration: underline;">取消</button>
-  </div>
-</div>
+            files.forEach(({ url }) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="${url}" alt="可愛圖片" loading="lazy">
+                    <div class="cap">
+                        <a class="dl" href="${url}" download>下載</a>
+                    </div>
+                `;
+                
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('.dl')) return;
+                    openLightbox(url, '可愛圖片');
+                });
+                
+                grid.appendChild(card);
+            });
+
+        } catch (error) {
+            document.getElementById('grid').innerHTML = `
+                <div style="text-align: center; color: #ff6b6b; padding: 40px;">
+                    🥺 載入圖片失敗，請稍後再試
+                </div>
+            `;
+        }
+    }
+
+    // Lightbox 功能
+    const lb = document.getElementById('lightbox');
+    const lbImg = document.getElementById('lbImg');
+    const lbDl = document.getElementById('lbDownload');
+    const lbClose = document.getElementById('lbClose');
+
+    function openLightbox(url, alt) {
+        lbImg.src = url;
+        lbImg.alt = alt || '';
+        lbDl.href = url;
+        lbDl.download = alt || '';
+        lb.classList.add('show');
+        lb.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeLightbox() {
+        lb.classList.remove('show');
+        lb.setAttribute('aria-hidden', 'true');
+    }
+
+    lb.addEventListener('click', (e) => {
+        if (e.target === lb) closeLightbox();
+    });
+
+    lbClose.addEventListener('click', closeLightbox);
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeLightbox();
+    });
+
+    // 其他功能函數
+    function showTownLoginModal() {
+        document.getElementById("townLoginModal").style.display = "flex";
+    }
+
+    function showLogoutOptions() {
+        document.getElementById("logoutOptions").style.display = "block";
+    }
+
+    function redirectBasedOnLocation() {
+        fetch("https://ipapi.co/json/")
+            .then(res => res.json())
+            .then(data => {
+                const country = data.country_code;
+                if (country === "CN") {
+                    window.location.href = "/Lim/limlongin/login.html";
+                } else {
+                    window.location.href = "/Diverse/login.html";
+                }
+            })
+            .catch(() => {
+                window.location.href = "/Diverse/login.html";
+            });
+    }
+
+    // 初始化加載
+    loadGallery();
+    </script>
 </body>
 </html>
